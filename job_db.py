@@ -8,13 +8,13 @@ def query_job(job_id):
     return job['status']
 
 
-def update_job(job_id):
+def update_job(job_id, status, result):
     db = boto3.resource('dynamodb')
     table = db.Table('service-experiment')
     table.update_item(Key={'job_id': job_id},
-                      UpdateExpression='SET #job_status = :val1',
-                      ExpressionAttributeNames={'#job_status': 'status'},
-                      ExpressionAttributeValues={':val1': 'complete'})
+                      UpdateExpression='SET #stat = :val1, #r = :val2',
+                      ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
+                      ExpressionAttributeValues={':val1': 'complete', ':val2': result})
 
 
 def submit_job(job_id, service):
