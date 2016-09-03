@@ -2,7 +2,6 @@ import boto3
 import json
 import sys
 import time
-from job_db import update_job
 
 def receive_message(service):
     sqs = boto3.resource('sqs')
@@ -19,12 +18,22 @@ def receive_message(service):
                 msg.delete()
                 break
     return message, msg_id
+
+
+def update_job(job_id, status, result):
+    db = boto3.resource('dynamodb')
+    table = db.Table('service-experiment')
+    table.update_item(Key={'job_id': job_id},
+                      UpdateExpression='SET #stat = :val1, #r = :val2',
+                      ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
+                      ExpressionAttributeValues={':val1': status, ':val2': result})
                 
 
 def run_worker(worker_type, poll_frequency):
     while True:
         msg, msg_id = receive_message(worker_type)
         if msg:
+            print('received message')
             try:
                 result = do_work(msg)
                 update_job(msg_id, 'complete', result)
