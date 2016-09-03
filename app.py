@@ -1,11 +1,9 @@
 import json
 from flask import Flask, jsonify, \
                   render_template, request
-from job_db import query_job, update_job, submit_job
-from sqs_message import send_message, receive_message
+from client import send_message, query_job, submit_job
 
 app = Flask(__name__)
-
 
 @app.route('/')
 def index():
@@ -19,15 +17,6 @@ def message():
     job_id = send_message(message, service)
     submit_job(job_id, service)
     response = {'jobId': job_id, 'status': 'success'}
-    return jsonify(**response)
-
-
-@app.route('/retrieve', methods=['GET'])
-def retrieve():
-    service = request.args.get('service')
-    msg, job_id = receive_message(service)
-    update_job(job_id)
-    response = {'status': 'success', 'message': msg}
     return jsonify(**response)
 
 

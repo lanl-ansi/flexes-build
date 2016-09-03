@@ -37,7 +37,6 @@
                 <h1>Service Architecture Test</h1>
 		<input id="MessageInput" class="form-control" type="text" placeholder="Enter Message"/>
 		<button id="RequestBtn" class="btn btn-default form-control">Send Request</button>
-		<button id="RetrieveBtn" class="btn btn-default form-control">Retrieve Message</button>
 		<button id="QueryBtn" class="btn btn-default form-control">Check Job Status</button>
             </div>
         </div>
@@ -46,39 +45,30 @@
     </div>
     <!-- /.container -->
 
-    <!-- jQuery Version 1.11.1 -->
     <script src="https://code.jquery.com/jquery-2.2.4.min.js" 
             integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
-
-    <!-- Bootstrap Core JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" 
             integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-
     <script>
-	var jobId;
-        $('body').on('click', '#RequestBtn', function () {
-	   var request = $('#MessageInput').val();
-	   $.ajax({
-	       url: './message',
-	       type: 'POST',
-	       data: request,
-	       contentType: 'application/json',
-	       success: function (data) {
-	            console.log(data);
-		    jobId = data.jobId;
-	       }
-	   });
-	});
-	$('body').on('click', '#RetrieveBtn', function () {
-	    $.get('./retrieve', {'service': 'TestService'}, function (data) {
-	        alert(JSON.stringify(data));
-	    });
-	});
-	$('body').on('click', '#QueryBtn', function () {
-	    $.get('./query-job', {'jobId': jobId}, function (data) {
-	        alert(JSON.stringify(data));
-	    });
-	});
+      var jobId;
+      $('body').on('click', '#RequestBtn', function () {
+        var request = $('#MessageInput').val();
+        $.ajax({
+          url: './message',
+          type: 'POST',
+          data: request,
+          contentType: 'application/json',
+          success: function (data) {
+            console.log(data);
+            jobId = data.jobId;
+          }
+        });
+      });
+      $('body').on('click', '#QueryBtn', function () {
+        $.get('./query-job', {'jobId': jobId}, function (data) {
+          alert(JSON.stringify(data));
+        });
+      });
     </script>
 </body>
 
