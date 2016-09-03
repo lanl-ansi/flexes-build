@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Service Test</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" 
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+
+    <!-- Custom CSS -->
+    <style>
+    body {
+        padding-top: 70px;
+        /* Required padding for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+    }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+
+        <div class="row">
+            <div class="col-lg-4 text-center">
+                <h1>Service Architecture Test</h1>
+		<input id="MessageInput" class="form-control" type="text" placeholder="Enter Message"/>
+		<button id="RequestBtn" class="btn btn-default form-control">Send Request</button>
+		<button id="RetrieveBtn" class="btn btn-default form-control">Retrieve Message</button>
+		<button id="QueryBtn" class="btn btn-default form-control">Check Job Status</button>
+            </div>
+        </div>
+        <!-- /.row -->
+
+    </div>
+    <!-- /.container -->
+
+    <!-- jQuery Version 1.11.1 -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js" 
+            integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" 
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+    <script>
+	var jobId;
+        $('body').on('click', '#RequestBtn', function () {
+	   var request = $('#MessageInput').val();
+	   $.ajax({
+	       url: './message',
+	       type: 'POST',
+	       data: request,
+	       contentType: 'application/json',
+	       success: function (data) {
+	            console.log(data);
+		    jobId = data.jobId;
+	       }
+	   });
+	});
+	$('body').on('click', '#RetrieveBtn', function () {
+	    $.get('./retrieve', {'service': 'TestService'}, function (data) {
+	        alert(JSON.stringify(data));
+	    });
+	});
+	$('body').on('click', '#QueryBtn', function () {
+	    $.get('./query-job', {'jobId': jobId}, function (data) {
+	        alert(JSON.stringify(data));
+	    });
+	});
+    </script>
+</body>
+
+</html>
