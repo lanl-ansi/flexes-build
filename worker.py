@@ -7,6 +7,7 @@ def receive_message(service):
     sqs = boto3.resource('sqs')
     queue = sqs.get_queue_by_name(QueueName='service-experiment')
     message = None
+    msg_id = None
 
     # Process message with optional Service attribute
     for msg in queue.receive_messages(MessageAttributeNames=['Service']):
@@ -32,7 +33,7 @@ def update_job(job_id, status, result):
 def run_worker(worker_type, poll_frequency):
     while True:
         msg, msg_id = receive_message(worker_type)
-        if msg:
+        if msg is not None:
             print('received message')
             try:
                 result = do_work(msg)
@@ -48,6 +49,7 @@ def do_work(params):
     return 'work complete'
 
 if __name__ == '__main__':
-    worker_type, poll_frequency = tuple(sys.argv)
+    worker_type = sys.argv[1]
+    poll_frequency = int(sys.argv[2])
     run_worker(worker_type, poll_frequency)
     
