@@ -11,3 +11,5 @@ This project is an attempt to implement a robust architecture for deploying web 
 5. If the worker can perform the job it begins processing the message
 6. Once a service processes a message it deletes it from the queue
 7. The worker updates the job's status in a database along with the job's results
+
+The [docker folder](./docker/) is an experiment for executing the model code inside of a Docker container. This separates the worker logic from the actual work. It also allows model developers to develop their model code in a Docker container without having to write any worker boilerplate for service deployment.
