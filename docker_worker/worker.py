@@ -2,6 +2,8 @@ import boto3
 import json
 import sys
 import time
+from docker_launch import launch_worker
+
 
 def receive_message(service):
     sqs = boto3.resource('sqs')
@@ -36,17 +38,17 @@ def run_worker(worker_type, poll_frequency):
         if msg is not None:
             print('received message')
             try:
-                result = do_work(msg)
+                result = launch_worker(msg)
                 update_job(msg_id, 'complete', result)
             except Exception as e:
                 update_job(msg_id, 'failed', None)
         time.sleep(poll_frequency)
 
 
-def do_work(params):
-    params = json.loads(params)
-    time.sleep(10)
-    return 'work complete'
+#def do_work(params):
+#    params = json.loads(params)
+#    time.sleep(10)
+#    return 'work complete'
 
 if __name__ == '__main__':
     worker_type = sys.argv[1]
