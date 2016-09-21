@@ -5,7 +5,7 @@ from docker import Client
 
 def launch_container(params):
     client = Client(base_url='unix://var/run/docker.sock')
-    container = client.create_container(image='docker_worker', command=params)
+    container = client.create_container(image='worker/test', command=params)
     container_id = container['Id']
     response = client.start(container)
     result = None
