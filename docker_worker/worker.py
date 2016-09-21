@@ -54,4 +54,3 @@ if __name__ == '__main__':
     worker_type = sys.argv[1]
     poll_frequency = int(sys.argv[2])
     run_worker(worker_type, poll_frequency)
-    
