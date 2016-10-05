@@ -45,11 +45,11 @@ def run_worker(worker_type, poll_frequency):
 
 def do_work(params):
     params = json.loads(params)
-    time.sleep(10)
+    print(params)
+    time.sleep(5)
     return 'work complete'
 
 if __name__ == '__main__':
     worker_type = sys.argv[1]
     poll_frequency = int(sys.argv[2])
     run_worker(worker_type, poll_frequency)
-    
