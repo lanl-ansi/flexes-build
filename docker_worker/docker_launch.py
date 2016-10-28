@@ -4,23 +4,18 @@ from docker import Client
 
 
 def launch_container(params):
-    client = Client(base_url='unix://var/run/docker.sock')
+    client = Client(base_url='unix://var/run/docker.sock', version='auto')
     container = client.create_container(image='worker/test', command=params)
     container_id = container['Id']
     response = client.start(container)
-    result = None
+    exit_code = client.wait(container)
 
-    while result is None:
-        print('still running')
-        containers = client.containers(filters={'status': 'exited'})
-        for c in containers:
-            if c['Id'] == container_id:
-                exited = True
-                result = client.logs(container)
-                client.remove_container(container)
-                break
-        time.sleep(1)
-    return result
+    if exit_code == 0:
+        print('Container exited with 0')
+        client.remove_container(container)
+    else:
+        print('Someting went wrong')
+        raise RuntimeError(str(client.logs(container, tail=10),'utf-8'))
 
 
 if __name__ == '__main__':
