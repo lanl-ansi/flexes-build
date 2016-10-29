@@ -1,0 +1,12 @@
+language: python
+python:
+  - "3.5"
+  - "3.4"
+  - "2.7"
+cache: pip
+
+before_install: pip install codecov
+
+install: pip install -r docker_worker/requirements.txt
+
+script: py.test --cov=./

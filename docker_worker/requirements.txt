@@ -1,5 +1,15 @@
+boto3==1.4.1
+botocore==1.4.67
 docker-py==1.10.3
 docker-pycreds==0.2.1
+docutils==0.12
+jmespath==0.9.0
+mock==2.0.0
+pbr==1.10.0
+py==1.4.31
+pytest==3.0.3
+python-dateutil==2.5.3
 requests==2.10.0
+s3transfer==0.1.9
 six==1.10.0
 websocket-client==0.37.0
