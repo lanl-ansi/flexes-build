@@ -1,6 +1,5 @@
 # Service Experiment
-An experimental architecture for web services
-
+[![Build Status](https://ci.lanlytics.com/arnold/service-experiment.svg?token=RmFwLDimUxzrPXXq8Kti&branch=master)](https://ci.lanlytics.com/arnold/service-experiment)  
 ## Description
 This project is an attempt to implement a robust architecture for deploying web 
 services on AWS using [SQS](https://aws.amazon.com/sqs/) and [DynamoDB](https://aws.amazon.com/dynamodb/). 
