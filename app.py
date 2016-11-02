@@ -20,7 +20,7 @@ def post_job(service):
 
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
-def query_job(service, job_id):
+def query_status(service, job_id):
     status = query_job(job_id)
     response = {'jobId': job_id, 'status': status}
     return jsonify(**response)
