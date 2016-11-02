@@ -11,7 +11,7 @@ def index():
 
 
 @app.route('/<service>', methods=['POST'])
-def post_job():
+def post_job(service):
     message = request.get_json()
     job_id = send_message(message, service)
     submit_job(job_id, service)
@@ -20,7 +20,7 @@ def post_job():
 
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
-def query_job():
+def query_job(service, job_id):
     status = query_job(job_id)
     response = {'jobId': job_id, 'status': status}
     return jsonify(**response)
