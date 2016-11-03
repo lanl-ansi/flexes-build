@@ -1,0 +1,7 @@
+#PopEconQueryDiv {
+  display: none;
+}
+
+#PopEconQueryResult {
+  word-wrap: break-word;
+}

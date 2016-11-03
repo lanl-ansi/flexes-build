@@ -1,4 +1,29 @@
 {% extends "base.html" %}
 {% block body %}
-<div><h3>Population/Economics Assessment</h3></div>
+<form class="form-horizontal">
+  <fieldset>
+    <legend>Population/Economics Assessment</legend>      
+    <div class="form-group">
+      <label for="textArea" class="col-md-1 control-label">Input</label>
+
+      <div class="col-md-4">
+        <textarea class="form-control" rows="2" id="PopEconInput"></textarea>
+        <span class="help-block">Enter parameters for the calculation</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-md-4 col-md-offset-2">
+        <button id="PopEconSubmit" type="button" class="btn btn-primary">Submit</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
+<div id="PopEconQueryDiv">
+	<div class="col-md-4">
+		<button id="PopEconQueryBtn" type="button" class="btn btn-primary">Check Job</button>
+    <div class="panel panel-default">
+      <div id="PopEconQueryResult" class="panel-body"></div>
+    </div>
+	</div>
+</div>
 {% endblock %}
