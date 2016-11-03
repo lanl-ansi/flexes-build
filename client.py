@@ -25,5 +25,4 @@ def query_job(job_id):
     db = boto3.resource('dynamodb')
     table = db.Table('service-experiment')
     response = table.get_item(Key={'job_id': job_id})
-    job = response['Item']
-    return job['status']
+    return response['Item']
