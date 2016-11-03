@@ -23,7 +23,7 @@ def receive_message(service):
     return message, msg_id
 
 
-def update_job(job_id, status, result):
+def update_job(job_id, status, result=None):
     db = boto3.resource('dynamodb')
     table = db.Table('service-experiment')
     table.update_item(Key={'job_id': job_id},
@@ -37,6 +37,7 @@ def run_worker(worker_type, poll_frequency):
         msg, msg_id = receive_message(worker_type)
         if msg is not None:
             print('received message')
+            update_job(msg_id, 'running')
             try:
                 result = launch_container(msg, msg_id)
                 update_job(msg_id, 'complete', result)
@@ -47,4 +48,5 @@ def run_worker(worker_type, poll_frequency):
 if __name__ == '__main__':
     worker_type = sys.argv[1]
     poll_frequency = int(sys.argv[2])
+    print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
     run_worker(worker_type, poll_frequency)
