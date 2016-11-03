@@ -10,13 +10,16 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/<service>', methods=['POST'])
+@app.route('/<service>', methods=['GET', 'POST'])
 def post_job(service):
-    message = request.get_json()
-    job_id = send_message(message, service)
-    submit_job(job_id, service)
-    response = {'jobId': job_id, 'status': 'submitted'}
-    return jsonify(**response)
+    if request.method == 'GET':
+        return render_template('{}.html'.format(service))
+    elif request.method == 'POST':
+        message = request.get_json()
+        job_id = send_message(message, service)
+        submit_job(job_id, service)
+        response = {'jobId': job_id, 'status': 'submitted'}
+        return jsonify(**response)
 
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
