@@ -1,6 +1,7 @@
 var jobId;
 
 $(function () {
+  $.ajaxSetup({contentType: 'application/json'})
   $.material.init();
 });
 
