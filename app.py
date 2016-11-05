@@ -1,6 +1,7 @@
 import json
-from flask import Flask, jsonify, \
+from flask import Flask, Markup, jsonify, \
                   render_template, request
+from markdown2 import markdown
 from client import send_message, query_job, submit_job
 
 app = Flask(__name__)
@@ -20,6 +21,15 @@ def post_job(service):
         submit_job(job_id, service)
         response = {'jobId': job_id, 'status': 'submitted'}
         return jsonify(**response)
+
+
+@app.route('/<service>/docs', methods=['GET'])
+def render_docs(service):
+    with open('static/docs/{}.md'.format(service)) as f:
+        content = f.read()
+    content = Markup(markdown(content, extras=['fenced-code-blocks']))
+    print(content)
+    return render_template('docs.html', **locals())
 
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
