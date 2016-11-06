@@ -25,7 +25,7 @@ def post_job(service):
 
 @app.route('/<service>/docs', methods=['GET'])
 def render_docs(service):
-    with open('static/docs/{}.md'.format(service)) as f:
+    with app.open_resource('static/docs/{}.md'.format(service)) as f:
         content = f.read()
     content = Markup(markdown(content, extras=['fenced-code-blocks']))
     print(content)
