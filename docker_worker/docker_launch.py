@@ -27,8 +27,8 @@ def resolve_input(filename):
             name = os.path.splitext(basename)[0]        
             for obj in bucket.objects.filter(Prefix=folder):
                 if os.path.splitext(os.path.basename(obj.key))[0] == name:
-                    s3.download_file(bucket, obj.key, os.path.join(in_path, 
-                                                                   os.path.basename(obj.key)))
+                    bucket.download_file(obj.key, os.path.join(in_path, 
+                                                               os.path.basename(obj.key)))
         elif os.path.splitext(filename)[1] in ['.json', '.geojson']:
             aoi = os.path.join(in_path, basename)
             bucket.download_file(path.split('/')[1:], aoi)
