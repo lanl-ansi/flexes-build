@@ -71,7 +71,7 @@ def launch_container(params, job_id):
     output_volume = '/home/ec2-user/output'
     binds = ['{}:/root/input'.format(input_volume), '{}:/root/output'.format(output_volume)]
     container = client.create_container(image='worker/popecon', command=cmd,
-                                        volumes=['/root/input', '/root/outputput'],
+                                        volumes=['/root/input', '/root/output'],
                                         host_config=client.create_host_config(binds=binds))
     client.start(container)
     exit_code = client.wait(container)
