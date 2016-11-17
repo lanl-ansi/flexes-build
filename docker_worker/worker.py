@@ -42,7 +42,7 @@ def run_worker(worker_type, poll_frequency):
                 result = launch_container(msg, msg_id)
                 update_job(msg_id, 'complete', result)
             except Exception as e:
-                update_job(msg_id, 'failed', result)
+                update_job(msg_id, 'failed', str(e))
         time.sleep(poll_frequency)
 
 if __name__ == '__main__':
