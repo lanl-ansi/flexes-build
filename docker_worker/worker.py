@@ -3,6 +3,7 @@ import json
 import sys
 import time
 import argparse
+import traceback
 from docker_launch import launch_container
 
 
@@ -44,6 +45,8 @@ def run_worker(worker_type, poll_frequency):
                 result = launch_container(msg, msg_id)
                 update_job(msg_id, 'complete', result)
             except Exception as e:
+                #print(e)
+                traceback.print_exc()
                 update_job(msg_id, 'failed', str(e))
         else:
             sys.stdout.write('.')
@@ -53,7 +56,7 @@ def run_worker(worker_type, poll_frequency):
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('worker_type', help='worker id string')
-    parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)\
+    parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)
     return parser
 
 if __name__ == '__main__':
