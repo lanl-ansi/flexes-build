@@ -2,6 +2,7 @@ import boto3
 import json
 import sys
 import time
+import argparse
 from docker_launch import launch_container
 
 
@@ -22,7 +23,6 @@ def receive_message(service):
                 break
     return message, msg_id
 
-
 def update_job(job_id, status, result=None):
     db = boto3.resource('dynamodb')
     table = db.Table('service-experiment')
@@ -30,9 +30,10 @@ def update_job(job_id, status, result=None):
                       UpdateExpression='SET #stat = :val1, #r = :val2',
                       ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                       ExpressionAttributeValues={':val1': status, ':val2': result})
-                
+
 
 def run_worker(worker_type, poll_frequency):
+    print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
     while True:
         msg, msg_id = receive_message(worker_type)
         if msg is not None:
@@ -49,8 +50,13 @@ def run_worker(worker_type, poll_frequency):
             sys.stdout.flush()
             time.sleep(poll_frequency)
 
+def build_cli_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('worker_type', help='worker id string')
+    parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)\
+    return parser
+
 if __name__ == '__main__':
-    worker_type = sys.argv[1]
-    poll_frequency = int(sys.argv[2])
-    print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
-    run_worker(worker_type, poll_frequency)
+    parser = build_cli_parser()
+    args = parser.parse_args()
+    run_worker(args.worker_type, args.poll_frequency)
