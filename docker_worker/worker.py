@@ -36,6 +36,7 @@ def run_worker(worker_type, poll_frequency):
     while True:
         msg, msg_id = receive_message(worker_type)
         if msg is not None:
+            print()
             print('received message')
             update_job(msg_id, 'running')
             try:
@@ -43,7 +44,10 @@ def run_worker(worker_type, poll_frequency):
                 update_job(msg_id, 'complete', result)
             except Exception as e:
                 update_job(msg_id, 'failed', str(e))
-        time.sleep(poll_frequency)
+        else:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            time.sleep(poll_frequency)
 
 if __name__ == '__main__':
     worker_type = sys.argv[1]
