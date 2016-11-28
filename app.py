@@ -1,7 +1,7 @@
 import json
 from flask import Flask, jsonify, \
                   render_template, request
-from client import send_message, query_job, submit_job
+from client import query_job, submit_job
 
 app = Flask(__name__)
 
@@ -13,8 +13,7 @@ def index():
 @app.route('/<service>', methods=['POST'])
 def post_job():
     message = request.get_json()
-    job_id = send_message(message, service)
-    submit_job(job_id, service)
+    job_id = submit_job(message, service)
     response = {'jobId': job_id, 'status': 'submitted'}
     return jsonify(**response)
 
