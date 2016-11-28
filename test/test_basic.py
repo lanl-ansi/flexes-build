@@ -1,6 +1,8 @@
 import os, pytest, sys
 
 sys.path.append('.')
+import botocore
+import client
 import json
 import mock
 from docker_worker import docker_launch as dw
@@ -61,6 +63,24 @@ class TestIO:
         params = json.loads(self.params)
         cmd = dw.parse_params(params)
         assert(cmd == expected)
+
+
+class TestClient():
+    @mock.patch('boto3.resource')
+    def test_submit_job(self, mock_resource):
+        mock_resource.return_value.get_queue_by_name.return_value.send_message.return_value.get.return_value = 'job'
+        message = {'foo': 'bar'}
+        service = 'test'
+        job_id = client.submit_job(message, service)
+        assert(isinstance(job_id, str))
+
+    @mock.patch('boto3.resource')
+    def test_no_region_error(self, mock_resource):
+        mock_resource.side_effect = botocore.exceptions.NoRegionError()
+        message = {'foo': 'bar'}
+        service = 'test'
+        job_id = client.submit_job(message, service)
+        assert(job_id is None)
 
 # docker-py doesn't mock
 #    @mock.patch('docker.Client')

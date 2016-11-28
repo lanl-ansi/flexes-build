@@ -1,6 +1,7 @@
 import boto3
 import botocore
 import json
+import sys
 
 def send_message(message, service):
     try:
