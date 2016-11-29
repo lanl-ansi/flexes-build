@@ -2,7 +2,7 @@ import json
 from flask import Flask, Markup, jsonify, \
                   render_template, request
 from markdown2 import markdown
-from client import query_job, submit_job
+from utils import query_job, submit_job
 
 app = Flask(__name__)
 

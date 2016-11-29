@@ -4,7 +4,7 @@ sys.path.append('.')
 
 import app
 import botocore
-import client
+import utils
 import json
 import mock
 from flask import url_for, jsonify
@@ -55,7 +55,7 @@ class TestUtils:
         mock_resource.return_value.get_queue_by_name.return_value.send_message.return_value.get.return_value = 'job'
         message = {'foo': 'bar'}
         service = 'test'
-        job_id = client.submit_job(message, service)
+        job_id = utils.submit_job(message, service)
         assert(isinstance(job_id, str))
 
     @mock.patch('boto3.resource')
@@ -63,5 +63,5 @@ class TestUtils:
         mock_resource.side_effect = botocore.exceptions.NoRegionError()
         message = {'foo': 'bar'}
         service = 'test'
-        job_id = client.submit_job(message, service)
+        job_id = utils.submit_job(message, service)
         assert(job_id is None) 
