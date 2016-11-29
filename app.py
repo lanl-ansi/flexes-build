@@ -2,7 +2,7 @@ import json
 from flask import Flask, Markup, jsonify, \
                   render_template, request
 from markdown2 import markdown
-from client import send_message, query_job, submit_job
+from client import query_job, submit_job
 
 app = Flask(__name__)
 
@@ -17,8 +17,7 @@ def post_job(service):
         return render_template('{}.html'.format(service))
     elif request.method == 'POST':
         message = request.get_json()
-        job_id = send_message(message, service)
-        submit_job(job_id, service)
+        job_id = submit_job(message, service)
         response = {'jobId': job_id, 'status': 'submitted'}
         return jsonify(**response)
 
