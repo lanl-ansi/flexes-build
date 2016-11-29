@@ -1,6 +1,8 @@
 import json
-from flask import Flask, Markup, jsonify, \
-                  render_template, request
+import os
+from flask import Flask, Markup, abort, \
+                  jsonify, render_template, request
+from jinja2.exceptions import TemplateNotFound
 from markdown2 import markdown
 from utils import query_job, submit_job
 
@@ -14,7 +16,10 @@ def index():
 @app.route('/<service>', methods=['GET', 'POST'])
 def post_job(service):
     if request.method == 'GET':
-        return render_template('{}.html'.format(service))
+        try:
+            return render_template('{}.html'.format(service))
+        except TemplateNotFound:
+            abort(404)
     elif request.method == 'POST':
         message = request.get_json()
         if message is not None:
@@ -31,16 +36,24 @@ def post_job(service):
 
 @app.route('/<service>/docs', methods=['GET'])
 def render_docs(service):
-    with app.open_resource('static/docs/{}.md'.format(service)) as f:
-        content = f.read()
-    content = Markup(markdown(content, extras=['fenced-code-blocks']))
-    print(content)
-    return render_template('docs.html', **locals())
+    doc_path = 'static/docs/{}.md'.format(service)
+    if os.path.isfile(doc_path):
+        with app.open_resource(doc_path) as f:
+            content = f.read()
+        content = Markup(markdown(content, extras=['fenced-code-blocks']))
+        return render_template('docs.html', **locals())
+    else:
+        abort(404)
 
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
 def query_status(service, job_id):
     return jsonify(**query_job(job_id))
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 
 if __name__ == '__main__':

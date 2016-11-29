@@ -20,7 +20,7 @@ class TestEndpoints:
 
     def test_bad_service_get(self):
         service_url = url_for('post_job', service='foo')
-        assert(self.client.get(service_url).status_code == 500)
+        assert(self.client.get(service_url).status_code == 404)
 
     @mock.patch('app.submit_job', return_value='job_id')
     def test_service_post(self, mock_submit):
@@ -46,7 +46,7 @@ class TestEndpoints:
 
     def test_bad_service_docs(self):
         service_url = url_for('render_docs', service='foo')
-        assert(self.client.get(service_url).status_code == 500)
+        assert(self.client.get(service_url).status_code == 404)
 
 
 class TestUtils:
