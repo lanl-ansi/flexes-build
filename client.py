@@ -1,3 +1,4 @@
+from __future__ import print_function
 import boto3
 import botocore
 import json
@@ -12,7 +13,7 @@ def send_message(message, service):
                                                                  'DataType': 'String'}})
         return resp.get('MessageId')
     except botocore.exceptions.NoRegionError:
-        print('No region specified, has a .aws/config file been created?', file=sys.stderr)
+        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
         return
 
 
@@ -27,7 +28,7 @@ def add_job(job_id, service):
             'status': 'submitted'
         })
     except botocore.exceptions.NoRegionError:
-        print('No region specified, has a .aws/config file been created?', file=sys.stderr)
+        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
         return
 
 
@@ -44,5 +45,5 @@ def query_job(job_id):
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
     except botocore.exceptions.NoRegionError:
-        print('No region specified, has a .aws/config file been created?', file=sys.stderr)
+        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
         return
