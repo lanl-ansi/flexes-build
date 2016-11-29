@@ -17,8 +17,15 @@ def post_job(service):
         return render_template('{}.html'.format(service))
     elif request.method == 'POST':
         message = request.get_json()
-        job_id = submit_job(message, service)
-        response = {'jobId': job_id, 'status': 'submitted'}
+        if message is not None:
+            job_id = submit_job(message, service)
+            response = {'jobId': job_id, 
+                        'status': 'submitted', 
+                        'message': 'job submitted'}
+        else:
+            response = {'jobId': None, 
+                        'status': 'error', 
+                        'message': 'no message found in request'}
         return jsonify(**response)
 
 
