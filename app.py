@@ -1,5 +1,6 @@
 import json
 import os
+from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from jinja2.exceptions import TemplateNotFound
@@ -49,6 +50,11 @@ def render_docs(service):
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
 def query_status(service, job_id):
     return jsonify(**query_job(job_id))
+
+
+@app.route('/deploy', methods=['GET'])
+def deploy_app():
+    return jsonify({'message': 'working on it'})
 
 
 @app.errorhandler(404)
