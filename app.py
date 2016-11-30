@@ -4,10 +4,23 @@ from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from jinja2.exceptions import TemplateNotFound
+from jsonschema import validate, ValidationError
 from markdown2 import markdown
 from utils import query_job, submit_job
 
 app = Flask(__name__)
+
+with open('input_schema.json') as f:
+    input_schema = json.load(f)
+
+
+def isvalid(obj, schema):
+    try:
+        validate(obj, schema)
+        return True
+    except ValidationError:
+        return False
+
 
 @app.route('/')
 def index():
@@ -23,15 +36,20 @@ def post_job(service):
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        if message is not None:
+
+        if message is None:
+            response = {'jobId': None, 
+                        'status': 'error', 
+                        'message': 'no message found in request'}
+        elif isvalid(message, input_schema) is False:
+            response = {'jobId': None,
+                        'status': 'error',
+                        'message': 'not a valid input'}
+        else:
             job_id = submit_job(message, service)
             response = {'jobId': job_id, 
                         'status': 'submitted', 
                         'message': 'job submitted'}
-        else:
-            response = {'jobId': None, 
-                        'status': 'error', 
-                        'message': 'no message found in request'}
         return jsonify(**response)
 
 
