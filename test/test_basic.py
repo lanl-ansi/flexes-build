@@ -65,3 +65,35 @@ class TestUtils:
         service = 'test'
         job_id = utils.submit_job(message, service)
         assert(job_id is None) 
+
+
+class TestSchema:
+    def setup_method(self, _):
+        schema_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'input_schema.json')
+        with open(schema_file) as f:
+            self.input_schema = json.load(f)
+
+    def test_valid_input(self):
+        command = {
+            'stderr': 's3://path/to/data.json',
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        assert(app.isvalid(command, self.input_schema) is True)
+
+    def test_invalid_input(self):
+        command = {
+            'stderr': '/path/to/data.json',
+            'command': [
+                {'type': 'random', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ],
+            'someprop': 'stuff'
+        }
+        assert(app.isvalid(command, self.input_schema) is False)
