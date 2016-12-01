@@ -9,7 +9,7 @@ from docker_launch import launch_container
 
 def receive_message(service):
     sqs = boto3.resource('sqs')
-    queue = sqs.get_queue_by_name(QueueName='service-experiment')
+    queue = sqs.get_queue_by_name(QueueName='services')
     message = None
     msg_id = None
 
@@ -26,7 +26,7 @@ def receive_message(service):
 
 def update_job(job_id, status, result=None):
     db = boto3.resource('dynamodb')
-    table = db.Table('service-experiment')
+    table = db.Table('jobs')
     table.update_item(Key={'job_id': job_id},
                       UpdateExpression='SET #stat = :val1, #r = :val2',
                       ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
