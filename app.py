@@ -10,6 +10,9 @@ from utils import query_job, submit_job
 
 app = Flask(__name__)
 
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+APP_STATIC = os.path.join(APP_ROOT, 'static')
+
 with open('input_schema.json') as f:
     input_schema = json.load(f)
 
@@ -55,7 +58,7 @@ def post_job(service):
 
 @app.route('/<service>/docs', methods=['GET'])
 def render_docs(service):
-    doc_path = 'static/docs/{}.md'.format(service)
+    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service))
     if os.path.isfile(doc_path):
         with app.open_resource(doc_path) as f:
             content = f.read()
