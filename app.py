@@ -13,7 +13,7 @@ app = Flask(__name__)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-with open('input_schema.json') as f:
+with open(os.path.join(APP_ROOT, 'input_schema.json')) as f:
     input_schema = json.load(f)
 
 
