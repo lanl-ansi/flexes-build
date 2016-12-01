@@ -7,7 +7,7 @@ import sys
 def send_message(message, service):
     try:
         sqs = boto3.resource('sqs')
-        queue = sqs.get_queue_by_name(QueueName='service-experiment')
+        queue = sqs.get_queue_by_name(QueueName='services')
         resp = queue.send_message(MessageBody=json.dumps(message),
                                   MessageAttributes={'Service': {'StringValue': service, 
                                                                  'DataType': 'String'}})
@@ -20,7 +20,7 @@ def send_message(message, service):
 def add_job(job_id, service):
     try:
         db = boto3.resource('dynamodb')
-        table = db.Table('service-experiment')
+        table = db.Table('services')
         table.put_item(Item={
             'job_id': job_id,
             'service': service,
@@ -41,7 +41,7 @@ def submit_job(message, service):
 def query_job(job_id):
     try:
         db = boto3.resource('dynamodb')
-        table = db.Table('service-experiment')
+        table = db.Table('services')
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
     except botocore.exceptions.NoRegionError:
