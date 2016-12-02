@@ -20,7 +20,7 @@ def send_message(message, service):
 def add_job(job_id, service):
     try:
         db = boto3.resource('dynamodb')
-        table = db.Table('services')
+        table = db.Table('jobs')
         table.put_item(Item={
             'job_id': job_id,
             'service': service,
@@ -41,7 +41,7 @@ def submit_job(message, service):
 def query_job(job_id):
     try:
         db = boto3.resource('dynamodb')
-        table = db.Table('services')
+        table = db.Table('jobs')
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
     except botocore.exceptions.NoRegionError:
