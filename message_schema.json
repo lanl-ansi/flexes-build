@@ -1,0 +1,32 @@
+{
+  "title": "lanlytics API input schema",
+  "type": "object",
+  "properties": {
+    "stdin": {
+      "type": "string",
+      "pattern": "^s3\\:\\/\\/[a-zA-Z0-9\\-\\.]+[a-zA-Z]\\/\\S*?$"
+    },
+    "stdout": {
+      "type": "string",
+      "pattern": "^s3\\:\\/\\/[a-zA-Z0-9\\-\\.]+[a-zA-Z]\\/\\S*?$"
+    },
+    "stderr": {
+      "type": "string",
+      "pattern": "^s3\\:\\/\\/[a-zA-Z0-9\\-\\.]+[a-zA-Z]\\/\\S*?$"
+    },
+    "command": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/command"}
+    }
+  },
+  "definitions": {
+    "command": {
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["input", "output", "parameter"]},
+        "name": {"type": "string"},
+        "value": {"type": ["string", "number"]}
+      }
+    }
+  }
+}

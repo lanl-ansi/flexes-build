@@ -6,7 +6,19 @@ import sys
 import time
 import argparse
 import traceback
+from jsonschema import validate, ValidationError
 from docker_launch import launch_container
+
+with open('message_schema.json') as file:
+    msg_schema = json.load(file)
+
+
+def isvalid(obj, schema):
+    try:
+        validate(obj, schema)
+        return True
+    except ValidationError:
+        return False
 
 
 def receive_message(service):
@@ -26,6 +38,7 @@ def receive_message(service):
                 break
     return message, msg_id
 
+
 def update_job(job_id, status, result=None):
     db = boto3.resource('dynamodb')
     table = db.Table('jobs')
@@ -35,31 +48,55 @@ def update_job(job_id, status, result=None):
                       ExpressionAttributeValues={':val1': status, ':val2': result})
 
 
+def handle_exception(e):
+    traceback.print_exc()
+    update_job(msg_id, 'failed', str(e))
+
+
+def process_message(msg, msg_id):
+    print('received message: %s' % str(msg_id))
+    
+    try:
+        msg_data = json.loads(msg)
+        validate(msg_data, msg_schema)
+    except ValueError as e:
+        print('Decoding JSON has failed')
+        handle_exception(e)
+        return
+    except ValidationError as e:
+        print('JSON data has failed validation')
+        handle_exception(e)
+        return
+
+    update_job(msg_id, 'running')
+
+    try:
+        result = launch_container(msg, msg_id)
+        update_job(msg_id, 'complete', result)
+    except Exception as e:
+        traceback.print_exc()
+        update_job(msg_id, 'failed', str(e))
+        return
+
+
 def run_worker(worker_type, poll_frequency):
     print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
     while True:
         msg, msg_id = receive_message(worker_type)
         if msg is not None:
-            print()
-            print('received message')
-            update_job(msg_id, 'running')
-            try:
-                result = launch_container(msg, msg_id)
-                update_job(msg_id, 'complete', result)
-            except Exception as e:
-                #print(e)
-                traceback.print_exc()
-                update_job(msg_id, 'failed', str(e))
+            process_message(msg, msg_id)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
             time.sleep(poll_frequency)
+
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('worker_type', help='worker id string')
     parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)
     return parser
+
 
 if __name__ == '__main__':
     parser = build_cli_parser()
