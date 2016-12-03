@@ -21,8 +21,7 @@ def isvalid(obj, schema):
         return False
 
 
-def receive_message(service):
-    sqs = boto3.resource('sqs')
+def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
     message = None
     msg_id = None
@@ -39,8 +38,7 @@ def receive_message(service):
     return message, msg_id
 
 
-def update_job(job_id, status, result=None):
-    db = boto3.resource('dynamodb')
+def update_job(db, job_id, status, result=None):
     table = db.Table('jobs')
     table.update_item(Key={'job_id': job_id},
                       UpdateExpression='SET #stat = :val1, #r = :val2',
@@ -48,41 +46,46 @@ def update_job(job_id, status, result=None):
                       ExpressionAttributeValues={':val1': status, ':val2': result})
 
 
-def handle_exception(msg_id, e):
+def handle_exception(db, msg_id, e):
     traceback.print_exc()
-    return msg_id, 'failed', str(e)
+    update_job(db, msg_id, 'failed', str(e))
 
 
-def process_message(msg, msg_id):
+def process_message(db, msg_id, msg):
     print('received message: %s' % str(msg_id))
     
     try:
         msg_data = json.loads(msg)
         validate(msg_data, msg_schema)
     except ValueError as e:
-        print('Decoding JSON has failed')
-        return handle_exception(msg_id, e)
+        print('Decoding JSON failed')
+        handle_exception(db, msg_id, e)
+        return
     except ValidationError as e:
         print('JSON data has failed validation')
-        return handle_exception(msg_id, e)
+        handle_exception(db, msg_id, e)
+        return
 
-    update_job(msg_id, 'running')
+    update_job(db, msg_id, 'running')
 
     try:
         result = launch_container(msg_data, msg_id)
-        return msg_id, 'complete', result
+        update_job(db, msg_id, 'complete', result)
     except Exception as e:
-        traceback.print_exc()
-        return handle_exception(msg_id, e)
+        print('Docker launch failed')
+        handle_exception(db, msg_id, e)
+        return
 
 
 def run_worker(worker_type, poll_frequency):
+    sqs = boto3.resource('sqs')
+    db = boto3.resource('dynamodb')
+
     print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
     while True:
-        msg, msg_id = receive_message(worker_type)
+        msg, msg_id = receive_message(sqs, worker_type)
         if msg is not None:
-            msg_id, status, result = process_message(msg, msg_id)
-            update_job(msg_id, status, result)
+            process_message(db, msg_id, msg)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
