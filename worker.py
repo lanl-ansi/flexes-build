@@ -64,9 +64,9 @@ def get_docker_image(docker, image_name):
     return None
 
 
-def process_message(docker, db, msg_id, msg, worker_id):
+def process_message(docker, image, db, msg_id, msg, worker_id):
     print('received message: %s' % str(msg_id))
-    
+
     try:
         msg_data = json.loads(msg)
         validate(msg_data, msg_schema)
@@ -76,14 +76,6 @@ def process_message(docker, db, msg_id, msg, worker_id):
     except ValidationError as e:
         print('message JSON failed validation')
         return handle_exception(db, msg_id, e)
-
-    image = get_docker_image(docker, worker_id)
-    if image == None:
-        #TODO try to pull from docker hub
-        # if that fails produce this error 
-        no_image_result = 'unable to locate docker image: %s' % worker_id
-        print(no_image_result)
-        return update_job(db, msg_id, STATUS_FAILED, no_image_result)
 
     update_job(db, msg_id, STATUS_RUNNING)
 
@@ -95,30 +87,44 @@ def process_message(docker, db, msg_id, msg, worker_id):
         return handle_exception(db, msg_id, e)
 
 
-def run_worker(worker_type, poll_frequency):
+def run_worker(args):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
-    docker = Client(base_url='unix://var/run/docker.sock', version='auto')
 
-    print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
+    docker = None
+    image = None
+
+    if not args.local:
+        docker = Client(base_url='unix://var/run/docker.sock', version='auto')
+        image = get_docker_image(docker, args.worker_type)
+        if image == None:
+            #TODO try to pull from docker hub
+            # if that fails produce this error 
+            print('unable to locate docker image: %s' % args.worker_type)
+            return
+
+    print('docker image for %s found\n' % args.worker_type)
+
+    print('Polling for {} jobs every {} seconds'.format(args.worker_type, args.poll_frequency))
     while True:
-        msg, msg_id = receive_message(sqs, worker_type)
+        msg, msg_id = receive_message(sqs, args.worker_type)
         if msg is not None:
-            process_message(docker, db, msg_id, msg, worker_type)
+            process_message(docker, image, db, msg_id, msg, args.worker_type)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
-            time.sleep(poll_frequency)
+            time.sleep(args.poll_frequency)
 
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('worker_type', help='worker id string')
     parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)
+    parser.add_argument('-l', '--local', help='run the command on the local system instead of a docker container', action='store_true')
     return parser
 
 
 if __name__ == '__main__':
     parser = build_cli_parser()
     args = parser.parse_args()
-    run_worker(args.worker_type, args.poll_frequency)
+    run_worker(args)
