@@ -40,6 +40,6 @@ class TestWorker:
     def test_invalid_schema_message_1(self):
         status, result = worker.process_message(self.mock_db, self.msg_id, '{"bloop":[]}', self.worker_id)
         #print(status)
-        #print(result)
+        print(result)
         assert(status == worker.STATUS_FAILED)
-        assert('properties are not allowed' in result)
+        assert('Failed validating' in result)
