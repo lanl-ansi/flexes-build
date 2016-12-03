@@ -1,6 +1,9 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "lanlytics API input schema",
   "type": "object",
+  "additionalProperties": false,
+  "required":["command"],
   "properties": {
     "stdin": {
       "type": "string",
@@ -22,6 +25,8 @@
   "definitions": {
     "command": {
       "type": "object",
+      "additionalProperties": false,
+      "required":["type", "value"],
       "properties": {
         "type": {"enum": ["input", "output", "parameter"]},
         "name": {"type": "string"},

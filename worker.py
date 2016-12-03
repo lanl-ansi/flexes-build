@@ -12,6 +12,9 @@ from docker_launch import launch_container
 with open('message_schema.json') as file:
     msg_schema = json.load(file)
 
+STATUS_FAILED = 'failed'
+STATUS_RUNNING = 'running'
+STATUS_COMPLETE = 'complete'
 
 def isvalid(obj, schema):
     try:
@@ -44,14 +47,15 @@ def update_job(db, job_id, status, result=None):
                       UpdateExpression='SET #stat = :val1, #r = :val2',
                       ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                       ExpressionAttributeValues={':val1': status, ':val2': result})
+    return status, result
 
 
 def handle_exception(db, msg_id, e):
     traceback.print_exc()
-    update_job(db, msg_id, 'failed', str(e))
+    return update_job(db, msg_id, STATUS_FAILED, str(e))
 
 
-def process_message(db, msg_id, msg):
+def process_message(db, msg_id, msg, worker_id):
     print('received message: %s' % str(msg_id))
     
     try:
@@ -59,22 +63,20 @@ def process_message(db, msg_id, msg):
         validate(msg_data, msg_schema)
     except ValueError as e:
         print('Decoding JSON failed')
-        handle_exception(db, msg_id, e)
-        return
+        return handle_exception(db, msg_id, e)
+        
     except ValidationError as e:
         print('JSON data has failed validation')
-        handle_exception(db, msg_id, e)
-        return
+        return handle_exception(db, msg_id, e)
 
-    update_job(db, msg_id, 'running')
+    update_job(db, msg_id, STATUS_RUNNING)
 
     try:
         result = launch_container(msg_data, msg_id)
-        update_job(db, msg_id, 'complete', result)
+        return update_job(db, msg_id, STATUS_COMPLETE, result)
     except Exception as e:
         print('Docker launch failed')
-        handle_exception(db, msg_id, e)
-        return
+        return handle_exception(db, msg_id, e)
 
 
 def run_worker(worker_type, poll_frequency):
@@ -85,7 +87,7 @@ def run_worker(worker_type, poll_frequency):
     while True:
         msg, msg_id = receive_message(sqs, worker_type)
         if msg is not None:
-            process_message(db, msg_id, msg)
+            process_message(db, msg_id, msg, worker_type)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
