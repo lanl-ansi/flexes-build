@@ -24,7 +24,7 @@ My experince has been if you want to setup an instance to run something on start
 - checkout or copy the repo to `/lanlytics-api-worker` (checking out the worker will require installing git `yum install -y git`)
 - from the worker directory, 
   - `pip3 install -r requirements.txt`
-  - test the worker will start with `python3 worker.py <some docker image name> 5
+  - test the worker will start with `python3 worker.py <some docker image name> 5`
 
 - stop the EC2 instance and save a new AMI
 
