@@ -63,7 +63,6 @@ def parse_params(params):
 
 def launch_container(params, job_id):
     client = Client(base_url='unix://var/run/docker.sock', version='auto')
-    params = json.loads(params)
     params['output'] = os.path.join('/root/output', '{}.json'.format(job_id))    
     cmd = parse_params(params)    
     print(cmd)

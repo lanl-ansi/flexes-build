@@ -48,9 +48,9 @@ def update_job(job_id, status, result=None):
                       ExpressionAttributeValues={':val1': status, ':val2': result})
 
 
-def handle_exception(e):
+def handle_exception(msg_id, e):
     traceback.print_exc()
-    update_job(msg_id, 'failed', str(e))
+    return msg_id, 'failed', str(e)
 
 
 def process_message(msg, msg_id):
@@ -61,22 +61,19 @@ def process_message(msg, msg_id):
         validate(msg_data, msg_schema)
     except ValueError as e:
         print('Decoding JSON has failed')
-        handle_exception(e)
-        return
+        return handle_exception(msg_id, e)
     except ValidationError as e:
         print('JSON data has failed validation')
-        handle_exception(e)
-        return
+        return handle_exception(msg_id, e)
 
     update_job(msg_id, 'running')
 
     try:
-        result = launch_container(msg, msg_id)
-        update_job(msg_id, 'complete', result)
+        result = launch_container(msg_data, msg_id)
+        return msg_id, 'complete', result
     except Exception as e:
         traceback.print_exc()
-        update_job(msg_id, 'failed', str(e))
-        return
+        return handle_exception(msg_id, e)
 
 
 def run_worker(worker_type, poll_frequency):
@@ -84,7 +81,8 @@ def run_worker(worker_type, poll_frequency):
     while True:
         msg, msg_id = receive_message(worker_type)
         if msg is not None:
-            process_message(msg, msg_id)
+            msg_id, status, result = process_message(msg, msg_id)
+            update_job(msg_id, status, result)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
