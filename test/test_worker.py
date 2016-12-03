@@ -42,4 +42,4 @@ class TestWorker:
         #print(status)
         #print(result)
         assert(status == worker.STATUS_FAILED)
-        assert('required property' in result)
+        assert('properties are not allowed' in result)
