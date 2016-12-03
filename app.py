@@ -13,7 +13,7 @@ app = Flask(__name__)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-with open('input_schema.json') as f:
+with open('message_schema.json') as f:
     input_schema = json.load(f)
 
 
@@ -41,16 +41,16 @@ def post_job(service):
         message = request.get_json()
 
         if message is None:
-            response = {'jobId': None, 
+            response = {'job_id': None, 
                         'status': 'error', 
                         'message': 'no message found in request'}
         elif isvalid(message, input_schema) is False:
-            response = {'jobId': None,
+            response = {'job_id': None,
                         'status': 'error',
                         'message': 'not a valid input'}
         else:
             job_id = submit_job(message, service)
-            response = {'jobId': job_id, 
+            response = {'job_id': job_id, 
                         'status': 'submitted', 
                         'message': 'job submitted'}
         return jsonify(**response)

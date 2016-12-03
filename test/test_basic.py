@@ -24,16 +24,25 @@ class TestEndpoints:
 
     @mock.patch('app.submit_job', return_value='job_id')
     def test_service_post(self, mock_submit):
-        expected = {'jobId': 'job_id', 
+        expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
         service_url = url_for('post_job', service='test')
-        data = json.dumps({'foo': 'bar'})
+        command = {
+            'stderr': 's3://path/to/data.json',
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        data = json.dumps(command)
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
     def test_service_post_empty(self):
-        expected = {'jobId': None, 
+        expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'no message found in request'}
         service_url = url_for('post_job', service='test')
@@ -69,7 +78,7 @@ class TestUtils:
 
 class TestSchema:
     def setup_method(self, _):
-        schema_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'input_schema.json')
+        schema_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'message_schema.json')
         with open(schema_file) as f:
             self.input_schema = json.load(f)
 
