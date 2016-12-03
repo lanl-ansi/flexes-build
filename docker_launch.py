@@ -160,23 +160,24 @@ def launch_container(docker, image, command):
     docker.start(container)
     exit_code = docker.wait(container)
     print('exit code - %d' % exit_code)
-
+    feedback = 'docker container finished with exit code: %d' % exit_code
     container_log = str(docker.logs(container, tail=10),'utf-8')
 
     print('removing container: %s' % str(container))
     docker.remove_container(container)
 
-    print('\npersisting output:')
-    persist_command(command)
+    if exit_code != 0:
+        print('\ncontainer log:')
+        print(container_log)
+        feedback = feedback+'\n'+container_log
+    else:
+        print('\npersisting output:')
+        persist_command(command)
 
     print('\ncleaning local cache: %s' % local_files_path)
     shutil.rmtree(local_files_path)
 
-    feedback = 'docker container finished with exit code: %d' % exit_code
-    if exit_code == 0:
-        return feedback
-    else:
-        return feedback+'\n'+container_log
+    return feedback
 
 
 if __name__ == '__main__':
