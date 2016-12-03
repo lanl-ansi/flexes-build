@@ -21,14 +21,14 @@ class TestWorker:
         assert(result == docker_success)
 
     @mock.patch('worker.launch_container', return_value = docker_success)
-    def test_valid_message_s3(self, mock_resource):
+    def test_valid_message_s3_stdin(self, mock_resource):
         status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}', self.worker_id)
         assert(status == worker.STATUS_COMPLETE)
         assert(result == docker_success)
 
     @mock.patch('worker.launch_container', return_value = docker_success)
     def test_valid_message_s3_cmd(self, mock_resource):
-        status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"command":[{"type":"parameter", "value":"s3://lanlytics/path/to/input/test.geojson"}]}', self.worker_id)
+        status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"command":[{"type":"output", "value":"s3://lanlytics/path/to/input/test.geojson"}]}', self.worker_id)
         assert(status == worker.STATUS_COMPLETE)
         assert(result == docker_success)
 
@@ -37,7 +37,13 @@ class TestWorker:
         assert(status == worker.STATUS_FAILED)
         assert('Expecting property name' in result)
 
-    def test_invalid_schema_message_1(self):
+    def test_invalid_schema_message(self):
         status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"bloop":[]}', self.worker_id)
         assert(status == worker.STATUS_FAILED)
         assert('Failed validating' in result)
+
+    @mock.patch('boto3.resource')
+    def test_s3_file_not_found(self, mock_resource):
+        status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}', self.worker_id)
+        assert(status == worker.STATUS_FAILED)
+        assert('error occurred (404)' in result)
