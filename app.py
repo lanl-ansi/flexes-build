@@ -13,8 +13,8 @@ app = Flask(__name__)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-with open('message_schema.json') as f:
-    input_schema = json.load(f)
+with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
+    message_schema = json.load(f)
 
 
 def isvalid(obj, schema):
@@ -44,7 +44,7 @@ def post_job(service):
             response = {'job_id': None, 
                         'status': 'error', 
                         'message': 'no message found in request'}
-        elif isvalid(message, input_schema) is False:
+        elif isvalid(message, message_schema) is False:
             response = {'job_id': None,
                         'status': 'error',
                         'message': 'not a valid input'}
