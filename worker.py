@@ -8,6 +8,7 @@ import argparse
 import traceback
 from jsonschema import validate, ValidationError
 from docker_launch import launch_container
+from docker import Client
 
 with open('message_schema.json') as file:
     msg_schema = json.load(file)
@@ -55,39 +56,55 @@ def handle_exception(db, msg_id, e):
     return update_job(db, msg_id, STATUS_FAILED, str(e))
 
 
-def process_message(db, msg_id, msg, worker_id):
+def get_docker_image(docker, image_name):
+    for image in docker.images():
+        for tag in image['RepoTags']:
+            if image_name+':latest' in tag:
+                return image
+    return None
+
+
+def process_message(docker, db, msg_id, msg, worker_id):
     print('received message: %s' % str(msg_id))
     
     try:
         msg_data = json.loads(msg)
         validate(msg_data, msg_schema)
     except ValueError as e:
-        print('Decoding JSON failed')
+        print('message string was not valid JSON')
         return handle_exception(db, msg_id, e)
-        
     except ValidationError as e:
-        print('JSON data has failed validation')
+        print('message JSON failed validation')
         return handle_exception(db, msg_id, e)
+
+    image = get_docker_image(docker, worker_id)
+    if image == None:
+        #TODO try to pull from docker hub
+        # if that fails produce this error 
+        no_image_result = 'unable to locate docker image: %s' % worker_id
+        print(no_image_result)
+        return update_job(db, msg_id, STATUS_FAILED, no_image_result)
 
     update_job(db, msg_id, STATUS_RUNNING)
 
     try:
-        result = launch_container(msg_data, msg_id)
+        result = launch_container(docker, image, msg_data)
         return update_job(db, msg_id, STATUS_COMPLETE, result)
     except Exception as e:
-        print('Docker launch failed')
+        print('docker launch failed')
         return handle_exception(db, msg_id, e)
 
 
 def run_worker(worker_type, poll_frequency):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
+    docker = Client(base_url='unix://var/run/docker.sock', version='auto')
 
     print('Polling for {} jobs every {} seconds'.format(worker_type, poll_frequency))
     while True:
         msg, msg_id = receive_message(sqs, worker_type)
         if msg is not None:
-            process_message(db, msg_id, msg, worker_type)
+            process_message(docker, db, msg_id, msg, worker_type)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
