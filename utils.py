@@ -47,3 +47,14 @@ def query_job(job_id):
     except botocore.exceptions.NoRegionError:
         print('No region specified, has an .aws/config file been created?', file=sys.stderr)
         return
+
+
+def all_jobs():
+    try:
+        db = boto3.resource('dynamodb')
+        table = db.Table('jobs')
+        response = table.scan(Select='ALL_ATTRIBUTES')
+        return response['Items']
+    except botocore.exceptions.NoRegionError:
+        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
+        return

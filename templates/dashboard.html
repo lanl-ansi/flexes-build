@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block body %}
+  <table class="table">
+    <thead>
+      <tr>
+      {% for key in jobs[0].keys() %}
+        <th>{{ key }}</th>
+      {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for job in jobs %}
+      <tr>
+      {% for key in job.keys()  %}
+        <td>{{ job[key] }}</td>
+      {% endfor%}
+      </tr>
+    {% endfor %}
+    <tbody>
+  </table>
+{% endblock %}

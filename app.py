@@ -6,7 +6,7 @@ from flask import Flask, Markup, abort, \
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from markdown2 import markdown
-from utils import query_job, submit_job
+from utils import query_job, submit_job, all_jobs
 
 app = Flask(__name__)
 
@@ -28,6 +28,12 @@ def isvalid(obj, schema):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    jobs = [job for job in all_jobs() if job['status'] != 'complete']
+    return render_template('dashboard.html', jobs=jobs)
 
 
 @app.route('/<service>', methods=['GET', 'POST'])
