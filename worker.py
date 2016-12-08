@@ -121,7 +121,7 @@ def run_worker(args):
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('poll_frequency', default=60, type=int, 
+    parser.add_argument('-pf', '--poll_frequency', default=60, type=int, 
                         help='time to wait between polling the work queue (seconds)')
     parser.add_argument('-l', '--local', action='store_true', 
                         help='run the command on the local system instead of a docker container')
