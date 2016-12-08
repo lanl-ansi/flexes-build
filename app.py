@@ -25,6 +25,23 @@ def isvalid(obj, schema):
         return False
 
 
+def service_response(message, attributes):
+    if message is None:
+        response = {'job_id': None, 
+                    'status': 'error', 
+                    'message': 'no message found in request'}
+    elif isvalid(message, message_schema) is False:
+        response = {'job_id': None,
+                    'status': 'error',
+                    'message': 'not a valid input'}
+    else:
+        job_id = submit_job(message, attributes)
+        response = {'job_id': job_id, 
+                    'status': 'submitted', 
+                    'message': 'job submitted'}
+    return response
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -45,21 +62,22 @@ def post_job(service):
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
+        attributes = {'Service': service, 'ServiceType': 'generic'}
+        return service_response(message, attributes)
 
-        if message is None:
-            response = {'job_id': None, 
-                        'status': 'error', 
-                        'message': 'no message found in request'}
-        elif isvalid(message, message_schema) is False:
-            response = {'job_id': None,
-                        'status': 'error',
-                        'message': 'not a valid input'}
-        else:
-            job_id = submit_job(message, service)
-            response = {'job_id': job_id, 
-                        'status': 'submitted', 
-                        'message': 'job submitted'}
-        return jsonify(**response)
+
+@app.route('/powerworld', methods=['GET', 'POST'])
+def powerworld():
+    service = 'powerworld'
+    if request.method == 'GET':
+        try:
+            return render_template('{}.html'.format(service))
+        except TemplateNotFound:
+            abort(404)
+    elif request.method == 'POST':
+        message = request.get_json()
+        attributes = {'Service': service, 'ServiceType': service}
+        return service_response(message, attributes)
 
 
 @app.route('/<service>/docs', methods=['GET'])
