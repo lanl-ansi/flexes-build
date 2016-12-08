@@ -4,13 +4,14 @@ import botocore
 import json
 import sys
 
-def send_message(message, service):
+def send_message(message, attributes):
     try:
         sqs = boto3.resource('sqs')
         queue = sqs.get_queue_by_name(QueueName='services')
+        message_attributes = {attr: {'StringValue': val, 'DataType': 'String'}
+                              for attr, val in attributes.items()}
         resp = queue.send_message(MessageBody=json.dumps(message),
-                                  MessageAttributes={'Service': {'StringValue': service, 
-                                                                 'DataType': 'String'}})
+                                  MessageAttributes=message_attributes)
         return resp.get('MessageId')
     except botocore.exceptions.NoRegionError:
         print('No region specified, has an .aws/config file been created?', file=sys.stderr)
@@ -32,8 +33,8 @@ def add_job(job_id, service):
         return
 
 
-def submit_job(message, service):
-    job_id = send_message(message, service)
+def submit_job(message, attributes):
+    job_id = send_message(message, attributes)
     add_job(job_id, service)
     return job_id
 
