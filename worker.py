@@ -96,16 +96,17 @@ def run_worker(args):
 
     if not args.local:
         docker = Client(base_url='unix://var/run/docker.sock', version='auto')
-        image = get_docker_image(docker, args.worker_type)
+        image = get_docker_image(docker, args.service_type)
         if image == None:
             #TODO try to pull from docker hub
             # if that fails produce this error 
-            print('unable to locate docker image: %s' % args.worker_type)
+            print('unable to locate docker image: {}'.format(args.service_type))
             return
 
-    print('docker image for %s found\n' % args.worker_type)
+    print('docker image for {} found\n'.format(args.service_type))
+    print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
+                                                        args.poll_frequency))
 
-    print('Polling for {} jobs every {} seconds'.format(args.worker_type, args.poll_frequency))
     while True:
         msg, msg_id = receive_message(sqs, args.worker_type)
         if msg is not None:
@@ -118,9 +119,13 @@ def run_worker(args):
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('worker_type', help='worker id string')
-    parser.add_argument('poll_frequency', help='time to wait between polling the work queue (seconds)', type=int)
-    parser.add_argument('-l', '--local', help='run the command on the local system instead of a docker container', action='store_true')
+    parser.add_argument('service_type', help='container id string')
+    parser.add_argument('poll_frequency', type=int, 
+                        help='time to wait between polling the work queue (seconds)')
+    parser.add_argument('-l', '--local', action='store_true', 
+                        help='run the command on the local system instead of a docker container')
+    parser.add_argument('-t', '--worker_type', default='generic', 
+                        help='type of worker required for the service')
     return parser
 
 
