@@ -35,7 +35,7 @@ def add_job(job_id, service):
 
 def submit_job(message, attributes):
     job_id = send_message(message, attributes)
-    add_job(job_id, service)
+    add_job(job_id, attributes['Service'])
     return job_id
 
 

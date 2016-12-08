@@ -63,7 +63,8 @@ def post_job(service):
     elif request.method == 'POST':
         message = request.get_json()
         attributes = {'Service': service, 'ServiceType': 'generic'}
-        return service_response(message, attributes)
+        response = service_response(message, attributes)
+        return jsonify(**response)
 
 
 @app.route('/powerworld', methods=['GET', 'POST'])
@@ -77,7 +78,8 @@ def powerworld():
     elif request.method == 'POST':
         message = request.get_json()
         attributes = {'Service': service, 'ServiceType': service}
-        return service_response(message, attributes)
+        response = service_response(message, attributes)
+        return jsonify(**response)
 
 
 @app.route('/<service>/docs', methods=['GET'])

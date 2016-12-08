@@ -63,16 +63,16 @@ class TestUtils:
     def test_submit_job(self, mock_resource):
         mock_resource.return_value.get_queue_by_name.return_value.send_message.return_value.get.return_value = 'job'
         message = {'foo': 'bar'}
-        service = 'test'
-        job_id = utils.submit_job(message, service)
+        attributes = {'Service': 'test', 'ServiceType': 'generic'}
+        job_id = utils.submit_job(message, attributes)
         assert(isinstance(job_id, str))
 
     @mock.patch('boto3.resource')
     def test_no_region_error(self, mock_resource):
         mock_resource.side_effect = botocore.exceptions.NoRegionError()
         message = {'foo': 'bar'}
-        service = 'test'
-        job_id = utils.submit_job(message, service)
+        attributes = {'Service': 'test', 'ServiceType': 'generic'}
+        job_id = utils.submit_job(message, attributes)
         assert(job_id is None) 
 
 
