@@ -105,7 +105,7 @@ def run_worker(args):
         if message['body'] is not None:
             image = get_docker_image(docker, message['service'])
             if image is not None:
-                print('Docker image for {} found\n'.format(image_name))
+                print('Docker image for {} found\n'.format(message['service']))
                 process_message(docker, image, db, 
                                 message['id'], message['body'], 
                                 message['service'])
