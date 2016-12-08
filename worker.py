@@ -27,19 +27,21 @@ def isvalid(obj, schema):
 
 def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
-    message = None
-    msg_id = None
+    message = {'body': None, 'id': None, 'service': None}
+
 
     # Process message with optional Service attribute
-    for msg in queue.receive_messages(MessageAttributeNames=['Service']):
+    for msg in queue.receive_messages(MessageAttributeNames=['Service', 'ServiceType']):
         if msg.message_attributes is not None:
+            service_type = msg.message_attributes.get('ServiceType').get('StringValue')
             service_name = msg.message_attributes.get('Service').get('StringValue')
-            if service_name == service:
-                message = msg.body
-                msg_id = msg.message_id
+            if service_type == service:
+                message['service'] = service_name
+                message['body'] = msg.body
+                message['id'] = msg.message_id
                 msg.delete()
                 break
-    return message, msg_id
+    return message
 
 
 def update_job(db, job_id, status, result=None):
@@ -65,16 +67,16 @@ def get_docker_image(docker, image_name):
 
 
 def process_message(docker, image, db, msg_id, msg, worker_id):
-    print('received message: %s' % str(msg_id))
+    print('Received message: {}'.format(str(msg_id)))
 
     try:
         msg_data = json.loads(msg)
         validate(msg_data, msg_schema)
     except ValueError as e:
-        print('message string was not valid JSON')
+        print('Message string was not valid JSON')
         return handle_exception(db, msg_id, e)
     except ValidationError as e:
-        print('message JSON failed validation')
+        print('Message JSON failed validation')
         return handle_exception(db, msg_id, e)
 
     update_job(db, msg_id, STATUS_RUNNING)
@@ -83,7 +85,7 @@ def process_message(docker, image, db, msg_id, msg, worker_id):
         result = launch_container(docker, image, msg_data)
         return update_job(db, msg_id, STATUS_COMPLETE, result)
     except Exception as e:
-        print('docker launch failed')
+        print('Docker launch failed')
         return handle_exception(db, msg_id, e)
 
 
@@ -92,25 +94,25 @@ def run_worker(args):
     db = boto3.resource('dynamodb')
 
     docker = None
-    image = None
 
     if not args.local:
         docker = Client(base_url='unix://var/run/docker.sock', version='auto')
-        image = get_docker_image(docker, args.service_type)
-        if image == None:
-            #TODO try to pull from docker hub
-            # if that fails produce this error 
-            print('unable to locate docker image: {}'.format(args.service_type))
-            return
-
-    print('docker image for {} found\n'.format(args.service_type))
     print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
                                                         args.poll_frequency))
 
     while True:
-        msg, msg_id = receive_message(sqs, args.worker_type)
-        if msg is not None:
-            process_message(docker, image, db, msg_id, msg, args.worker_type)
+        message = receive_message(sqs, args.worker_type)
+        if message['body'] is not None:
+            image = get_docker_image(docker, message['service'])
+            if image is not None:
+                print('Docker image for {} found\n'.format(image_name))
+                process_message(docker, image, db, 
+                                message['id'], message['body'], 
+                                message['service'])
+            else:
+                #TODO try to pull from docker hub
+                # if that fails produce this error 
+                print('Unable to locate docker image: {}'.format(message['service']))
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
@@ -119,8 +121,7 @@ def run_worker(args):
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('service_type', help='container id string')
-    parser.add_argument('poll_frequency', type=int, 
+    parser.add_argument('poll_frequency', default=60, type=int, 
                         help='time to wait between polling the work queue (seconds)')
     parser.add_argument('-l', '--local', action='store_true', 
                         help='run the command on the local system instead of a docker container')
