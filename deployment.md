@@ -45,7 +45,7 @@ export AWS_DEFAULT_REGION="us-gov-west-1"
 
 cd lanlytics-api-worker
 
-python3 worker.py geotiff2json 5 &
+python3 worker.py -pf 5 &
 
 ```
 
