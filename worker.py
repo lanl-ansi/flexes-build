@@ -75,13 +75,14 @@ def process_message(db, docker_client, msg_id, msg_body, service_id):
     try:
         msg_data = json.loads(msg_body)
         validate(msg_data, msg_schema)
-        update_job(db, msg_id, STATUS_RUNNING)
     except ValueError as e:
         print('Message string was not valid JSON')
         return handle_exception(db, msg_id, e)
     except ValidationError as e:
         print('Message JSON failed validation')
         return handle_exception(db, msg_id, e)
+
+    update_job(db, msg_id, STATUS_RUNNING)
 
     if docker_client != None: # this is a generic worker
         image = get_docker_image(docker_client, service_id)
