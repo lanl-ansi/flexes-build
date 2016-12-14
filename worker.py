@@ -8,7 +8,7 @@ import argparse
 import traceback
 from jsonschema import validate, ValidationError
 from docker_launch import launch_container
-from docker import Client
+import docker
 
 with open('message_schema.json') as file:
     msg_schema = json.load(file)
@@ -58,15 +58,15 @@ def handle_exception(db, msg_id, e):
     return update_job(db, msg_id, STATUS_FAILED, str(e))
 
 
-def get_docker_image(docker, image_name):
-    for image in docker.images():
+def get_docker_image(docker_client, image_name):
+    for image in docker_client.images():
         for tag in image['RepoTags']:
             if image_name+':latest' in tag:
                 return image
     return None
 
 
-def process_message(docker, image, db, msg_id, msg, worker_id):
+def process_message(docker_client, image, db, msg_id, msg, worker_id):
     print('Received message: {}'.format(str(msg_id)))
 
     try:
@@ -82,7 +82,7 @@ def process_message(docker, image, db, msg_id, msg, worker_id):
     update_job(db, msg_id, STATUS_RUNNING)
 
     try:
-        result = launch_container(docker, image, msg_data)
+        result = launch_container(docker_client, image, msg_data)
         return update_job(db, msg_id, STATUS_COMPLETE, result)
     except Exception as e:
         print('Docker launch failed')
@@ -93,20 +93,20 @@ def run_worker(args):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
 
-    docker = None
+    docker_client = None
 
     if not args.local:
-        docker = Client(base_url='unix://var/run/docker.sock', version='auto')
+        docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
     print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
                                                         args.poll_frequency))
 
     while True:
         message = receive_message(sqs, args.worker_type)
         if message['body'] is not None:
-            image = get_docker_image(docker, message['service'])
+            image = get_docker_image(docker_client, message['service'])
             if image is not None:
                 print('Docker image for {} found\n'.format(message['service']))
-                process_message(docker, image, db, 
+                process_message(docker_client, image, db, 
                                 message['id'], message['body'], 
                                 message['service'])
             else:
