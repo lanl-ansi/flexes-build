@@ -7,8 +7,8 @@ import time
 import argparse
 import traceback
 from jsonschema import validate, ValidationError
-from docker_launch import launch_container
-from docker_launch import launch_local
+from local_launch import launch_container
+from local_launch import launch_native
 import docker
 
 with open('message_schema.json') as file:
@@ -100,11 +100,11 @@ def process_message(db, docker_client, msg_id, msg_body, service_id):
             print('docker launch failed')
             return handle_exception(db, message['id'], e)
 
-    else: # non-generic worker
+    else: # non-generic native worker
         try:
-            result = launch_local(msg_data)
+            result = launch_native(msg_data)
         except Exception as e:
-            print('local launch failed')
+            print('native launch failed')
             return handle_exception(db, message['id'], e)
 
     return update_job(db, msg_id, STATUS_COMPLETE, result)

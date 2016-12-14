@@ -133,7 +133,7 @@ def build_command(local_command):
 
     return bash_command
 
-def launch_local(command):
+def launch_native(command):
     return ''
 
 def launch_container(docker, image, command):

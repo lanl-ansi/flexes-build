@@ -4,7 +4,7 @@ sys.path.append('.')
 import botocore
 import json
 import mock
-import docker_launch as dw
+import local_launch as dw
 
 
 class TestIO:
