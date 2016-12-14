@@ -91,21 +91,21 @@ def process_message(db, docker_client, msg_id, msg_body, service_id):
             # if that fails produce this error 
             feedback = 'Unable to locate docker image: {}'.format(service_id)
             print(feedback)
-            return handle_exception(db, message['id'], feedback)
+            return handle_exception(db, msg_id, feedback)
 
         print('Docker image for {} found\n'.format(service_id))
         try:
             result = launch_container(docker_client, image, msg_data)
         except Exception as e:
             print('docker launch failed')
-            return handle_exception(db, message['id'], e)
+            return handle_exception(db, msg_id, e)
 
     else: # non-generic native worker
         try:
             result = launch_native(msg_data)
         except Exception as e:
             print('native launch failed')
-            return handle_exception(db, message['id'], e)
+            return handle_exception(db, msg_id, e)
 
     return update_job(db, msg_id, STATUS_COMPLETE, result)
 

@@ -6,6 +6,7 @@ import time
 import copy
 import shutil
 
+from subprocess import Popen, PIPE
 
 if 'HOME' in os.environ:
     home = os.environ['HOME']
@@ -63,7 +64,7 @@ def localize_resource(uri):
         print('downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
         get_s3_file(s3, uri, local_file_name)
 
-        return get_docker_path(local_file_name)
+        return local_file_name
     return uri
 
 
@@ -71,7 +72,7 @@ def localize_output(uri):
     if is_s3_uri(uri):
         local_path = get_local_path(uri)
         make_local_dirs(local_path)
-        return get_docker_path(local_path)
+        return local_path
     return uri
 
 
@@ -101,6 +102,23 @@ def localize_command(command):
             print('WARNING: s3 uri used in a parameter')
 
     return local_command
+
+
+def dockerize_command(local_command):
+    docker_command = copy.deepcopy(local_command)
+    if 'stdin' in docker_command:
+        docker_command['stdin'] = get_docker_path(docker_command['stdin'])
+    if 'stdout' in docker_command:
+        docker_command['stdout'] = get_docker_path(docker_command['stdout'])
+    if 'stderr' in docker_command:
+        docker_command['stderr'] = get_docker_path(docker_command['stderr'])
+    for parameter in docker_command['command']:
+        if parameter['type'] == 'input':
+            parameter['value'] = get_docker_path(parameter['value'])
+        if parameter['type'] == 'output':
+            parameter['value'] = get_docker_path(parameter['value'])
+
+    return docker_command
 
 
 def persist_command(local_command):
@@ -133,45 +151,25 @@ def build_command(local_command):
 
     return bash_command
 
-def launch_native(command):
-    return ''
 
-def launch_container(docker, image, command):
-    print('\n\033[1mStarting Job\033[0m')
+def build_localized_command(command):
     abstract_cmd = build_command(command)
     print('\nabstract command:')
     print(' '.join(abstract_cmd)+'\n')
 
     local_command = localize_command(command)
 
-    local_cmd = build_command(local_command)
-    local_cmd = ' '.join(local_cmd)
-    print('\nlocalized command:')
-    print(local_cmd)
+    return local_command
 
-    print('\nsetting up docker container:')
-    docker_volume = '/'+local_files_dir
-    binds = ['%s:%s' % (local_files_path, docker_volume)]
-    print('volumn binding: %s' % binds[0])
 
-    container = docker.create_container(image=image['RepoTags'][0], command=local_cmd,
-                                        volumes=[docker_volume],
-                                        host_config=docker.create_host_config(binds=binds))
-
-    print('start container')
-    docker.start(container)
-    exit_code = docker.wait(container)
+def worker_cleanup(command, exit_code, worker_log):
     print('exit code - %d' % exit_code)
-    feedback = 'docker container finished with exit code: %d' % exit_code
-    container_log = str(docker.logs(container, tail=10),'utf-8')
-
-    print('removing container: %s' % str(container))
-    docker.remove_container(container)
-
+    feedback = 'job finished with exit code: %d' % exit_code
+    
     if exit_code != 0:
-        print('\ncontainer log:')
-        print(container_log)
-        feedback = feedback+'\n'+container_log
+        print('\nworker log:')
+        print(worker_log)
+        feedback = feedback+'\n'+worker_log
     else:
         print('\npersisting output:')
         persist_command(command)
@@ -180,6 +178,59 @@ def launch_container(docker, image, command):
     shutil.rmtree(local_files_path)
 
     return feedback
+
+
+def launch_native(command):
+    print('\n\033[1mStarting Native Job\033[0m')
+
+    local_command = build_localized_command(command)
+
+    native_cmd = build_command(local_command)
+    #native_cmd = ' '.join(native_cmd)
+
+    print('\nnative command:')
+    print(native_cmd)
+
+    # shell parameter used for windows support
+    process = Popen(native_cmd, stdout=PIPE, stderr=PIPE, shell = (os.name == 'nt'))
+    stdout, stderr = process.communicate()
+    worker_log = 'stdout:\n\n%s\nstderr:\n\n%s' % (stdout, stderr)
+
+    return worker_cleanup(command, process.returncode, worker_log)
+
+
+def launch_container(docker, image, command):
+    print('\n\033[1mStarting Docker Job\033[0m')
+
+    local_command = build_localized_command(command)
+
+    docker_command = dockerize_command(local_command)
+    #print(docker_command)
+
+    docker_cmd = build_command(docker_command)
+    docker_cmd = ' '.join(docker_cmd)
+    print('\ndocker command:')
+    print(docker_cmd)
+
+    print('\nsetting up docker container:')
+    docker_volume = '/'+local_files_dir
+    binds = ['%s:%s' % (local_files_path, docker_volume)]
+    print('volumn binding: %s' % binds[0])
+
+    container = docker.create_container(image=image['RepoTags'][0], command=docker_cmd,
+                                        volumes=[docker_volume],
+                                        host_config=docker.create_host_config(binds=binds))
+
+    print('start container')
+    docker.start(container)
+    exit_code = docker.wait(container)
+    container_log = str(docker.logs(container, tail=10),'utf-8')
+
+    print('removing container: %s' % str(container))
+    docker.remove_container(container)
+
+    return worker_cleanup(command, exit_code, container_log)
+
 
 
 if __name__ == '__main__':
