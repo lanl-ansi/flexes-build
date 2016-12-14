@@ -133,6 +133,8 @@ def build_command(local_command):
 
     return bash_command
 
+def launch_local(command):
+    return ''
 
 def launch_container(docker, image, command):
     print('\n\033[1mStarting Job\033[0m')
