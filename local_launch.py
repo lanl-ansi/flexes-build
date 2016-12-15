@@ -5,8 +5,8 @@ import sys
 import time
 import copy
 import shutil
+import subprocess
 
-from subprocess import Popen, PIPE
 
 if 'HOME' in os.environ:
     home = os.environ['HOME']
@@ -16,6 +16,7 @@ else:
 local_files_dir = 'lanlytics_worker_local'+os.sep+str(os.getpid())
 local_files_path = home+os.sep+local_files_dir
 
+log_line_limit = 10
 
 def is_s3_uri(string):
     #TODO make this a robust?
@@ -53,6 +54,12 @@ def make_local_dirs(local_file):
     directory = os.path.dirname(local_file)
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+
+def lines_tail(string, tail_length):
+    parts = string.split('\n')
+    parts = parts[-tail_length:]
+    return '\n'.join(parts)
 
 
 def localize_resource(uri):
@@ -131,7 +138,7 @@ def persist_command(local_command):
             persist_resource(parameter['value'])
 
 
-def build_command(local_command):
+def build_bash_command(local_command):
     bash_command = []
 
     for parameter in local_command['command']:
@@ -152,9 +159,30 @@ def build_command(local_command):
     return bash_command
 
 
+def build_python_command(local_command):
+    python_command = []
+    stdin = None
+    stdout = None
+    stderr = None
+    
+    for parameter in local_command['command']:
+        param = parameter['value']
+        if 'name' in parameter:
+            param = parameter['name']+param
+        python_command.append(param)
+    if 'stdin' in local_command:
+        stdin = local_command['stdin']
+    if 'stdout' in local_command:
+        stdout = local_command['stdout']
+    if 'stderr' in local_command:
+        stderr = local_command['stderr']
+
+    return python_command, stdin, stdout, stderr
+
+
 def build_localized_command(command):
-    abstract_cmd = build_command(command)
-    print('\nabstract command:')
+    abstract_cmd = build_bash_command(command)
+    print('\nabstract unix command:')
     print(' '.join(abstract_cmd)+'\n')
 
     local_command = localize_command(command)
@@ -175,7 +203,7 @@ def worker_cleanup(command, exit_code, worker_log):
         persist_command(command)
 
     print('\ncleaning local cache: %s' % local_files_path)
-    shutil.rmtree(local_files_path)
+    #shutil.rmtree(local_files_path)
 
     return feedback
 
@@ -185,16 +213,46 @@ def launch_native(command):
 
     local_command = build_localized_command(command)
 
-    native_cmd = build_command(local_command)
+    stdin = None
+    stdout = subprocess.PIPE
+    stderr = subprocess.PIPE
+
+    native_cmd, stdin_file, stdout_file, stderr_file = build_python_command(local_command)
     #native_cmd = ' '.join(native_cmd)
+
+    if stdin_file != None:
+        stdin = open(stdin_file, 'r')
+
+    if stdout_file != None:
+        stdout = open(stdout_file, 'w')
+
+    if stderr_file != None:
+        stderr = open(stderr_file, 'w')
 
     print('\nnative command:')
     print(native_cmd)
-
+    print('stdin:  %s' % str(stdin))
+    print('stdout: %s' % str(stdout))
+    print('stderr: %s' % str(stderr))
+    
     # shell parameter used for windows support
-    process = Popen(native_cmd, stdout=PIPE, stderr=PIPE, shell = (os.name == 'nt'))
-    stdout, stderr = process.communicate()
-    worker_log = 'stdout:\n\n%s\nstderr:\n\n%s' % (stdout, stderr)
+    process = subprocess.Popen(native_cmd, stdin=stdin, stdout=stdout, stderr=stderr, shell=(os.name == 'nt'))
+
+    stdout_log, stderr_log = process.communicate()
+
+    if stdout_log != None:
+        stdout_log = lines_tail(stdout_log.decode('utf-8'), log_line_limit)
+    if stderr_log != None:
+        stderr_log = lines_tail(stderr_log.decode('utf-8'), log_line_limit)
+
+    worker_log = 'stdout:\n%s\n\nstderr:\n%s' % (stdout_log, stderr_log)
+
+    if stdin_file != None:
+        stdin.close()
+    if stdout_file != None:
+        stdout.close()
+    if stderr_file != None:
+        stderr.close()
 
     return worker_cleanup(command, process.returncode, worker_log)
 
@@ -207,7 +265,7 @@ def launch_container(docker, image, command):
     docker_command = dockerize_command(local_command)
     #print(docker_command)
 
-    docker_cmd = build_command(docker_command)
+    docker_cmd = build_bash_command(docker_command)
     docker_cmd = ' '.join(docker_cmd)
     print('\ndocker command:')
     print(docker_cmd)
@@ -224,7 +282,7 @@ def launch_container(docker, image, command):
     print('start container')
     docker.start(container)
     exit_code = docker.wait(container)
-    container_log = str(docker.logs(container, tail=10),'utf-8')
+    container_log = str(docker.logs(container, tail=log_line_limit),'utf-8')
 
     print('removing container: %s' % str(container))
     docker.remove_container(container)

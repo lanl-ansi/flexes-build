@@ -3,6 +3,7 @@
 import boto3
 import json
 import sys
+import os
 import time
 import argparse
 import traceback
@@ -85,6 +86,7 @@ def process_message(db, docker_client, msg_id, msg_body, service_id):
     update_job(db, msg_id, STATUS_RUNNING)
 
     if docker_client != None: # this is a generic worker
+    #if docker_client != None and service_id != 'powerworld_test': # hack for testing 
         image = get_docker_image(docker_client, service_id)
         if image is None:
             #TODO try to pull from docker hub
@@ -117,6 +119,7 @@ def run_worker(args):
     if args.worker_type == DEFAULT_WORKER_TYPE:
         docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
 
+    print('Starting work on process %d' % os.getpid())
     print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
                                                         args.poll_frequency))
 

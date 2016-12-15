@@ -46,6 +46,6 @@ class TestIO:
 
     def test_parse_params(self):
         expected = '/root/input/simple_polyWGS84.shp --fields="Total Population;Total Jobs"'
-        cmd = dw.build_command(self.command)
+        cmd = dw.build_bash_command(self.command)
         cmd = ' '.join(cmd)
         assert(cmd == expected)
