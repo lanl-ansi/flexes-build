@@ -77,7 +77,7 @@ def powerworld():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': None, 'ServiceType': service}
+        attributes = {'Service': '', 'ServiceType': service}
         response = service_response(message, attributes)
         return jsonify(**response)
 
