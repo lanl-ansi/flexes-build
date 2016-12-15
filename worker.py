@@ -12,7 +12,8 @@ from local_launch import launch_container
 from local_launch import launch_native
 import docker
 
-with open('message_schema.json') as file:
+worker_dir_path = os.path.dirname(os.path.abspath(__file__))
+with open(worker_dir_path+os.sep+'message_schema.json') as file:
     msg_schema = json.load(file)
 
 DEFAULT_WORKER_TYPE = 'generic'
