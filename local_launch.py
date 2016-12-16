@@ -208,7 +208,7 @@ def worker_cleanup(command, exit_code, worker_log):
     return feedback
 
 
-def launch_native(command):
+def launch_native(cmd_prefix, command):
     print('\n\033[1mStarting Native Job\033[0m')
 
     local_command = build_localized_command(command)
@@ -218,6 +218,8 @@ def launch_native(command):
     stderr = subprocess.PIPE
 
     native_cmd, stdin_file, stdout_file, stderr_file = build_python_command(local_command)
+
+    native_cmd = cmd_prefix + native_cmd
     #native_cmd = ' '.join(native_cmd)
 
     if stdin_file != None:
