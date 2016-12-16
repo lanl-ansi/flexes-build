@@ -23,13 +23,21 @@ STATUS_RUNNING = 'running'
 STATUS_COMPLETE = 'complete'
 
 
+def is_str_list(x):
+    if type(x) is list:
+        for s in x:
+            if not type(s) is str:
+                return False
+    else:
+        return False
+    return True
+
 def isvalid(obj, schema):
     try:
         validate(obj, schema)
         return True
     except ValidationError:
         return False
-
 
 def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
@@ -116,11 +124,25 @@ def run_worker(args):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
 
+    print(args)
+
     docker_client = None
-    if args.worker_type == DEFAULT_WORKER_TYPE:
+    if args.launch == 'docker':
         docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
 
-    print('Starting work on process %d' % os.getpid())
+    if args.launch == 'native':
+        try:
+            args.cmd_prefix = json.loads(args.cmd_prefix)
+        except ValueError as e:
+            print('command prefix string was not valid JSON')
+            return
+        if not is_str_list(args.cmd_prefix):
+            print('command prefix was not a list of strings')
+            return
+
+    print(args)
+
+    print('Starting worker on process %d' % os.getpid())
     print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
                                                         args.poll_frequency))
 
@@ -138,8 +160,22 @@ def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-pf', '--poll_frequency', default=60, type=int, 
                         help='time to wait between polling the work queue (seconds)')
-    parser.add_argument('-t', '--worker_type', default=DEFAULT_WORKER_TYPE, 
+
+    subparsers = parser.add_subparsers()
+
+    parser_docker = subparsers.add_parser('docker', help='runs commands in docker containers')
+    parser_docker.set_defaults(launch='docker')
+    #parser_docker.add_argument('worker_type', action='store_const', const=DEFAULT_WORKER_TYPE)
+    parser_docker.set_defaults(worker_type=DEFAULT_WORKER_TYPE)
+    #parser_docker.add_argument('-t', '--worker_type', default=DEFAULT_WORKER_TYPE,
+    #                    help='override docker\'s default worker type')
+
+    parser_native = subparsers.add_parser('native', help='runs commands nativly')
+    parser_native.set_defaults(launch='native')
+    parser_native.add_argument('worker_type',
                         help='type of worker required for the service')
+    parser_native.add_argument('cmd_prefix',
+                        help='the command prefix of a native worker as a list of strings in json format')
     return parser
 
 

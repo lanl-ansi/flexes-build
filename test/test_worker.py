@@ -52,3 +52,7 @@ class TestWorker:
     #     status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}', self.worker_id)
     #     assert(status == worker.STATUS_FAILED)
     #     assert('error occurred (404)' in result)
+
+    ### Test Native CLI with
+    # ./worker.py -pf 5 native native_tester '["java.exe", "-jar", "pw_test.jar"]'
+    #
