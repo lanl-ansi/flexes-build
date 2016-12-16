@@ -7,11 +7,14 @@ import copy
 import shutil
 import subprocess
 
-
-if 'HOME' in os.environ:
-    home = os.environ['HOME']
+home = os.path.abspath(os.sep)
+if os.name == 'nt':
+    if 'HOMEPATH' in os.environ:
+        home = os.environ['HOMEPATH']
 else:
-    home = os.sep
+    if 'HOME' in os.environ:
+        home = os.environ['HOME']
+
 
 local_files_dir = 'lanlytics_worker_local'+os.sep+str(os.getpid())
 local_files_path = home+os.sep+local_files_dir
@@ -180,10 +183,10 @@ def build_python_command(local_command):
     return python_command, stdin, stdout, stderr
 
 
-def build_localized_command(command):
+def build_localized_command(command, cmd_prefix=[]):
     abstract_cmd = build_bash_command(command)
     print('\nabstract unix command:')
-    print(' '.join(abstract_cmd)+'\n')
+    print(' '.join(cmd_prefix+abstract_cmd)+'\n')
 
     local_command = localize_command(command)
 
@@ -203,15 +206,16 @@ def worker_cleanup(command, exit_code, worker_log):
         persist_command(command)
 
     print('\ncleaning local cache: %s' % local_files_path)
-    #shutil.rmtree(local_files_path)
+    shutil.rmtree(local_files_path)
 
+    print('\njob completed.')
     return feedback
 
 
 def launch_native(cmd_prefix, command):
     print('\n\033[1mStarting Native Job\033[0m')
 
-    local_command = build_localized_command(command)
+    local_command = build_localized_command(command, cmd_prefix)
 
     stdin = None
     stdout = subprocess.PIPE
@@ -219,7 +223,7 @@ def launch_native(cmd_prefix, command):
 
     native_cmd, stdin_file, stdout_file, stderr_file = build_python_command(local_command)
 
-    native_cmd = cmd_prefix + native_cmd
+    native_cmd = cmd_prefix+native_cmd
     #native_cmd = ' '.join(native_cmd)
 
     if stdin_file != None:
