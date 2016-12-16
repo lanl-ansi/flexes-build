@@ -175,7 +175,7 @@ def build_cli_parser():
     #parser_docker.add_argument('-t', '--worker_type', default=DOCKER_WORKER_TYPE,
     #                    help='override docker\'s default worker type')
 
-    parser_native = subparsers.add_parser('native', help='runs commands nativly')
+    parser_native = subparsers.add_parser('native', help='runs commands natively')
     parser_native.set_defaults(launch='native')
     parser_native.add_argument('worker_type',
                         help='type of worker required for the service')
