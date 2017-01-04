@@ -69,7 +69,7 @@ def post_job(service):
 
 @app.route('/native-dev', methods=['GET', 'POST'])
 def native_dev():
-    service = request.args.get('service')
+    service = 'native-dev'
     if request.method == 'GET':
         try:
             return render_template('{}.html'.format(service))
