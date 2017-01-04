@@ -67,6 +67,21 @@ def post_job(service):
         return jsonify(**response)
 
 
+@app.route('/native-dev', methods=['GET', 'POST'])
+def native_dev():
+    service = request.args.get('service')
+    if request.method == 'GET':
+        try:
+            return render_template('{}.html'.format(service))
+        except TemplateNotFound:
+            abort(404)
+    elif request.method == 'POST':
+        message = request.get_json()
+        attributes = {'Service': '', 'ServiceType': service}
+        response = service_response(message, attributes)
+        return jsonify(**response)
+
+
 @app.route('/powerworld', methods=['GET', 'POST'])
 def powerworld():
     service = 'powerworld'
