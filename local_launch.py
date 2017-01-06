@@ -16,10 +16,32 @@ else:
         home = os.environ['HOME']
 
 
-local_files_dir = 'lanlytics_worker_local'+os.sep+str(os.getpid())
-local_files_path = home+os.sep+local_files_dir
+local_files_dir = 'lanlytics_worker_local' + os.sep + str(os.getpid())
+local_files_path = home + os.sep + local_files_dir
 
 log_line_limit = 10
+
+class Command:
+    def __init__(self, cmd_type, cmd):
+        self.type = cmd_type
+        self.cmd = cmd
+
+    def parse_command():
+        # parse self.cmd
+        pass
+
+    def execute():
+        # execute self.cmd
+        pass
+
+    def cleanup():
+        # clean up after command is executed
+        pass
+
+    def output():
+        # retrieve output from completed command
+        pass
+
 
 def is_s3_uri(string):
     #TODO make this a robust?
