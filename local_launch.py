@@ -8,110 +8,28 @@ import shutil
 import subprocess
 from jsonschema import validate, ValidationError
 
-home = os.path.abspath(os.sep)
-if os.name == 'nt':
-    if 'HOMEPATH' in os.environ:
-        home = os.environ['HOMEPATH']
-else:
-    if 'HOME' in os.environ:
-        home = os.environ['HOME']
-
-LOCAL_FILES_DIR = os.path.join('lanlytics_worker_local', str(os.getpid()))
-LOCAL_FILES_PATH = os.path.join(home, LOCAL_FILES_DIR)
-
 LOG_LINE_LIMIT = 10
 
 class Command:
-    def __init__(self, cmd_type, cmd):
-        self.type = cmd_type
-        self.cmd = cmd
-
-        if cmd_type == 'docker':
-            self.assign_methods(dockerize_command, launch_container, worker_cleanup, None)
-        elif cmd_type == 'native':
-            self.assign_methods(localize_command, launch_native, worker_cleanup, None)
-        else:
+    def __init__(self, cmd_type, cmd, cmd_prefix):
+        if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-    def assign_methods(build, execute, cleanup, output):
-        self.build = build
-        self.execute = execute
-        self.cleanup = cleanup
-        self.output = output
+        self.type = cmd_type
+        self.cmd = cmd
+        self.prefix = cmd_prefix
 
-
-def is_s3_uri(uri):
-    worker_dir_path = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(worker_dir_path, 'message_schema.json')) as file:
-        msg_schema = json.load(file)
-        s3_uri_schema = msg_schema['definitions']['s3_uri']
-
-    try:
-        validate(uri, s3_uri_schema)
-        return True
-    except ValidationError:
-        return False
-
-
-def s3_get_uri(s3_uri):
-    return s3_uri.split('/',2)[-1].split('/',1)
-
-
-def get_s3_file(s3_conn, s3_uri, local_file):
-    bucket_id, key = s3_get_uri(s3_uri)
-    s3_conn.download_file(bucket_id, key, local_file)
-
-
-def put_file_s3(s3_conn, local_file, s3_uri):
-    bucket_id, key = s3_get_uri(s3_uri)
-    s3_conn.upload_file(local_file, bucket_id, key)
-
-
-def get_local_path(uri):
-    if is_s3_uri(uri):
-        local_file_name = uri.replace('s3:/', LOCAL_FILES_PATH)
-        return local_file_name
-    return uri
-
-
-def get_docker_path(uri):
-    path = get_local_path(uri)
-    if path.startswith(LOCAL_FILES_PATH):
-        return path.replace(LOCAL_FILES_PATH, os.sep+LOCAL_FILES_DIR)
-    return path
-
-
-def make_local_dirs(local_file):
-    directory = os.path.dirname(local_file)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    def execute(self):
+        if self.type == 'docker':
+            return launch_container(self.cmd['service'], self.cmd['body'])
+        elif self.type == 'native':
+            return launch_native(self.cmd_prefix, self.cmd['body'])
 
 
 def lines_tail(string, tail_length):
     parts = string.split('\n')
     parts = parts[-tail_length:]
     return '\n'.join(parts)
-
-
-def localize_resource(uri):
-    if is_s3_uri(uri):
-        s3 = boto3.client('s3')
-        local_file_name = get_local_path(uri)
-        make_local_dirs(local_file_name)
-
-        print('downloading to local filesystem:\n  {}\n  {}'.format(uri, local_file_name))
-        get_s3_file(s3, uri, local_file_name)
-
-        return local_file_name
-    return uri
-
-
-def localize_output(uri):
-    if is_s3_uri(uri):
-        local_path = get_local_path(uri)
-        make_local_dirs(local_path)
-        return local_path
-    return uri
 
 
 def persist_resource(uri):
@@ -155,7 +73,6 @@ def dockerize_command(local_command):
             parameter['value'] = get_docker_path(parameter['value'])
         if parameter['type'] == 'output':
             parameter['value'] = get_docker_path(parameter['value'])
-
     return docker_command
 
 
@@ -175,16 +92,16 @@ def build_bash_command(local_command):
     for parameter in local_command['command']:
         param = parameter['value']
         if 'name' in parameter:
-            param = parameter['name']+param
+            param = parameter['name'] + param
         bash_command.append(param)
     if 'stdin' in local_command:
-        stdin = '< %s' % local_command['stdin']
+        stdin = '< {}'.format(local_command['stdin'])
         bash_command.append(stdin)
     if 'stdout' in local_command:
-        stdout = '> %s' % local_command['stdout']
+        stdout = '> {}'.format(local_command['stdout'])
         bash_command.append(stdout)
     if 'stderr' in local_command:
-        stderr = '2> %s' % local_command['stderr']
+        stderr = '2> {}'.format(local_command['stderr'])
         bash_command.append(stderr)
 
     return bash_command
@@ -264,9 +181,9 @@ def launch_native(cmd_prefix, command):
 
     print('\nnative command:')
     print(native_cmd)
-    print('stdin:  %s' % str(stdin))
-    print('stdout: %s' % str(stdout))
-    print('stderr: %s' % str(stderr))
+    print('stdin:  {}'.format(stdin))
+    print('stdout: {}'.format(stdout))
+    print('stderr: {}'.format(stderr))
     
     # shell parameter used for windows support
     process = subprocess.Popen(native_cmd, stdin=stdin, stdout=stdout, stderr=stderr, shell=(os.name == 'nt'))
@@ -321,7 +238,6 @@ def launch_container(docker, image, command):
     docker.remove_container(container)
 
     return worker_cleanup(command, exit_code, container_log)
-
 
 
 if __name__ == '__main__':
