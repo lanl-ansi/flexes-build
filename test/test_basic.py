@@ -37,12 +37,14 @@ class TestIO:
         aoi = dw.get_local_path(filename)
         assert(aoi == filename)
 
-    # TODO figureout how to mock file not found error
-    # @mock.patch('boto3.client')
-    # def test_s3_file_not_found(self, mock_resource):
-    #     filename = 's3://lanlytics/path/to/input/test.txt'
-    #     with pytest.raises(botocore.exceptions.ClientError):
-    #         dw.localize_resource(filename)
+    @mock.patch('boto3.client')
+    @mock.patch('local_launch.get_s3_file')
+    def test_s3_file_not_found(self, mock_resource, mock_get_s3):
+        error_response = {'Error': {'Code': 404}}
+        mock_get_s3.side_effect = botocore.exceptions.ClientError(error_response, 'download')
+        filename = 's3://lanlytics/path/to/input/test.txt'
+        with pytest.raises(botocore.exceptions.ClientError):
+            dw.localize_resource(filename)
 
     def test_parse_params(self):
         expected = '/root/input/simple_polyWGS84.shp --fields="Total Population;Total Jobs"'

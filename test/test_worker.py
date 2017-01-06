@@ -1,6 +1,7 @@
 import os, pytest, sys
 
 sys.path.append('.')
+import botocore
 import mock
 import worker
 
@@ -46,12 +47,16 @@ class TestWorker:
         assert(status == worker.STATUS_FAILED)
         assert('Failed validating' in result)
 
-    # # TODO figureout how to mock file not found error
-    # @mock.patch('boto3.client')
-    # def test_s3_file_not_found(self, mock_resource):
-    #     status, result = worker.process_message(self.mock_docker, self.mock_db, self.msg_id, '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}', self.worker_id)
-    #     assert(status == worker.STATUS_FAILED)
-    #     assert('error occurred (404)' in result)
+    @mock.patch('boto3.client')
+    @mock.patch('local_launch.get_s3_file')
+    @mock.patch('worker.launch_container', return_value = docker_success)
+    @mock.patch('worker.get_docker_image', return_value = mock.Mock())
+    def test_s3_file_not_found(self, mock_resource, mock_get_s3, mock_container, mock_image):
+        error_response = {'Error': {'Code': 404}}
+        mock_get_s3.side_effect = botocore.exceptions.ClientError(error_response, 'download')
+        status, result = worker.process_message(self.mock_db, self.mock_docker_client, [], self.msg_id, '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}', self.worker_id)
+        assert(status == worker.STATUS_FAILED)
+        assert('error occurred (404)' in result)
 
     ### Test Native CLI with
     # linux version

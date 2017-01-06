@@ -6,6 +6,7 @@ import time
 import copy
 import shutil
 import subprocess
+from jsonschema import validate, ValidationError
 
 home = os.path.abspath(os.sep)
 if os.name == 'nt':
@@ -16,8 +17,8 @@ else:
         home = os.environ['HOME']
 
 
-local_files_dir = 'lanlytics_worker_local' + os.sep + str(os.getpid())
-local_files_path = home + os.sep + local_files_dir
+local_files_dir = os.path.join('lanlytics_worker_local', str(os.getpid()))
+local_files_path = os.path.join(home, local_files_dir)
 
 log_line_limit = 10
 
@@ -43,9 +44,17 @@ class Command:
         pass
 
 
-def is_s3_uri(string):
-    #TODO make this a robust?
-    return string.startswith('s3://')
+def is_s3_uri(uri):
+    worker_dir_path = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(worker_dir_path, 'message_schema.json')) as file:
+        msg_schema = json.load(file)
+        s3_uri_schema = msg_schema['definitions']['s3_uri']
+
+    try:
+        validate(uri, s3_uri_schema)
+        return True
+    except ValidationError:
+        return False
 
 
 def s3_get_uri(s3_uri):
