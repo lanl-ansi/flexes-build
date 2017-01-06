@@ -121,7 +121,7 @@ def process_message(db, docker_client, cmd_prefix, msg_id, msg_body, service_id)
 
 
 def run_worker(args):
-    print('Starting worker on process %d' % os.getpid())
+    print('Starting worker on process {}'.format(os.getpid()))
 
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
@@ -129,12 +129,12 @@ def run_worker(args):
     docker_client = None
     if args.launch == 'docker':
         docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
-        print('docker client: %s' % docker_client)
+        print('docker client: {}'.format(docker_client))
 
     if args.launch == 'native':
         if args.worker_type == DOCKER_WORKER_TYPE:
         #if args.worker_type == DOCKER_WORKER_TYPE and False: # hack for testing
-            print('native worker cannot have the worker type "%s"' % DOCKER_WORKER_TYPE)
+            print('native worker cannot have the worker type "{}"'.format(DOCKER_WORKER_TYPE))
             return
 
         try:
@@ -145,7 +145,7 @@ def run_worker(args):
         if not is_str_list(args.cmd_prefix):
             print('command prefix was not a list of strings')
             return
-        print('native command prefix: %s' % str(args.cmd_prefix))
+        print('native command prefix: {}'.format(args.cmd_prefix))
 
     print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
                                                         args.poll_frequency))
@@ -179,7 +179,9 @@ def build_cli_parser():
     parser_native.add_argument('worker_type',
                         help='type of worker required for the service')
     parser_native.add_argument('cmd_prefix',
-                        help='the command prefix of a native worker as a list of strings in json format, takes the place of the "entrypoint" in a docker container')
+                        help='the command prefix of a native worker as a list of \
+                              strings in json format, takes the place of the \
+                              "ENTRYPOINT" in a docker container')
     return parser
 
 
