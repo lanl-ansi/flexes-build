@@ -4,27 +4,14 @@ import json
 import os
 from jsonschema import validate, ValidationError
 
-HOME = os.path.abspath(os.sep)
-if os.name == 'nt':
-    if 'HOMEPATH' in os.environ:
-        HOME = os.environ['HOMEPATH']
-else:
-    if 'HOME' in os.environ:
-        HOME = os.environ['HOME']
-
-LOCAL_FILES_DIR = os.path.join('lanlytics_worker_local', str(os.getpid()))
-LOCAL_FILES_PATH = os.path.join(HOME, LOCAL_FILES_DIR)
-
-worker_dir_path = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(worker_dir_path, 'message_schema.json')) as file:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as file:
     msg_schema = json.load(file)
     s3_uri_schema = msg_schema['definitions']['s3_uri']
 
 DOCKER_WORKER_TYPE = 'generic'
-
+STATUS_COMPLETE = 'complete'
 STATUS_FAILED = 'failed'
 STATUS_RUNNING = 'running'
-STATUS_COMPLETE = 'complete'
 
 # AWS methods
 def s3_get_uri(uri):
@@ -80,20 +67,6 @@ def isvalid(obj, schema):
         return False
 
 # IO
-def get_local_path(uri):
-    if is_s3_uri(uri):
-        local_file_name = uri.replace('s3:/', LOCAL_FILES_PATH)
-        return local_file_name
-    return uri
-
-
-def get_docker_path(uri):
-    path = get_local_path(uri)
-    if path.startswith(LOCAL_FILES_PATH):
-        return path.replace(LOCAL_FILES_PATH, os.sep+LOCAL_FILES_DIR)
-    return path
-
-
 def make_local_dirs(local_file):
     directory = os.path.dirname(local_file)
     if not os.path.exists(directory):

@@ -8,6 +8,17 @@ import shutil
 import subprocess
 from jsonschema import validate, ValidationError
 
+HOME = os.path.abspath(os.sep)
+if os.name == 'nt':
+    if 'HOMEPATH' in os.environ:
+        HOME = os.environ['HOMEPATH']
+else:
+    if 'HOME' in os.environ:
+        HOME = os.environ['HOME']
+
+LOCAL_FILES_DIR = os.path.join('lanlytics_worker_local', str(os.getpid()))
+LOCAL_FILES_PATH = os.path.join(HOME, LOCAL_FILES_DIR)
+
 LOG_LINE_LIMIT = 10
 
 class Command:
@@ -30,6 +41,20 @@ def lines_tail(string, tail_length):
     parts = string.split('\n')
     parts = parts[-tail_length:]
     return '\n'.join(parts)
+
+
+def get_local_path(uri):
+    if is_s3_uri(uri):
+        local_file_name = uri.replace('s3:/', LOCAL_FILES_PATH)
+        return local_file_name
+    return uri
+
+
+def get_docker_path(uri):
+    path = get_local_path(uri)
+    if path.startswith(LOCAL_FILES_PATH):
+        return path.replace(LOCAL_FILES_PATH, os.sep+LOCAL_FILES_DIR)
+    return path
 
 
 def persist_resource(uri):
@@ -207,7 +232,7 @@ def launch_native(cmd_prefix, command):
     return worker_cleanup(command, process.returncode, worker_log)
 
 
-def launch_container(docker, image, command):
+def launch_container(image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
     local_command = build_localized_command(command)
@@ -225,6 +250,8 @@ def launch_container(docker, image, command):
     binds = ['{}:{}'.format(LOCAL_FILES_PATH, docker_volume)]
     print('volume binding: {}'.format(binds[0]))
 
+    docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
+    image = get_docker_image(docker_client, image_name)
     container = docker.create_container(image=image['RepoTags'][0], command=docker_cmd,
                                         volumes=[docker_volume],
                                         host_config=docker.create_host_config(binds=binds))

@@ -12,44 +12,50 @@ from local_launch import launch_container
 from local_launch import launch_native
 import docker
 
-def process_message(db, docker_client, cmd_prefix, msg_id, msg_body, service_id):
+def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(str(msg_id)))
 
     try:
-        msg_data = json.loads(msg_body)
+        msg_data = json.loads(message['body'])
         validate(msg_data, msg_schema)
     except ValueError as e:
         print('Message string was not valid JSON')
-        return handle_exception(db, msg_id, e)
+        return handle_exception(db, message['id'], e)
     except ValidationError as e:
         print('Message JSON failed validation')
-        return handle_exception(db, msg_id, e)
+        return handle_exception(db, message['id'], e)
 
-    update_job(db, msg_id, STATUS_RUNNING)
+    update_job(db, message['id'], STATUS_RUNNING)
 
-    if docker_client != None: # this is a generic worker
-    #if docker_client != None and False: # hack for testing 
-        image = get_docker_image(docker_client, service_id)
-        if image is None:
-            #TODO try to pull from docker hub
-            # if that fails produce this error 
-            feedback = 'Unable to locate docker image: {}'.format(service_id)
-            print(feedback)
-            return handle_exception(db, msg_id, feedback)
+    command = Command(cmd_type, message, args.cmd_prefix)
+    try:
+        command.execute()
+    except Exception as e:
+        handle_exception(db, message['id'], e)
 
-        print('Docker image for {} found\n'.format(service_id))
-        try:
-            result = launch_container(docker_client, image, msg_data)
-        except Exception as e:
-            print('docker launch failed')
-            return handle_exception(db, msg_id, e)
-
-    else: # non-generic native worker
-        try:
-            result = launch_native(cmd_prefix, msg_data)
-        except Exception as e:
-            print('native launch failed')
-            return handle_exception(db, msg_id, e)
+#    if docker_client != None: # this is a generic worker
+#    #if docker_client != None and False: # hack for testing 
+#        image = get_docker_image(docker_client, service_id)
+#        if image is None:
+#            #TODO try to pull from docker hub
+#            # if that fails produce this error 
+#            feedback = 'Unable to locate docker image: {}'.format(service_id)
+#            print(feedback)
+#            return handle_exception(db, msg_id, feedback)
+#
+#        print('Docker image for {} found\n'.format(service_id))
+#        try:
+#            result = launch_container(docker_client, image, msg_data)
+#        except Exception as e:
+#            print('docker launch failed')
+#            return handle_exception(db, msg_id, e)
+#
+#    else: # non-generic native worker
+#        try:
+#            result = launch_native(cmd_prefix, msg_data)
+#        except Exception as e:
+#            print('native launch failed')
+#            return handle_exception(db, msg_id, e)
 
     return update_job(db, msg_id, STATUS_COMPLETE, result)
 
@@ -60,35 +66,33 @@ def run_worker(args):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
 
-    docker_client = None
-    if args.launch == 'docker':
-        docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
-        print('docker client: {}'.format(docker_client))
-
-    if args.launch == 'native':
-        if args.worker_type == DOCKER_WORKER_TYPE:
-            print('native worker cannot have the worker type "{}"'.format(DOCKER_WORKER_TYPE))
-            return
-
-        try:
-            args.cmd_prefix = json.loads(args.cmd_prefix)
-        except ValueError as e:
-            print('command prefix string was not valid JSON')
-            return
-        if not is_str_list(args.cmd_prefix):
-            print('command prefix was not a list of strings')
-            return
-        print('native command prefix: {}'.format(args.cmd_prefix))
-
-    print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
-                                                        args.poll_frequency))
+#    docker_client = None
+#    if args.launch == 'docker':
+#        docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
+#        print('docker client: {}'.format(docker_client))
+#
+#    if args.launch == 'native':
+#        if args.worker_type == DOCKER_WORKER_TYPE:
+#            print('native worker cannot have the worker type "{}"'.format(DOCKER_WORKER_TYPE))
+#            return
+#
+#        try:
+#            args.cmd_prefix = json.loads(args.cmd_prefix)
+#        except ValueError as e:
+#            print('command prefix string was not valid JSON')
+#            return
+#        if not is_str_list(args.cmd_prefix):
+#            print('command prefix was not a list of strings')
+#            return
+#        print('native command prefix: {}'.format(args.cmd_prefix))
+#
+#    print('Polling for {} jobs every {} seconds'.format(args.worker_type, 
+#                                                        args.poll_frequency))
 
     while True:
         message = receive_message(sqs, args.worker_type)
         if message['body'] is not None:
-            command = Command(args.launch, message, args.cmd_prefix)
-            command.execute()
-            process_message(db, docker_client, args.cmd_prefix, message['id'], message['body'], message['service'])
+            process_message(db, args.launch, args.cmd_prefix, message)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
