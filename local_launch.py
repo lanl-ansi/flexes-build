@@ -16,7 +16,6 @@ else:
     if 'HOME' in os.environ:
         home = os.environ['HOME']
 
-
 local_files_dir = os.path.join('lanlytics_worker_local', str(os.getpid()))
 local_files_path = os.path.join(home, local_files_dir)
 
@@ -27,21 +26,18 @@ class Command:
         self.type = cmd_type
         self.cmd = cmd
 
-    def parse_command():
-        # parse self.cmd
-        pass
+        if cmd_type = 'docker':
+            self.assign_methods(dockerize_command, launch_container, worker_cleanup, None)
+        elif cmd_type == 'native':
+            self.assign_methods(localize_command, launch_native, worker_cleanup, None)
+        else:
+            raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-    def execute():
-        # execute self.cmd
-        pass
-
-    def cleanup():
-        # clean up after command is executed
-        pass
-
-    def output():
-        # retrieve output from completed command
-        pass
+    def assign_methods(build, execute, cleanup, output):
+        self.build = build
+        self.execute = execute
+        self.cleanup = cleanup
+        self.output = output
 
 
 def is_s3_uri(uri):
@@ -76,6 +72,7 @@ def get_local_path(uri):
         local_file_name = uri.replace('s3:/', local_files_path)
         return local_file_name
     return uri
+
 
 def get_docker_path(uri):
     path = get_local_path(uri)
