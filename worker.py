@@ -24,13 +24,11 @@ STATUS_COMPLETE = 'complete'
 
 
 def is_str_list(x):
-    if type(x) is list:
-        for s in x:
-            if not type(s) is str:
-                return False
+    if isinstance(x, list) and all(isinstance(s, str) for s in x):
+        return True
     else:
         return False
-    return True
+
 
 def isvalid(obj, schema):
     try:
@@ -38,6 +36,7 @@ def isvalid(obj, schema):
         return True
     except ValidationError:
         return False
+
 
 def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
