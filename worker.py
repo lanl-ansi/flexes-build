@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 
+import argparse
 import boto3
 import json
 import sys
 import os
 import time
-import argparse
 import traceback
+import utils
 from jsonschema import validate, ValidationError
-from local_launch import launch_container
-from local_launch import launch_native
-import docker
+#from local_launch import launch_container
+#from local_launch import launch_native
+from local_launch import Command
+
+STATUS_COMPLETE = 'complete'
+STATUS_FAILED = 'failed'
+STATUS_RUNNING = 'running'
 
 def process_message(db, cmd_type, cmd_prefix, message):
-    print('Received message: {}'.format(str(msg_id)))
+    print('Received message: {}'.format(str(message['id'])))
 
     try:
         msg_data = json.loads(message['body'])
-        validate(msg_data, msg_schema)
+        validate(msg_data, utils.msg_schema)
     except ValueError as e:
         print('Message string was not valid JSON')
         return handle_exception(db, message['id'], e)
@@ -25,11 +30,11 @@ def process_message(db, cmd_type, cmd_prefix, message):
         print('Message JSON failed validation')
         return handle_exception(db, message['id'], e)
 
-    update_job(db, message['id'], STATUS_RUNNING)
+    utils.update_job(db, message['id'], STATUS_RUNNING)
 
-    command = Command(cmd_type, message, args.cmd_prefix)
+    command = Command(cmd_type, message, cmd_prefix)
     try:
-        command.execute()
+        result = command.execute()
     except Exception as e:
         handle_exception(db, message['id'], e)
 
@@ -57,7 +62,12 @@ def process_message(db, cmd_type, cmd_prefix, message):
 #            print('native launch failed')
 #            return handle_exception(db, msg_id, e)
 
-    return update_job(db, msg_id, STATUS_COMPLETE, result)
+    return utils.update_job(db, message['id'], STATUS_COMPLETE, result)
+
+
+def handle_exception(db, msg_id, e):
+    traceback.print_exc()
+    return utils.update_job(db, msg_id, STATUS_FAILED, str(e))
 
 
 def run_worker(args):

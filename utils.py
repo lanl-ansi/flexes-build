@@ -9,9 +9,6 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_sche
     s3_uri_schema = msg_schema['definitions']['s3_uri']
 
 DOCKER_WORKER_TYPE = 'generic'
-STATUS_COMPLETE = 'complete'
-STATUS_FAILED = 'failed'
-STATUS_RUNNING = 'running'
 
 # AWS methods
 def s3_get_uri(uri):
@@ -71,16 +68,3 @@ def make_local_dirs(local_file):
     directory = os.path.dirname(local_file)
     if not os.path.exists(directory):
         os.makedirs(directory)
-
-# Misc
-def handle_exception(db, msg_id, e):
-    traceback.print_exc()
-    return update_job(db, msg_id, STATUS_FAILED, str(e))
-
-
-def get_docker_image(docker_client, image_name):
-    for image in docker_client.images():
-        for tag in image['RepoTags']:
-            if image_name+':latest' in tag:
-                return image
-    return None

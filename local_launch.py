@@ -50,6 +50,14 @@ def get_local_path(uri):
     return uri
 
 
+def get_docker_image(docker_client, image_name):
+    for image in docker_client.images():
+        for tag in image['RepoTags']:
+            if image_name + ':latest' in tag:
+                return image
+    return None
+
+
 def get_docker_path(uri):
     path = get_local_path(uri)
     if path.startswith(LOCAL_FILES_PATH):
