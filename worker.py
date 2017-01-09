@@ -36,7 +36,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
         status, result = command.execute()
         print('result: {}'.format(result))
     except Exception as e:
-        handle_exception(db, message['id'], e)
+        return handle_exception(db, message['id'], e)
 
 #    if docker_client != None: # this is a generic worker
 #    #if docker_client != None and False: # hack for testing 
