@@ -36,7 +36,7 @@ def receive_message(sqs, service):
             service_name = msg.message_attributes.get('Service').get('StringValue')
             if service_type == service:
                 message['service'] = service_name
-                message['body'] = msg.body
+                message['body'] = json.loads(msg.body)
                 message['id'] = msg.message_id
                 msg.delete()
                 break
@@ -70,9 +70,3 @@ def isvalid(obj, schema):
         return True
     except ValidationError:
         return False
-
-# IO
-def make_local_dirs(local_file):
-    directory = os.path.dirname(local_file)
-    if not os.path.exists(directory):
-        os.makedirs(directory)

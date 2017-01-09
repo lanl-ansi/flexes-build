@@ -1,5 +1,6 @@
 import boto3
 import copy
+import docker
 import json
 import os
 import shutil
@@ -7,7 +8,6 @@ import subprocess
 import sys
 import time
 import utils
-from jsonschema import validate, ValidationError
 
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
@@ -51,12 +51,19 @@ def get_local_path(uri):
     return uri
 
 
-def get_docker_image(docker_client, image_name):
-    for image in docker_client.images():
+def make_local_dirs(local_file):
+    directory = os.path.dirname(local_file)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+        
+def get_docker_image(client, image_name):
+    for image in client.images():
         for tag in image['RepoTags']:
             if image_name + ':latest' in tag:
                 return image
-    return None
+    else:
+        return None
 
 
 def get_docker_path(uri):
@@ -280,19 +287,19 @@ def launch_container(image_name, command):
     binds = ['{}:{}'.format(LOCAL_FILES_PATH, docker_volume)]
     print('volume binding: {}'.format(binds[0]))
 
-    docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
-    image = get_docker_image(docker_client, image_name)
-    container = docker.create_container(image=image['RepoTags'][0], command=docker_cmd,
+    client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
+    image = get_docker_image(client, image_name)
+    container = client.create_container(image=image['RepoTags'][0], command=docker_cmd,
                                         volumes=[docker_volume],
                                         host_config=docker.create_host_config(binds=binds))
 
     print('start container')
-    docker.start(container)
-    exit_code = docker.wait(container)
-    container_log = str(docker.logs(container, tail=LOG_LINE_LIMIT),'utf-8')
+    client.start(container)
+    exit_code = client.wait(container)
+    container_log = str(client.logs(container, tail=LOG_LINE_LIMIT),'utf-8')
 
     print('removing container: {}'.format(container))
-    docker.remove_container(container)
+    client.remove_container(container)
 
     return worker_cleanup(command, exit_code, container_log)
 

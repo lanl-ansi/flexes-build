@@ -21,10 +21,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['id']))
 
     try:
-        validate(json.loads(message['body']), utils.message_schema)
-    except ValueError as e:
-        print('Message string was not valid JSON')
-        return handle_exception(db, message['id'], e)
+        validate(message['body'], utils.message_schema)
     except ValidationError as e:
         print('Message JSON failed validation')
         return handle_exception(db, message['id'], e)
@@ -34,7 +31,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
     command = Command(cmd_type, message, cmd_prefix)
     try:
         status, result = command.execute()
-        print('result: {}'.format(result))
+        print('Result: {}'.format(result))
     except Exception as e:
         return handle_exception(db, message['id'], e)
 
@@ -109,7 +106,11 @@ def run_worker(args):
 #                                                        args.poll_frequency))
 
     while True:
-        message = utils.receive_message(sqs, args.worker_type)
+        try:
+            message = utils.receive_message(sqs, args.worker_type)
+        except ValueError as e:
+            print('Message string was not valid JSON')
+            return handle_exception(db, message['id'], e)
         if message['body'] is not None:
             process_message(db, args.launch, args.cmd_prefix, message)
         else:
