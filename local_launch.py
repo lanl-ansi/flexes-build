@@ -27,15 +27,16 @@ class Command:
         if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-        self.type = cmd_type
-        self.cmd = cmd
+        self.cmd = json.loads(cmd['body'])
         self.prefix = cmd_prefix
+        self.service = cmd['service']
+        self.type = cmd_type
 
     def execute(self):
         if self.type == 'docker':
-            return launch_container(self.cmd['service'], self.cmd['body'])
+            return launch_container(self.service, self.cmd)
         elif self.type == 'native':
-            return launch_native(self.cmd_prefix, self.cmd['body'])
+            return launch_native(self.cmd_prefix, self.cmd)
 
 
 def lines_tail(string, tail_length):
@@ -291,7 +292,7 @@ def launch_container(image_name, command):
     image = get_docker_image(client, image_name)
     container = client.create_container(image=image['RepoTags'][0], command=docker_cmd,
                                         volumes=[docker_volume],
-                                        host_config=docker.create_host_config(binds=binds))
+                                        host_config=client.create_host_config(binds=binds))
 
     print('start container')
     client.start(container)

@@ -28,3 +28,15 @@ class TestCommands:
         command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
         local_command = l.localize_command(command)
         assert(isinstance(local_command, dict))
+
+
+class TestLaunch:
+    @mock.patch('docker.Client', autospec=True)
+    @mock.patch('os.makedirs', return_value=None)
+    @mock.patch('local_launch.localize_resource', return_value='/path/to/resource.txt')
+    def test_launch_container(self, mock_client, mock_makedirs, mock_localize_resource):
+        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        result = l.launch_container('test', command)
+        print(result)
+        assert(True==False)
+
