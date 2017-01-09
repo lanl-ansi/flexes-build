@@ -56,6 +56,14 @@ def is_str_list(x):
     return (isinstance(x, list) and all(isinstance(s, str) for s in x))
 
 
+def is_valid_message(message):
+    return isvalid(message, message_schema)
+
+
+def is_s3_uri(uri):
+    return isvalid(uri, s3_uri_schema)
+
+
 def isvalid(obj, schema):
     try:
         validate(obj, schema)

@@ -38,7 +38,7 @@ class TestIO:
         assert(aoi == filename)
 
     @mock.patch('boto3.client')
-    @mock.patch('local_launch.get_s3_file')
+    @mock.patch('utils.get_s3_file')
     def test_s3_file_not_found(self, mock_resource, mock_get_s3):
         error_response = {'Error': {'Code': 404}}
         mock_get_s3.side_effect = botocore.exceptions.ClientError(error_response, 'download')

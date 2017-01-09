@@ -34,7 +34,8 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
     command = Command(cmd_type, message, cmd_prefix)
     try:
-        result = command.execute()
+        status, result = command.execute()
+        print('result: {}'.format(result))
     except Exception as e:
         handle_exception(db, message['id'], e)
 
@@ -76,6 +77,15 @@ def run_worker(args):
     sqs = boto3.resource('sqs')
     db = boto3.resource('dynamodb')
 
+    try:
+        args.cmd_prefix = json.loads(args.cmd_prefix)
+    except ValueError as e:
+        print('Command prefix was not valid JSON')
+        return
+    if not utils.is_str_list(args.cmd_prefix):
+        print('Command prefix was not a list of strings')
+        return
+    print('Command prefix: {}'.format(args.cmd_prefix))
 #    docker_client = None
 #    if args.launch == 'docker':
 #        docker_client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')

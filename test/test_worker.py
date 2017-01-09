@@ -14,30 +14,29 @@ class TestWorker:
         self.mock_docker_client = mock.Mock()
         self.mock_db = mock.Mock()
 
-    @mock.patch('worker.Command', 'execute', return_value=docker_success)
-    def test_valid_message(self, mock_command):
-        mock_command.return_value.execute.return_value = docker_success
+    @mock.patch('worker.Command', 'execute', return_value=('Complete', docker_success))
+    def test_valid_message(self, mock_cmd):
         self.message['body'] = '{"command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == worker.STATUS_COMPLETE)
         assert(result == docker_success)
 
-    @mock.patch('worker.Command', 'execute', return_value=docker_success)
-    def test_valid_message_s3_stdin(self, mock_command):
+    @mock.patch('worker.Command', 'execute', return_value=('Complete', docker_success))
+    def test_valid_message_s3_stdin(self, mock_cmd):
         self.message['body'] = '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == worker.STATUS_COMPLETE)
         assert(result == docker_success)
 
-    @mock.patch('worker.Command', 'execute', return_value=docker_success)
-    def test_valid_message_s3_cmd(self, mock_command):
-        mock_command.return_value.execute.return_value = docker_success
+    @mock.patch('worker.Command', 'execute', return_value=('Complete', docker_success))
+    def test_valid_message_s3_cmd(self, mock_cmd):
         self.message['body'] = '{"command":[{"type":"output", "value":"s3://lanlytics/path/to/input/test.geojson"}]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == worker.STATUS_COMPLETE)
         assert(result == docker_success)
 
-    def test_invalid_json_message(self):
+    @mock.patch('worker.Command', 'execute', return_value=('Complete', docker_success))
+    def test_invalid_json_message(self, mock_cmd):
         self.message['body'] = '{"command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == worker.STATUS_FAILED)

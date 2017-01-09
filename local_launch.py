@@ -1,11 +1,12 @@
 import boto3
+import copy
 import json
 import os
-import sys
-import time
-import copy
 import shutil
 import subprocess
+import sys
+import time
+import utils
 from jsonschema import validate, ValidationError
 
 HOME = os.path.abspath(os.sep)
@@ -44,7 +45,7 @@ def lines_tail(string, tail_length):
 
 
 def get_local_path(uri):
-    if is_s3_uri(uri):
+    if utils.is_s3_uri(uri):
         local_file_name = uri.replace('s3:/', LOCAL_FILES_PATH)
         return local_file_name
     return uri
@@ -66,7 +67,7 @@ def get_docker_path(uri):
 
 
 def persist_resource(uri):
-    if is_s3_uri(uri):
+    if utils.is_s3_uri(uri):
         s3 = boto3.client('s3')
         local_file_name = get_local_path(uri)
 
@@ -87,7 +88,7 @@ def localize_command(command):
             parameter['value'] = localize_resource(parameter['value'])
         if parameter['type'] == 'output':
             parameter['value'] = localize_output(parameter['value'])
-        if parameter['type'] == 'parameter' and is_s3_uri(parameter['value']):
+        if parameter['type'] == 'parameter' and utils.is_s3_uri(parameter['value']):
             print('WARNING: s3 uri used in a parameter')
 
     return local_command
