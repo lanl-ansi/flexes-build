@@ -23,20 +23,20 @@ LOCAL_FILES_PATH = os.path.join(HOME, LOCAL_FILES_DIR)
 LOG_LINE_LIMIT = 10
 
 class Command:
-    def __init__(self, cmd_type, cmd, cmd_prefix):
+    def __init__(self, cmd_type, message, cmd_prefix):
         if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-        self.cmd = json.loads(cmd['body'])
+        self.command = json.loads(message['body'])
         self.prefix = cmd_prefix
-        self.service = cmd['service']
+        self.service = message['service']
         self.type = cmd_type
 
     def execute(self):
         if self.type == 'docker':
-            return launch_container(self.service, self.cmd)
+            return launch_container(self.service, self.command)
         elif self.type == 'native':
-            return launch_native(self.cmd_prefix, self.cmd)
+            return launch_native(self.cmd_prefix, self.command)
 
 
 def lines_tail(string, tail_length):
