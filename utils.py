@@ -5,8 +5,8 @@ import os
 from jsonschema import validate, ValidationError
 
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as file:
-    msg_schema = json.load(file)
-    s3_uri_schema = msg_schema['definitions']['s3_uri']
+    message_schema = json.load(file)
+    s3_uri_schema = message_schema['definitions']['s3_uri']
 
 DOCKER_WORKER_TYPE = 'generic'
 

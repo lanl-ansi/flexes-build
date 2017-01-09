@@ -66,6 +66,27 @@ def get_docker_path(uri):
     return path
 
 
+def localize_resource(uri):
+    if utils.is_s3_uri(uri):
+        s3 = boto3.client('s3')
+        local_file_name = get_local_path(uri)
+        make_local_dirs(local_file_name)
+
+        print('downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
+        get_s3_file(s3, uri, local_file_name)
+
+        return local_file_name
+    return uri
+
+
+def localize_output(uri):
+    if utils.is_s3_uri(uri):
+        local_path = get_local_path(uri)
+        make_local_dirs(local_path)
+        return local_path
+    return uri
+
+
 def persist_resource(uri):
     if utils.is_s3_uri(uri):
         s3 = boto3.client('s3')

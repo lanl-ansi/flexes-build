@@ -16,13 +16,13 @@ class TestIO:
             ]}
 
     def test_resolve_input_s3_json(self):
-        expected = dw.LOCAL_FILES_PATH+'/lanlytics/path/to/input/test.geojson'
+        expected = dw.LOCAL_FILES_PATH + '/lanlytics/path/to/input/test.geojson'
         file_uri = 's3://lanlytics/path/to/input/test.geojson'
         local_path = dw.get_local_path(file_uri)
         assert(local_path == expected)
 
     def test_resolve_input_s3_shp(self):
-        expected = dw.LOCAL_FILES_PATH+'/lanlytics/path/to/input/test.shp'
+        expected = dw.LOCAL_FILES_PATH + '/lanlytics/path/to/input/test.shp'
         file_uri = 's3://lanlytics/path/to/input/test.shp'
         local_path = dw.get_local_path(file_uri)
         assert(local_path == expected)
