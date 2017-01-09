@@ -2,6 +2,7 @@ import os, pytest, sys
 
 sys.path.append('.')
 
+import docker
 import json
 import mock
 
@@ -31,12 +32,18 @@ class TestCommands:
 
 
 class TestLaunch:
+    @mock.patch('boto3.resource')
+    @mock.patch('shutil.rmtree')
     @mock.patch('docker.Client', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('local_launch.localize_resource', return_value='/path/to/resource.txt')
-    def test_launch_container(self, mock_client, mock_makedirs, mock_localize_resource):
+    @mock.patch('local_launch.localize_resource', 
+                return_value='/path/to/resource.txt')
+    @mock.patch('local_launch.get_docker_image', 
+                return_value={'RepoTags': ['test:latest']})
+    def test_launch_container(self, mock_image, mock_localize_resource, 
+                              mock_makedirs, mock_client,
+                              mock_rmtree, mock_resource):
+        mock_client.return_value.logs.return_value = str.encode('logs')
         command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
         result = l.launch_container('test', command)
-        print(result)
-        assert(True==False)
-
+        assert(mock_rmtree.called)
