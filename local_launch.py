@@ -34,9 +34,10 @@ class Command:
 
     def execute(self):
         if self.type == 'docker':
-            return launch_container(self.service, self.command)
+            client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
+            return launch_container(client, self.service, self.command)
         elif self.type == 'native':
-            return launch_native(self.cmd_prefix, self.command)
+            return launch_native(self.prefix, self.command)
 
 
 def lines_tail(string, tail_length):
@@ -71,7 +72,8 @@ def get_docker_path(uri):
     path = get_local_path(uri)
     if path.startswith(LOCAL_FILES_PATH):
         return path.replace(LOCAL_FILES_PATH, os.sep+LOCAL_FILES_DIR)
-    return path
+    else:
+        return path
 
 
 def localize_resource(uri):
@@ -80,11 +82,12 @@ def localize_resource(uri):
         local_file_name = get_local_path(uri)
         make_local_dirs(local_file_name)
 
-        print('downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
+        print('Downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
         get_s3_file(s3, uri, local_file_name)
 
         return local_file_name
-    return uri
+    else:
+        return uri
 
 
 def localize_output(uri):
@@ -92,7 +95,8 @@ def localize_output(uri):
         local_path = get_local_path(uri)
         make_local_dirs(local_path)
         return local_path
-    return uri
+    else:
+        return uri
 
 
 def persist_resource(uri):
@@ -100,7 +104,7 @@ def persist_resource(uri):
         s3 = boto3.client('s3')
         local_file_name = get_local_path(uri)
 
-        print('uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
+        print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
         put_file_s3(s3, local_file_name, uri)
 
 
@@ -179,7 +183,7 @@ def build_python_command(local_command):
     for parameter in local_command['command']:
         param = parameter['value']
         if 'name' in parameter:
-            param = parameter['name']+param
+            param = parameter['name'] + param
         python_command.append(param)
     if 'stdin' in local_command:
         stdin = local_command['stdin']
@@ -193,7 +197,7 @@ def build_python_command(local_command):
 
 def build_localized_command(command, cmd_prefix=[]):
     abstract_cmd = build_bash_command(command)
-    print('\nabstract unix command:')
+    print('\nAbstract unix command:')
     print('{} {}\n'.format(cmd_prefix, abstract_cmd))
 
     local_command = localize_command(command)
@@ -202,21 +206,21 @@ def build_localized_command(command, cmd_prefix=[]):
 
 
 def worker_cleanup(command, exit_code, worker_log):
-    print('exit code: {}'.format(exit_code))
-    feedback = 'job finished with exit code: {}'.format(exit_code)
+    print('Exit code: {}'.format(exit_code))
+    feedback = 'Job finished with exit code: {}'.format(exit_code)
     
     if exit_code != 0:
-        print('\nworker log:')
+        print('\nWorker log:')
         print(worker_log)
-        feedback = feedback+'\n'+worker_log
+        feedback = feedback + '\n' + worker_log
     else:
-        print('\npersisting output:')
+        print('\nPersisting output:')
         persist_command(command)
 
-    print('\ncleaning local cache: {}'.format(LOCAL_FILES_PATH))
+    print('\nCleaning local cache: {}'.format(LOCAL_FILES_PATH))
     shutil.rmtree(LOCAL_FILES_PATH)
 
-    print('\njob completed.')
+    print('\nJob completed.')
     return feedback
 
 
@@ -242,14 +246,16 @@ def launch_native(cmd_prefix, command):
     if stderr_file != None:
         stderr = open(stderr_file, 'w')
 
-    print('\nnative command:')
+    print('\nNative command:')
     print(native_cmd)
     print('stdin:  {}'.format(stdin))
     print('stdout: {}'.format(stdout))
     print('stderr: {}'.format(stderr))
     
-    # shell parameter used for windows support
-    process = subprocess.Popen(native_cmd, stdin=stdin, stdout=stdout, stderr=stderr, shell=(os.name == 'nt'))
+    # Shell parameter used for Windows support
+    process = subprocess.Popen(native_cmd, stdin=stdin, 
+                               stdout=stdout, stderr=stderr, 
+                               shell=(os.name == 'nt'))
 
     stdout_log, stderr_log = process.communicate()
 
@@ -270,7 +276,7 @@ def launch_native(cmd_prefix, command):
     return worker_cleanup(command, process.returncode, worker_log)
 
 
-def launch_container(image_name, command):
+def launch_container(client, image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
     local_command = build_localized_command(command)
@@ -280,26 +286,25 @@ def launch_container(image_name, command):
 
     docker_cmd = build_bash_command(docker_command)
     docker_cmd = ' '.join(docker_cmd)
-    print('\ndocker command:')
+    print('\nDocker command:')
     print(docker_cmd)
 
-    print('\nsetting up docker container:')
+    print('\nSetting up docker container:')
     docker_volume = os.path.abspath(LOCAL_FILES_DIR)
     binds = ['{}:{}'.format(LOCAL_FILES_PATH, docker_volume)]
-    print('volume binding: {}'.format(binds[0]))
+    print('Volume binding: {}'.format(binds[0]))
 
-    client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
     image = get_docker_image(client, image_name)
     container = client.create_container(image=image['RepoTags'][0], command=docker_cmd,
                                         volumes=[docker_volume],
                                         host_config=client.create_host_config(binds=binds))
 
-    print('start container')
+    print('Starting container')
     client.start(container)
     exit_code = client.wait(container)
     container_log = client.logs(container, tail=LOG_LINE_LIMIT).decode('utf-8')
 
-    print('removing container: {}'.format(container))
+    print('Removing container: {}'.format(container))
     client.remove_container(container)
 
     return worker_cleanup(command, exit_code, container_log)
