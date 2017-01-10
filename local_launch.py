@@ -297,7 +297,7 @@ def launch_container(image_name, command):
     print('start container')
     client.start(container)
     exit_code = client.wait(container)
-    container_log = str(client.logs(container, tail=LOG_LINE_LIMIT),'utf-8')
+    container_log = client.logs(container, tail=LOG_LINE_LIMIT).decode('utf-8')
 
     print('removing container: {}'.format(container))
     client.remove_container(container)
