@@ -31,11 +31,13 @@ class TestCommands:
         assert(isinstance(local_command, dict))
 
     @mock.patch('local_launch.launch_container')
-    def test_execute_docker(self, mock_launch_container):
+    @mock.patch('docker.Client', autospec=True)
+    def test_execute_docker(self, mock_client, mock_launch_container):
         message = {'service': 'test', 'id': '1234',
                     'body': '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'}
         cmd = l.Command('docker', message, [])
         cmd.execute()
+        assert(mock_client.called)
         assert(mock_launch_container.called)
 
     @mock.patch('local_launch.launch_native')
