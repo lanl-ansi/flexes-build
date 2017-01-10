@@ -16,13 +16,13 @@ class TestIO:
             ]}
 
     def test_resolve_input_s3_json(self):
-        expected = dw.local_files_path+'/lanlytics/path/to/input/test.geojson'
+        expected = dw.LOCAL_FILES_PATH + '/lanlytics/path/to/input/test.geojson'
         file_uri = 's3://lanlytics/path/to/input/test.geojson'
         local_path = dw.get_local_path(file_uri)
         assert(local_path == expected)
 
     def test_resolve_input_s3_shp(self):
-        expected = dw.local_files_path+'/lanlytics/path/to/input/test.shp'
+        expected = dw.LOCAL_FILES_PATH + '/lanlytics/path/to/input/test.shp'
         file_uri = 's3://lanlytics/path/to/input/test.shp'
         local_path = dw.get_local_path(file_uri)
         assert(local_path == expected)
@@ -37,12 +37,14 @@ class TestIO:
         aoi = dw.get_local_path(filename)
         assert(aoi == filename)
 
-    # TODO figureout how to mock file not found error
-    # @mock.patch('boto3.client')
-    # def test_s3_file_not_found(self, mock_resource):
-    #     filename = 's3://lanlytics/path/to/input/test.txt'
-    #     with pytest.raises(botocore.exceptions.ClientError):
-    #         dw.localize_resource(filename)
+    @mock.patch('boto3.client')
+    @mock.patch('utils.get_s3_file')
+    def test_s3_file_not_found(self, mock_resource, mock_get_s3):
+        error_response = {'Error': {'Code': 404}}
+        mock_get_s3.side_effect = botocore.exceptions.ClientError(error_response, 'download')
+        filename = 's3://lanlytics/path/to/input/test.txt'
+        with pytest.raises(botocore.exceptions.ClientError):
+            dw.localize_resource(filename)
 
     def test_parse_params(self):
         expected = '/root/input/simple_polyWGS84.shp --fields="Total Population;Total Jobs"'
