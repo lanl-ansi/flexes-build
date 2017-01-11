@@ -29,7 +29,9 @@ Messages come from the client in JSON format.
 }
 ```
 ## Docker Workers
-Docker workers are run inside of a Docker container and from a Docker image stored on the host machine. If the image is not present is can be retrieved from DockerHub or hub.lanlytics.com, this allows a single worker to handle a variety of services without having to launch specific workers for each service.
+Docker workers are run inside of a Docker container and from a Docker image stored on the host machine. 
+If the image is not present it can be retrieved from DockerHub or hub.lanlytics.com, this allows a 
+single worker to handle a variety of services without having to launch specific workers for each service.
 ```bash
 python3 worker.py generic
 ```
