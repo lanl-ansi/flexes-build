@@ -34,8 +34,7 @@ class Command:
 
     def execute(self):
         if self.type == 'docker':
-            client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-            return launch_container(client, self.service, self.command)
+            return launch_container(self.service, self.command)
         elif self.type == 'native':
             return launch_native(self.prefix, self.command)
 
@@ -267,7 +266,7 @@ def launch_native(cmd_prefix, command):
     return worker_cleanup(command, process.returncode, worker_log)
 
 
-def launch_container(client, image_name, command):
+def launch_container(image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
     local_command = build_localized_command(command)
@@ -277,6 +276,7 @@ def launch_container(client, image_name, command):
     print('\nDocker command: {}'.format(docker_cmd))
 
     print('\nSetting up docker container')
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
     image = 'hub.lanlytics.com/{}:latest'.format(image_name)
     docker_volume = os.path.abspath(LOCAL_FILES_DIR)
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
@@ -287,8 +287,8 @@ def launch_container(client, image_name, command):
         exit_code = 0
     except docker.errors.ContainerError as e:
         print('Container error: {}'.format(e))
-        logs = e
-        exit_code = -1
+        logs = e.stderr
+        exit_code = e.exit_status
 
     return worker_cleanup(command, exit_code, logs)
 
