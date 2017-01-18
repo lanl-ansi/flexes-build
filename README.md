@@ -1,4 +1,5 @@
 # lanlytics API worker
+[![Build Status](https://ci.lanlytics.com/nisac/lanlytics-api-worker.svg?token=RmFwLDimUxzrPXXq8Kti&branch=master)](https://ci.lanlytics.com/nisac/lanlytics-api-worker)
 
 Code for launching workers to communicate with the lanlytics API queue
 
