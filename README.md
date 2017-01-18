@@ -37,10 +37,10 @@ Docker workers are run inside of a Docker container and from a Docker image stor
 If the image is not present it can be retrieved from DockerHub or hub.lanlytics.com, this allows a 
 single worker to handle a variety of services without having to launch specific workers for each service.
 ```bash
-python3 worker.py --worker_type generic
+python3 worker.py generic
 ```
 ## Native Workers
 Native workers are run locally on the host machine without any containerization.
 ```bash
-python3 worker.py --worker_type native --cmd_prefix ["python", "my_script.py"]
+python3 worker.py native ["python", "my_script.py"]
 ```
