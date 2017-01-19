@@ -9,4 +9,4 @@ install: pip install -r requirements.txt
 
 script: ./test.it
 
-after_success: bash <(curl -k https://cov.lanlytics.com/bash) -t 4c712a6d-f6be-4053-a8ce-25823936fdd9
+after_success: bash <(curl -sSL https://cov.lanlytics.com/bash) -t 4c712a6d-f6be-4053-a8ce-25823936fdd9
