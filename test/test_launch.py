@@ -31,13 +31,11 @@ class TestCommands:
         assert(isinstance(local_command, dict))
 
     @mock.patch('local_launch.launch_container')
-    @mock.patch('docker.Client', autospec=True)
-    def test_execute_docker(self, mock_client, mock_launch_container):
+    def test_execute_docker(self, mock_launch_container):
         message = {'service': 'test', 'id': '1234',
                     'body': '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'}
         cmd = l.Command('docker', message, [])
         cmd.execute()
-        assert(mock_client.called)
         assert(mock_launch_container.called)
 
     @mock.patch('local_launch.launch_native')
@@ -52,19 +50,32 @@ class TestCommands:
 class TestLaunch:
     @mock.patch('boto3.resource')
     @mock.patch('shutil.rmtree')
-    @mock.patch('docker.Client', autospec=True)
+    @mock.patch('docker.DockerClient', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
     @mock.patch('local_launch.localize_resource', 
                 return_value='/path/to/resource.txt')
-    @mock.patch('local_launch.get_docker_image', 
-                return_value={'RepoTags': ['test:latest']})
-    def test_launch_container(self, mock_image, mock_localize_resource, 
+    def test_launch_container(self, mock_localize_resource, 
                               mock_makedirs, mock_client,
                               mock_rmtree, mock_resource):
-        mock_client.return_value.logs.return_value = str.encode('logs')
+        mock_client.return_value.containers.run.return_value = str.encode('logs')
         command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        result = l.launch_container(mock_client, 'test', command)
+        result = l.launch_container('test', command)
         assert(mock_rmtree.called)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('shutil.rmtree')
+    @mock.patch('docker.DockerClient', autospec=True)
+    @mock.patch('os.makedirs', return_value=None)
+    @mock.patch('local_launch.localize_resource', 
+                return_value='/path/to/resource.txt')
+    def test_launch_container_fail(self, mock_localize_resource, 
+                                   mock_makedirs, mock_client,
+                                   mock_rmtree, mock_resource):
+        expected = 'Job finished with exit code: -1\nContainer execution failed' 
+        mock_client.return_value.containers.run.side_effect = docker.errors.ContainerError('error', -1, 'test', 'test', 'Container execution failed')
+        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        result = l.launch_container('test', command)
+        assert(result == expected) 
 
     @mock.patch('boto3.resource')
     @mock.patch('shutil.rmtree')

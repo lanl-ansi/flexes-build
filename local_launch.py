@@ -34,8 +34,7 @@ class Command:
 
     def execute(self):
         if self.type == 'docker':
-            client = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
-            return launch_container(client, self.service, self.command)
+            return launch_container(self.service, self.command)
         elif self.type == 'native':
             return launch_native(self.prefix, self.command)
 
@@ -59,15 +58,6 @@ def make_local_dirs(local_file):
         os.makedirs(directory)
 
         
-def get_docker_image(client, image_name):
-    for image in client.images():
-        for tag in image['RepoTags']:
-            if image_name + ':latest' in tag:
-                return image
-    else:
-        return None
-
-
 def get_docker_path(uri):
     path = get_local_path(uri)
     if path.startswith(LOCAL_FILES_PATH):
@@ -276,38 +266,31 @@ def launch_native(cmd_prefix, command):
     return worker_cleanup(command, process.returncode, worker_log)
 
 
-def launch_container(client, image_name, command):
+def launch_container(image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
     local_command = build_localized_command(command)
-
     docker_command = dockerize_command(local_command)
-    #print(docker_command)
-
     docker_cmd = build_bash_command(docker_command)
     docker_cmd = ' '.join(docker_cmd)
-    print('\nDocker command:')
-    print(docker_cmd)
+    print('\nDocker command: {}'.format(docker_cmd))
 
-    print('\nSetting up docker container:')
+    print('\nSetting up docker container')
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
     docker_volume = os.path.abspath(LOCAL_FILES_DIR)
-    binds = ['{}:{}'.format(LOCAL_FILES_PATH, docker_volume)]
-    print('Volume binding: {}'.format(binds[0]))
+    volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
+    try:
+        logs = client.containers.run(image, volumes=volumes, command=docker_cmd,
+                                     remove=True, stdout=True, stderr=True)
+        logs = logs.decode('utf-8')
+        exit_code = 0
+    except docker.errors.ContainerError as e:
+        print('Container error: {}'.format(e))
+        logs = e.stderr
+        exit_code = e.exit_status
 
-    image = get_docker_image(client, image_name)
-    container = client.create_container(image=image['RepoTags'][0], command=docker_cmd,
-                                        volumes=[docker_volume],
-                                        host_config=client.create_host_config(binds=binds))
-
-    print('Starting container')
-    client.start(container)
-    exit_code = client.wait(container)
-    container_log = client.logs(container, tail=LOG_LINE_LIMIT).decode('utf-8')
-
-    print('Removing container: {}'.format(container))
-    client.remove_container(container)
-
-    return worker_cleanup(command, exit_code, container_log)
+    return worker_cleanup(command, exit_code, logs)
 
 
 if __name__ == '__main__':
