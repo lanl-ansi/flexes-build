@@ -293,6 +293,10 @@ def launch_container(image_name, command):
         print('Container error: {}'.format(e))
         logs = e.stderr.decode('utf-8')
         exit_code = e.exit_status
+    except docker.errors.ImageNotFound as e:
+        print('{} not found'.format(image))
+        logs = 'Image not found'
+        exit_code = -1
 
     return worker_cleanup(command, exit_code, logs)
 
