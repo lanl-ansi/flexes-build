@@ -96,7 +96,7 @@ def persist_resource(uri):
         local_file_name = get_local_path(uri)
 
         print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
-        put_file_s3(s3, local_file_name, uri)
+        utils.put_file_s3(s3, local_file_name, uri)
 
 
 def localize_command(command):
@@ -281,8 +281,9 @@ def launch_container(image_name, command):
     print('\nSetting up docker container')
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
     image = 'hub.lanlytics.com/{}:latest'.format(image_name)
-    docker_volume = os.path.abspath(LOCAL_FILES_DIR)
+    docker_volume = os.path.join('/', LOCAL_FILES_DIR)
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
+    print(volumes)
     try:
         logs = client.containers.run(image, volumes=volumes, command=docker_cmd,
                                      remove=True, stdout=True, stderr=True)
