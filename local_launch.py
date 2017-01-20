@@ -22,6 +22,7 @@ LOCAL_FILES_PATH = os.path.join(HOME, LOCAL_FILES_DIR)
 
 LOG_LINE_LIMIT = 10
 
+
 class Command:
     def __init__(self, cmd_type, message, cmd_prefix):
         if cmd_type not in ['docker', 'native']:
@@ -73,7 +74,7 @@ def localize_resource(uri):
         make_local_dirs(local_file_name)
 
         print('Downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
-        get_s3_file(s3, uri, local_file_name)
+        utils.get_s3_file(s3, uri, local_file_name)
 
         return local_file_name
     else:
@@ -149,7 +150,7 @@ def build_bash_command(local_command):
     for parameter in local_command['command']:
         param = parameter['value']
         if 'name' in parameter:
-            param = parameter['name'] + param
+            param = '{} {}'.format(parameter['name'], param)
         bash_command.append(param)
     if 'stdin' in local_command:
         stdin = '< {}'.format(local_command['stdin'])
@@ -202,16 +203,18 @@ def worker_cleanup(command, exit_code, worker_log):
     if exit_code != 0:
         print('\nWorker log:')
         print(worker_log)
+        status = 'failed'
         feedback = feedback + '\n' + worker_log
     else:
         print('\nPersisting output:')
+        status = 'complete'
         persist_command(command)
 
     print('\nCleaning local cache: {}'.format(LOCAL_FILES_PATH))
     shutil.rmtree(LOCAL_FILES_PATH)
 
     print('\nJob completed.')
-    return feedback
+    return status, feedback
 
 
 def launch_native(cmd_prefix, command):
@@ -287,7 +290,7 @@ def launch_container(image_name, command):
         exit_code = 0
     except docker.errors.ContainerError as e:
         print('Container error: {}'.format(e))
-        logs = e.stderr
+        logs = e.stderr.decode('utf-8')
         exit_code = e.exit_status
 
     return worker_cleanup(command, exit_code, logs)

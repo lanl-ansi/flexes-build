@@ -23,6 +23,13 @@ class TestLocalize:
 
 
 class TestCommands:
+    def test_build_bash_command(self):
+        command = json.loads('{"command":[{"type":"input","value":"/path/to/input.txt"}, \
+                                           {"type":"parameter","name":"-p","value":"foo"}]}')
+        expected = ['/path/to/input.txt', '-p foo']
+        bash_command = l.build_bash_command(command)
+        assert(bash_command == expected)
+        
     @mock.patch('local_launch.localize_resource', return_value='/path/to/resource.txt')
     @mock.patch('os.makedirs', return_value=None)
     def test_localize_command(self, mock_localize_resource, mock_makedirs):
@@ -72,9 +79,10 @@ class TestLaunch:
                                    mock_makedirs, mock_client,
                                    mock_rmtree, mock_resource):
         expected = 'Job finished with exit code: -1\nContainer execution failed' 
-        mock_client.return_value.containers.run.side_effect = docker.errors.ContainerError('error', -1, 'test', 'test', 'Container execution failed')
+        mock_client.return_value.containers.run.side_effect = docker.errors.ContainerError('error', -1, 'test', 'test', b'Container execution failed')
         command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        result = l.launch_container('test', command)
+        status, result = l.launch_container('test', command)
+        assert(status == 'failed')
         assert(result == expected) 
 
     @mock.patch('boto3.resource')
@@ -88,5 +96,5 @@ class TestLaunch:
         mock_subprocess.return_value.communicate.return_value = (b'test', b'test')
         mock_subprocess.return_value.returncode = 0
         command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        result = l.launch_native(['python', 'test.py'], command)
+        status, result = l.launch_native(['python', 'test.py'], command)
         assert(mock_rmtree.called)

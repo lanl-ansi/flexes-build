@@ -45,9 +45,3 @@ class TestIO:
         filename = 's3://lanlytics/path/to/input/test.txt'
         with pytest.raises(botocore.exceptions.ClientError):
             dw.localize_resource(filename)
-
-    def test_parse_params(self):
-        expected = '/root/input/simple_polyWGS84.shp --fields="Total Population;Total Jobs"'
-        cmd = dw.build_bash_command(self.command)
-        cmd = ' '.join(cmd)
-        assert(cmd == expected)

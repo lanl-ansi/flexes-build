@@ -18,40 +18,40 @@ class TestWorker:
         self.mock_db = mock.Mock()
 
     def mock_execute(self):
-        return (worker.STATUS_COMPLETE, docker_success)
+        return ('complete', docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_valid_message(self):
         self.message['body'] = '{"command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_COMPLETE)
+        assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_valid_message_s3_stdin(self):
         self.message['body'] = '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_COMPLETE)
+        assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_valid_message_s3_cmd(self):
         self.message['body'] = '{"command":[{"type":"output", "value":"s3://lanlytics/path/to/input/test.geojson"}]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_COMPLETE)
+        assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_invalid_json_message(self):
         self.message['body'] = '{command:[]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_FAILED)
+        assert(status == 'failed')
         assert('Expecting property name' in result)
 
     def test_invalid_schema_message(self):
         self.message['body'] = '{"bloop":[]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_FAILED)
+        assert(status == 'failed')
         assert('Failed validating' in result)
 
     @mock.patch('boto3.client')
@@ -59,7 +59,7 @@ class TestWorker:
     def test_s3_file_not_found(self, mock_resource, mock_cmd):
         self.message['body'] = '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == worker.STATUS_FAILED)
+        assert(status == 'failed')
         assert('error occurred (404)' in result)
 
     ### Test Native CLI with

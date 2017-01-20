@@ -8,8 +8,6 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_sche
     message_schema = json.load(file)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
-DOCKER_WORKER_TYPE = 'generic'
-
 # AWS methods
 def s3_get_uri(uri):
     return uri.split('/',2)[-1].split('/',1)

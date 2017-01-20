@@ -13,9 +13,7 @@ from jsonschema import validate, ValidationError
 #from local_launch import launch_native
 from local_launch import Command
 
-STATUS_COMPLETE = 'complete'
-STATUS_FAILED = 'failed'
-STATUS_RUNNING = 'running'
+DOCKER_WORKER_TYPE = 'generic'
 
 def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['id']))
@@ -29,7 +27,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
         print('Message JSON failed validation')
         return handle_exception(db, message['id'], e)
 
-    utils.update_job(db, message['id'], STATUS_RUNNING)
+    utils.update_job(db, message['id'], 'running')
 
     command = Command(cmd_type, message, cmd_prefix)
     try:
@@ -38,12 +36,12 @@ def process_message(db, cmd_type, cmd_prefix, message):
     except Exception as e:
         return handle_exception(db, message['id'], e)
 
-    return utils.update_job(db, message['id'], STATUS_COMPLETE, result)
+    return utils.update_job(db, message['id'], status, result)
 
 
 def handle_exception(db, msg_id, e):
     traceback.print_exc()
-    return utils.update_job(db, msg_id, STATUS_FAILED, str(e))
+    return utils.update_job(db, msg_id, 'failed', str(e))
 
 
 def run_worker(args):
@@ -81,6 +79,7 @@ def build_cli_parser():
 
     parser_docker = subparsers.add_parser('docker', help='runs commands in docker containers')
     parser_docker.set_defaults(launch='docker')
+    parser_docker.set_defaults(cmd_prefix='[]')
     parser_docker.set_defaults(worker_type=DOCKER_WORKER_TYPE)
 
     parser_native = subparsers.add_parser('native', help='runs commands natively')
