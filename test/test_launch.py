@@ -87,6 +87,22 @@ class TestLaunch:
 
     @mock.patch('boto3.resource')
     @mock.patch('shutil.rmtree')
+    @mock.patch('docker.DockerClient', autospec=True)
+    @mock.patch('os.makedirs', return_value=None)
+    @mock.patch('local_launch.localize_resource', 
+                return_value='/path/to/resource.txt')
+    def test_launch_container_notfound(self, mock_localize_resource, 
+                                   mock_makedirs, mock_client,
+                                   mock_rmtree, mock_resource):
+        expected = 'Job finished with exit code: -1\nImage not found' 
+        mock_client.return_value.containers.run.side_effect = docker.errors.ImageNotFound('Image not found')
+        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        status, result = l.launch_container('test', command)
+        assert(status == 'failed')
+        assert(result == expected) 
+
+    @mock.patch('boto3.resource')
+    @mock.patch('shutil.rmtree')
     @mock.patch('os.makedirs', return_value=None)
     @mock.patch('local_launch.localize_resource', 
                 return_value='test/data/test.txt')
