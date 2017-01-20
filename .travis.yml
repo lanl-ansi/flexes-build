@@ -8,3 +8,5 @@ cache: pip
 install: pip install -r requirements.txt
 
 script: py.test --cov=./
+
+after_success: codecov -u https://cov.lanlytics.com -t da396262-2b5b-413b-9ba7-125adfb99373
