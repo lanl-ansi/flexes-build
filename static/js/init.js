@@ -8,7 +8,7 @@ $(function () {
 $('body').on('click', '#PopEconSubmit', function () {
   var input = $('#PopEconInput').val();
   $.post('./popecon', input, function(response) {
-    jobId = response.jobId;
+    jobId = response.job_id;
     $('#PopEconQueryDiv').show(1000);
   });
 });
