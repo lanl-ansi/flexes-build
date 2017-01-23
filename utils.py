@@ -18,13 +18,14 @@ def send_message(message, attributes):
         return
 
 
-def add_job(job_id, service):
+def add_job(job_id, command, service):
     try:
         db = boto3.resource('dynamodb')
         table = db.Table('jobs')
         table.put_item(Item={
             'job_id': job_id,
             'service': service,
+            'command': json.dumps(command),
             'result': None,
             'status': 'submitted'
         })
@@ -35,7 +36,7 @@ def add_job(job_id, service):
 
 def submit_job(message, attributes):
     job_id = send_message(message, attributes)
-    add_job(job_id, attributes['Service'])
+    add_job(job_id, message, attributes['Service'])
     return job_id
 
 
