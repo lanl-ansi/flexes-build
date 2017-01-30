@@ -54,6 +54,12 @@ class TestWorker:
         assert(status == 'failed')
         assert('Failed validating' in result)
 
+    def test_active_check_message(self):
+        self.message['body'] = '{"test":true, "command":[]}'
+        status, result = worker.process_message(self.mock_db, 'native', [], self.message)
+        assert(status == 'active')
+        assert('Service is active' in result)
+
     @mock.patch('boto3.client')
     @mock.patch.object(local_launch.Command, 'execute', side_effect=botocore.exceptions.ClientError({'Error': {'Code': 404}}, 'download'))
     def test_s3_file_not_found(self, mock_resource, mock_cmd):

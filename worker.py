@@ -19,7 +19,10 @@ def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['id']))
 
     try:
-        validate(json.loads(message['body']), utils.message_schema)
+        msg_body = json.loads(message['body'])
+        validate(msg_body, utils.message_schema)
+        if 'test' in msg_body and msg_body['test']:
+            return utils.update_job(db, message['id'], 'active', 'Service is active')
     except ValueError as e:
         print('Message string was not valid JSON')
         return handle_exception(db, message['id'], e)
