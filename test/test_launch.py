@@ -8,6 +8,10 @@ import mock
 
 import local_launch as l
 
+test_commands = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_commands.json')
+with open(test_commands) as f:
+    commands = json.load(f)
+
 class TestLocalize:
     def setup_method(self, _):
         self.uri = 's3://lanlytics/path/to/input/test.geojson'
@@ -19,10 +23,26 @@ class TestLocalize:
     @mock.patch('os.makedirs', return_value=None)
     def test_make_local_dirs(self, mock_makedirs):
         l.make_local_dirs('/path/to/resource.txt')
-        assert(mock_makedirs.called)
+        mock_makedirs.assert_called()
 
 
 class TestCommands:
+    @mock.patch('boto3.resource')
+    @mock.patch('utils.get_s3_file')
+    @mock.patch('os.makedirs', return_value=None)
+    def test_build_localized_command(self, mock_makedirs, mock_get_s3, mock_resource):
+        command = commands['input_command']
+        local_command = l.build_localized_command(command)
+        assert(mock_get_s3.call_count == 2)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('utils.put_file_s3')
+    @mock.patch('shutil.rmtree')
+    def test_worker_cleanup(self, mock_rmtree, mock_put_s3, mock_resource):
+        command = commands['output_command']
+        status, feedback = l.worker_cleanup(command, 0, 'worker log')
+        assert(mock_put_s3.call_count == 2)
+
     def test_build_bash_command(self):
         command = json.loads('{"command":[{"type":"input","value":"/path/to/input.txt"}, \
                                            {"type":"parameter","name":"-p","value":"foo"}]}')

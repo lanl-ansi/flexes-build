@@ -69,13 +69,12 @@ def get_docker_path(uri):
 
 def localize_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.client('s3')
+        s3 = boto3.resource('s3')
         local_file_name = get_local_path(uri)
         make_local_dirs(local_file_name)
 
-        print('Downloading to local filesystem:\n  %s\n  %s' % (uri, local_file_name))
+        print('Downloading to local filesystem:\n{}\n{}'.format(uri, local_file_name))
         utils.get_s3_file(s3, uri, local_file_name)
-
         return local_file_name
     else:
         return uri
@@ -92,7 +91,7 @@ def localize_output(uri):
 
 def persist_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.client('s3')
+        s3 = boto3.resource('s3')
         local_file_name = get_local_path(uri)
 
         print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
@@ -107,6 +106,12 @@ def localize_command(command):
         local_command['stdout'] = localize_output(local_command['stdout'])
     if 'stderr' in local_command:
         local_command['stderr'] = localize_output(local_command['stderr'])
+    if 'input' in local_command:
+        for uri in local_command['input']:
+            localize_resource(uri)
+    if 'output' in local_command:
+        for uri in local_command['output']:
+            localize_output(uri)
     for parameter in local_command['command']:
         if parameter['type'] == 'input':
             parameter['value'] = localize_resource(parameter['value'])
@@ -114,7 +119,6 @@ def localize_command(command):
             parameter['value'] = localize_output(parameter['value'])
         if parameter['type'] == 'parameter' and utils.is_s3_uri(parameter['value']):
             print('WARNING: s3 uri used in a parameter')
-
     return local_command
 
 
@@ -134,12 +138,16 @@ def dockerize_command(local_command):
     return docker_command
 
 
-def persist_command(local_command):
-    if 'stdout' in local_command:
-        persist_resource(local_command['stdout'])
-    if 'stderr' in local_command:
-        persist_resource(local_command['stderr'])
-    for parameter in local_command['command']:
+def persist_command(command):
+    print(command)
+    if 'stdout' in command:
+        persist_resource(command['stdout'])
+    if 'stderr' in command:
+        persist_resource(command['stderr'])
+    if 'output' in command:
+        for uri in command['output']:
+            persist_resource(uri)
+    for parameter in command['command']:
         if parameter['type'] == 'output':
             persist_resource(parameter['value'])
 

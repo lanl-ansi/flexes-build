@@ -1,15 +1,41 @@
 import os, pytest, sys
 
 sys.path.append('.')
-import botocore
 import json
 import mock
-
 import local_launch
 import utils
 import worker
+from botocore.exceptions import ClientError
 
 docker_success = 'it worked!'
+
+test_commands = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_commands.json')
+with open(test_commands) as f:
+    commands = json.load(f)
+
+class MockMessage:
+    def __init__(self, msg_id, service):
+        self.message_attributes = MockAttributes(service)
+        if msg_id == 1234:
+            self.body = json.dumps(commands['basic_command'])
+            self.message_id = msg_id
+        elif msg_id == 'test_id':
+            self.body = json.dumps(commands['full_command'])
+            self.message_id = msg_id
+
+    def delete(self):
+        return
+
+class MockAttributes:
+    def __init__(self, service):
+        self.service = service
+
+    def get(self, service):
+        if service == 'StringValue':
+            return self.service
+        else:
+            return self
 
 class TestWorker:
     def setup_method(self, _):
@@ -29,14 +55,14 @@ class TestWorker:
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_valid_message_s3_stdin(self):
-        self.message['body'] = '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'
+        self.message['body'] = json.dumps(commands['std_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     def test_valid_message_s3_cmd(self):
-        self.message['body'] = '{"command":[{"type":"output", "value":"s3://lanlytics/path/to/input/test.geojson"}]}'
+        self.message['body'] = json.dumps(commands['full_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'complete')
         assert(result == docker_success)
@@ -49,21 +75,29 @@ class TestWorker:
         assert('Expecting property name' in result)
 
     def test_invalid_schema_message(self):
-        self.message['body'] = '{"bloop":[]}'
+        self.message['body'] = json.dumps(commands['bad_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'failed')
         assert('Failed validating' in result)
 
+    @mock.patch('boto3.resource')
+    def test_receive_message(self, mock_resource):
+        messages = [MockMessage(1234, 'foo'), MockMessage('test_id', 'test')]
+        mock_resource.get_queue_by_name.return_value.receive_messages.return_value = messages
+        message = utils.receive_message(mock_resource, 'test')
+        assert(message['id'] == 'test_id')
+
     def test_active_check_message(self):
-        self.message['body'] = '{"test":true, "command":[]}'
+        self.message['body'] = json.dumps(commands['test_command'])
         status, result = worker.process_message(self.mock_db, 'native', [], self.message)
         assert(status == 'active')
         assert('Service is active' in result)
 
-    @mock.patch('boto3.client')
-    @mock.patch.object(local_launch.Command, 'execute', side_effect=botocore.exceptions.ClientError({'Error': {'Code': 404}}, 'download'))
-    def test_s3_file_not_found(self, mock_resource, mock_cmd):
-        self.message['body'] = '{"command":[{"type":"input", "value":"s3://lanlytics/path/to/input/test.txt"}]}'
+    @mock.patch('boto3.resource')
+    @mock.patch.object(local_launch.Command, 'execute')
+    def test_s3_file_not_found(self, mock_cmd, mock_resource):
+        mock_cmd.side_effect = ClientError({'Error': {'Code': 404}}, 'download')
+        self.message['body'] = json.dumps(commands['basic_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'failed')
         assert('error occurred (404)' in result)

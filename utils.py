@@ -9,25 +9,37 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_sche
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
 # AWS methods
-def s3_get_uri(uri):
-    return uri.split('/',2)[-1].split('/',1)
+def s3_get_uri(s3, uri):
+    bucket_name, key = uri.split('/', 3)[2:]
+    return (s3.Bucket(bucket_name), key)
 
 
 def get_s3_file(s3, uri, local_file):
-    bucket_id, key = s3_get_uri(uri)
-    s3.download_file(bucket_id, key, local_file)
+    bucket, key = s3_get_uri(s3, uri)
+    for obj in bucket.objects.filter(Prefix=key):
+        local_file = os.path.join(os.path.dirname(local_file), 
+                                  os.path.basename(obj.key))
+        if not obj.key.endswith('/'):
+            bucket.download_file(obj.key, local_file)
 
 
 def put_file_s3(s3, local_file, uri):
-    bucket_id, key = s3_get_uri(uri)
-    s3.upload_file(local_file, bucket_id, key)
+    bucket, key = s3_get_uri(s3, uri)
+    local_dir = os.path.dirname(local_file)
+    prefix = os.path.basename(local_file)
+    for f in os.listdir(local_dir):
+        filename, ext = os.path.splitext(f)
+        if f == prefix:
+            bucket.upload_file(local_file, key)
+            break
+        elif filename == prefix:
+            bucket.upload_file(local_file + ext, key + ext)
 
 
 def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
     message = {'body': None, 'id': None, 'service': None}
 
-    # Process message with optional Service attribute
     for msg in queue.receive_messages(MessageAttributeNames=['Service', 'ServiceType']):
         if msg.message_attributes is not None:
             service_type = msg.message_attributes.get('ServiceType').get('StringValue')
