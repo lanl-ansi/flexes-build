@@ -12,6 +12,14 @@
       "type": "array",
       "items": {"$ref": "#/definitions/command"}
     },
+    "input": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/s3_uri"}
+    },
+    "output": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/s3_uri"}
+    },
     "test": {"type": "boolean"}
   },
   "definitions": {
