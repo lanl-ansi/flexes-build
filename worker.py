@@ -99,4 +99,8 @@ def build_cli_parser():
 if __name__ == '__main__':
     parser = build_cli_parser()
     args = parser.parse_args()
-    run_worker(args)
+    try:
+        run_worker(args)
+    except KeyboardInterrupt:
+        print('Stopping worker')
+        sys.exit()
