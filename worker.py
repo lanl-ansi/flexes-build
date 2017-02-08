@@ -65,7 +65,7 @@ def run_worker(args):
 
     while True:
         message = utils.receive_message(sqs, args.worker_type)
-        if message['body'] is not None:
+        if message is not None:
             process_message(db, args.launch, args.cmd_prefix, message)
         else:
             sys.stdout.write('.')

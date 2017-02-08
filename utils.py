@@ -38,19 +38,19 @@ def put_file_s3(s3, local_file, uri):
 
 def receive_message(sqs, service):
     queue = sqs.get_queue_by_name(QueueName='services')
-    message = {'body': None, 'id': None, 'service': None}
 
     for msg in queue.receive_messages(MessageAttributeNames=['Service', 'ServiceType']):
         if msg.message_attributes is not None:
             service_type = msg.message_attributes.get('ServiceType').get('StringValue')
             service_name = msg.message_attributes.get('Service').get('StringValue')
             if service_type == service:
-                message['service'] = service_name
-                message['body'] = msg.body
-                message['id'] = msg.message_id
+                message = {'service': service_name, 
+                           'body': msg.body, 
+                           'id': msg.message_id}
                 msg.delete()
-                break
-    return message
+                return message
+    else:
+        return
 
 
 def update_job(db, job_id, status, result=None):
