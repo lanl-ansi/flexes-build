@@ -4,6 +4,7 @@ import redis
 from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
+from flask_boto3 import Boto3
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
@@ -18,7 +19,11 @@ APP_STATIC = os.path.join(APP_ROOT, 'static')
 REDIS_HOST = 'jobs.be6b1p.0001.usgw1.cache.amazonaws.com'
 REDIS_PORT = 6379
 REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
+
+app.config['BOTO3_SERVICES'] = ['sqs', 'dynamodb']
 app.config['REDIS_URL'] = REDIS_URL
+
+boto = Boto3(app)
 db = FlaskRedis(app)
 
 with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
@@ -43,7 +48,9 @@ def service_response(message, attributes):
                     'status': 'error',
                     'message': 'not a valid input'}
     else:
-        job_id = submit_job(db, message, attributes)
+        dyn = boto.resources['dynamodb']
+        sqs = boto.resources['sqs']
+        job_id = submit_job(db, dyn, sqs, message, attributes)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
@@ -57,7 +64,8 @@ def index():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    jobs = [job for job in all_jobs() if job['status'] != 'complete']
+    dyn = boto.resources['dynamodb']
+    jobs = [job for job in all_jobs(dyn) if job['status'] != 'complete']
     return render_template('dashboard.html', jobs=jobs)
 
 
@@ -119,7 +127,8 @@ def render_docs(service):
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
 def query_status(service, job_id):
-    return jsonify(**query_job(db, job_id))
+    dyn = boto.resources['dynamodb']
+    return jsonify(**query_job(db, dyn, job_id))
 
 
 @app.route('/deploy', methods=['GET'])
