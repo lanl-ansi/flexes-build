@@ -39,6 +39,7 @@ class TestEndpoints:
         }
         data = json.dumps(command)
         resp = self.client.post(service_url, data=data, content_type='application/json')
+        print(resp.json)
         assert(resp.json == expected)
 
     def test_service_post_empty(self):
