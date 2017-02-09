@@ -18,37 +18,33 @@ def send_message(message, attributes):
         return
 
 
-def add_job(job_id, command, service):
-    try:
-        db = boto3.resource('dynamodb')
-        table = db.Table('jobs')
-        table.put_item(Item={
-            'job_id': job_id,
-            'service': service,
-            'command': json.dumps(command),
-            'result': None,
-            'status': 'submitted'
-        })
-    except botocore.exceptions.NoRegionError:
-        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
-        return
+def add_job(db, job_id, command, service):
+    job = {'job_id': job_id,
+           'service': service,
+           'command': json.dumps(command),
+           'result': None,
+           'status': 'submitted'}
+    db.set(job_id, json.dumps(job))
+    dyn = boto3.resource('dynamodb')
+    table = dyn.Table('jobs')
+    table.put_item(Item=job)
 
 
-def submit_job(message, attributes):
+def submit_job(db, message, attributes):
     job_id = send_message(message, attributes)
-    add_job(job_id, message, attributes['Service'])
+    add_job(db, job_id, message, attributes['Service'])
     return job_id
 
 
-def query_job(job_id):
-    try:
-        db = boto3.resource('dynamodb')
-        table = db.Table('jobs')
+def query_job(db, job_id):
+    response = db.get(job_id)
+    if response is not None:
+        return json.loads(response.decode())
+    else:
+        dyn = boto3.resource('dynamodb')
+        table = dyn.Table('jobs')
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
-    except botocore.exceptions.NoRegionError:
-        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
-        return
 
 
 def all_jobs():

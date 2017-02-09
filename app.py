@@ -1,8 +1,10 @@
 import json
 import os
+import redis
 from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
+from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from markdown2 import markdown
@@ -12,6 +14,12 @@ app = Flask(__name__)
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
+
+REDIS_HOST = 'jobs.be6b1p.0001.usgw1.cache.amazonaws.com'
+REDIS_PORT = 6379
+REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
+app.config['REDIS_URL'] = REDIS_URL
+db = FlaskRedis(app)
 
 with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
     message_schema = json.load(f)
@@ -35,7 +43,7 @@ def service_response(message, attributes):
                     'status': 'error',
                     'message': 'not a valid input'}
     else:
-        job_id = submit_job(message, attributes)
+        job_id = submit_job(db, message, attributes)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
@@ -111,7 +119,7 @@ def render_docs(service):
 
 @app.route('/<service>/jobs/<job_id>', methods=['GET'])
 def query_status(service, job_id):
-    return jsonify(**query_job(job_id))
+    return jsonify(**query_job(db, job_id))
 
 
 @app.route('/deploy', methods=['GET'])
