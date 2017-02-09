@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 import utils
+from settings import *
 
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
@@ -211,11 +212,11 @@ def worker_cleanup(command, exit_code, worker_log):
     if exit_code != 0:
         print('\nWorker log:')
         print(worker_log)
-        status = 'failed'
+        status = STATUS_FAIL
         feedback = feedback + '\n' + worker_log
     else:
         print('\nPersisting output:')
-        status = 'complete'
+        status = STATUS_COMPLETE
         persist_command(command)
 
     print('\nCleaning local cache: {}'.format(LOCAL_FILES_PATH))

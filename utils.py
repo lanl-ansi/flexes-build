@@ -3,6 +3,7 @@ import docker
 import json
 import os
 from jsonschema import validate, ValidationError
+from settings import *
 
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as file:
     message_schema = json.load(file)
@@ -57,7 +58,7 @@ def update_job(db, job_id, status, result=None):
     val = json.loads(db.get(job_id).decode())
     val.update({'status': status, 'result': result})
     db.set(job_id, json.dumps(val))
-    if status == 'complete':
+    if status == STATUS_COMPLETE:
         db.expire(job_id, 60)
         dyn = boto3.resource('dynamodb')
         table = dyn.Table('jobs')
@@ -65,7 +66,7 @@ def update_job(db, job_id, status, result=None):
                           UpdateExpression='SET #stat = :val1, #r = :val2',
                           ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                           ExpressionAttributeValues={':val1': status, ':val2': result})
-    elif status == 'active':
+    elif status == STATUS_ACTIVE:
         db.expire(job_id, 30)
     return status, result
 
