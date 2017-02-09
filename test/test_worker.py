@@ -42,33 +42,38 @@ class TestWorker:
         self.message = {'id': '1234', 'service': 'worker'}
         self.mock_docker_client = mock.Mock()
         self.mock_db = mock.Mock()
+        self.mock_db.get.return_value = b'{}'
 
     def mock_execute(self):
         return ('complete', docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
-    def test_valid_message(self):
+    @mock.patch('boto3.resource')
+    def test_valid_message(self, mock_resource):
         self.message['body'] = '{"command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'complete')
         assert(result == docker_success)
 
+    @mock.patch('boto3.resource')
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
-    def test_valid_message_s3_stdin(self):
+    def test_valid_message_s3_stdin(self, mock_resource):
         self.message['body'] = json.dumps(commands['std_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
-    def test_valid_message_s3_cmd(self):
+    @mock.patch('boto3.resource')
+    def test_valid_message_s3_cmd(self, mock_resource):
         self.message['body'] = json.dumps(commands['full_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'complete')
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
-    def test_invalid_json_message(self):
+    @mock.patch('boto3.resource')
+    def test_invalid_json_message(self, mock_resource):
         self.message['body'] = '{command:[]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == 'failed')
@@ -87,7 +92,8 @@ class TestWorker:
         message = utils.receive_message(mock_resource, 'test')
         assert(message['id'] == 'test_id')
 
-    def test_active_check_message(self):
+    @mock.patch('boto3.resource')
+    def test_active_check_message(self, mock_resource):
         self.message['body'] = json.dumps(commands['test_command'])
         status, result = worker.process_message(self.mock_db, 'native', [], self.message)
         assert(status == 'active')

@@ -14,6 +14,8 @@ from jsonschema import validate, ValidationError
 from local_launch import Command
 
 DOCKER_WORKER_TYPE = 'generic'
+REDIS_HOST = 'jobs.be6b1p.0001.usgw1.cache.amazonaws.com'
+REDIS_PORT = 6379
 
 def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['id']))
@@ -51,7 +53,7 @@ def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
     sqs = boto3.resource('sqs')
-    db = boto3.resource('dynamodb')
+    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_HOST, db=0)
 
     try:
         args.cmd_prefix = json.loads(args.cmd_prefix)

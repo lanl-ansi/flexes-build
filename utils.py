@@ -54,12 +54,21 @@ def receive_message(sqs, service):
 
 
 def update_job(db, job_id, status, result=None):
-    table = db.Table('jobs')
-    table.update_item(Key={'job_id': job_id},
-                      UpdateExpression='SET #stat = :val1, #r = :val2',
-                      ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
-                      ExpressionAttributeValues={':val1': status, ':val2': result})
+    val = json.loads(db.get(job_id).decode())
+    val.update({'status': status, 'result': result})
+    db.set(job_id, json.dumps(val))
+    if status == 'complete':
+        db.expire(job_id, 60)
+        dyn = boto3.resource('dynamodb')
+        table = dyn.Table('jobs')
+        table.update_item(Key={'job_id': job_id},
+                          UpdateExpression='SET #stat = :val1, #r = :val2',
+                          ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
+                          ExpressionAttributeValues={':val1': status, ':val2': result})
+    elif status == 'active':
+        db.expire(job_id, 30)
     return status, result
+
 
 # Validation
 def is_str_list(x):

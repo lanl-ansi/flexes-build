@@ -5,6 +5,8 @@ import json
 import mock
 import local_launch as dw
 import utils
+import worker
+from argparse import ArgumentParser
 from botocore.exceptions import ClientError
 from collections import namedtuple
 
@@ -73,3 +75,8 @@ class TestIO:
         calls = [mock.call(local_file + ext, key + ext) for ext in extensions]
         utils.put_file_s3(mock_resource, local_file, uri)
         mock_resource.Bucket.return_value.upload_file.assert_has_calls(calls)
+
+class TestCLI:
+    def test_build_cli(self):
+        parser = worker.build_cli_parser()
+        assert(isinstance(parser, ArgumentParser))
