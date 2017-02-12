@@ -3,8 +3,9 @@
 import argparse
 import boto3
 import json
-import sys
 import os
+import redis
+import sys
 import time
 import traceback
 import utils
@@ -49,7 +50,7 @@ def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
     sqs = boto3.resource('sqs')
-    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_HOST, db=0)
+    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
     try:
         args.cmd_prefix = json.loads(args.cmd_prefix)
