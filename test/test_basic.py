@@ -9,6 +9,10 @@ import json
 import mock
 from flask import url_for, jsonify
 
+class MockBoto:
+    def __init__(self):
+        self.resources = {'sqs': mock.MagicMock(), 'dynamodb': mock.MagicMock()}
+
 @pytest.mark.usefixtures('client_class')
 class TestEndpoints:
     def test_index(self):
@@ -21,9 +25,10 @@ class TestEndpoints:
     def test_bad_service_get(self):
         service_url = url_for('post_job', service='foo')
         assert(self.client.get(service_url).status_code == 404)
-
+    
+    @mock.patch('app.boto', return_value=MockBoto())
     @mock.patch('app.submit_job', return_value='job_id')
-    def test_service_post(self, mock_submit):
+    def test_service_post(self, mock_boto, mock_submit):
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
@@ -59,21 +64,15 @@ class TestEndpoints:
 
 
 class TestUtils:
-    @mock.patch('boto3.resource')
-    def test_submit_job(self, mock_resource):
-        mock_resource.return_value.get_queue_by_name.return_value.send_message.return_value.get.return_value = 'job'
+    def test_submit_job(self):
+        mock_db = mock.MagicMock()
+        mock_sqs = mock.MagicMock()
+        mock_dyn = mock.MagicMock()
+        mock_sqs.get_queue_by_name.return_value.send_message.return_value = {'MessageId': 'job'}
         message = {'foo': 'bar'}
         attributes = {'Service': 'test', 'ServiceType': 'generic'}
-        job_id = utils.submit_job(message, attributes)
-        assert(isinstance(job_id, str))
-
-    @mock.patch('boto3.resource')
-    def test_no_region_error(self, mock_resource):
-        mock_resource.side_effect = botocore.exceptions.NoRegionError()
-        message = {'foo': 'bar'}
-        attributes = {'Service': 'test', 'ServiceType': 'generic'}
-        job_id = utils.submit_job(message, attributes)
-        assert(job_id is None) 
+        job_id = utils.submit_job(mock_db, mock_dyn, mock_sqs, message, attributes)
+        assert(job_id == 'job')
 
 
 class TestSchema:
