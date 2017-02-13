@@ -3,17 +3,16 @@
 import argparse
 import boto3
 import json
-import sys
 import os
+import redis
+import sys
 import time
 import traceback
 import utils
 from jsonschema import validate, ValidationError
-#from local_launch import launch_container
-#from local_launch import launch_native
 from local_launch import Command
+from settings import *
 
-DOCKER_WORKER_TYPE = 'generic'
 
 def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['id']))
@@ -22,7 +21,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
         msg_body = json.loads(message['body'])
         validate(msg_body, utils.message_schema)
         if 'test' in msg_body and msg_body['test']:
-            return utils.update_job(db, message['id'], 'active', 'Service is active')
+            return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
     except ValueError as e:
         print('Message string was not valid JSON')
         return handle_exception(db, message['id'], e)
@@ -30,7 +29,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
         print('Message JSON failed validation')
         return handle_exception(db, message['id'], e)
 
-    utils.update_job(db, message['id'], 'running')
+    utils.update_job(db, message['id'], STATUS_RUNNING)
 
     command = Command(cmd_type, message, cmd_prefix)
     try:
@@ -44,14 +43,14 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
 def handle_exception(db, msg_id, e):
     traceback.print_exc()
-    return utils.update_job(db, msg_id, 'failed', str(e))
+    return utils.update_job(db, msg_id, STATUS_FAIL, str(e))
 
 
 def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
     sqs = boto3.resource('sqs')
-    db = boto3.resource('dynamodb')
+    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
     try:
         args.cmd_prefix = json.loads(args.cmd_prefix)
