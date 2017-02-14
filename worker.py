@@ -65,7 +65,7 @@ def run_worker(args):
     while True:
         message = utils.receive_message(sqs, args.worker_type)
         if message is not None:
-            process_message(db, args.launch, args.cmd_prefix, message)
+            process_message(db, args.exec_type, args.cmd_prefix, message)
         else:
             sys.stdout.write('.')
             sys.stdout.flush()
@@ -77,15 +77,14 @@ def build_cli_parser():
     parser.add_argument('-pf', '--poll_frequency', default=60, type=int, 
                         help='time to wait between polling the work queue (seconds)')
 
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(dest='exec_type', help='worker type')
+    subparsers.required = True
 
     parser_docker = subparsers.add_parser('docker', help='runs commands in docker containers')
-    parser_docker.set_defaults(launch='docker')
     parser_docker.set_defaults(cmd_prefix='[]')
     parser_docker.set_defaults(worker_type=DOCKER_WORKER_TYPE)
 
     parser_native = subparsers.add_parser('native', help='runs commands natively')
-    parser_native.set_defaults(launch='native')
     parser_native.add_argument('worker_type',
                         help='type of worker required for the service')
     parser_native.add_argument('cmd_prefix',
@@ -98,6 +97,7 @@ def build_cli_parser():
 if __name__ == '__main__':
     parser = build_cli_parser()
     args = parser.parse_args()
+    print(args)
     try:
         run_worker(args)
     except KeyboardInterrupt:
