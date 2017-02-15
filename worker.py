@@ -21,6 +21,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
         msg_body = json.loads(message['body'])
         validate(msg_body, utils.message_schema)
         if 'test' in msg_body and msg_body['test']:
+            print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
             return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
     except ValueError as e:
         print('Message string was not valid JSON')
@@ -97,7 +98,6 @@ def build_cli_parser():
 if __name__ == '__main__':
     parser = build_cli_parser()
     args = parser.parse_args()
-    print(args)
     try:
         run_worker(args)
     except KeyboardInterrupt:
