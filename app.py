@@ -1,6 +1,7 @@
 import json
 import os
 import redis
+import requests
 from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
@@ -60,6 +61,13 @@ def service_response(message, attributes):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/services', methods=['GET'])
+def services():
+    resp = requests.get('https://hub.lanlytics.com/v2/_catalog')
+    services = resp.json()['repositories']
+    return render_template('services.html', services=services)
 
 
 @app.route('/dashboard', methods=['GET'])
