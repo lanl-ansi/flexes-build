@@ -79,4 +79,15 @@ class TestIO:
 class TestCLI:
     def test_build_cli(self):
         parser = worker.build_cli_parser()
-        assert(isinstance(parser, ArgumentParser))
+        args = parser.parse_args(['-pf', '5', 'docker'])
+        assert(args.exec_type == 'docker')
+
+    def test_missing_exec_type(self):
+        parser = worker.build_cli_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(['-pf', '5'])
+
+    def test_empty_args(self):
+        parser = worker.build_cli_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args([])
