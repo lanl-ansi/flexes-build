@@ -114,7 +114,7 @@ def native_dev():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': '', 'ServiceType': service}
+        attributes = {'Service': 'null', 'ServiceType': service}
         response = service_response(message, attributes)
         return jsonify(**response)
 
@@ -129,7 +129,7 @@ def powerworld():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': '', 'ServiceType': service}
+        attributes = {'Service': 'null', 'ServiceType': service}
         response = service_response(message, attributes)
         return jsonify(**response)
 
