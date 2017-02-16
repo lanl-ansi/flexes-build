@@ -2,6 +2,7 @@
 
 import argparse
 import boto3
+import docker
 import json
 import os
 import redis
@@ -21,8 +22,15 @@ def process_message(db, cmd_type, cmd_prefix, message):
         msg_body = json.loads(message['body'])
         validate(msg_body, utils.message_schema)
         if 'test' in msg_body and msg_body['test']:
-            print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
-            return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
+            if cmd_type == 'docker':
+                if image_exists(message['service']):
+                    return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
+                else:
+                    return utils.update_job(db, message['id'], STATUS_FAIL, 
+                                            'Image for {} not found'.format(message['service']))
+            else:
+                print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
+                return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
     except ValueError as e:
         print('Message string was not valid JSON')
         return handle_exception(db, message['id'], e)
@@ -42,6 +50,20 @@ def process_message(db, cmd_type, cmd_prefix, message):
     return utils.update_job(db, message['id'], status, result)
 
 
+def image_exists(image_name):
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    try:
+        image = client.images.get(image)
+        return True
+    except docker.errors.ImageNotFound:
+        try:
+            client.images.pull(image)
+            return True
+        except docker.errors.ImageNotFound:
+            return False
+
+        
 def handle_exception(db, msg_id, e):
     traceback.print_exc()
     return utils.update_job(db, msg_id, STATUS_FAIL, str(e))
