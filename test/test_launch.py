@@ -100,7 +100,7 @@ class TestLaunch:
                                    mock_rmtree, mock_resource):
         expected = 'Job finished with exit code: -1\nContainer execution failed' 
         mock_client.return_value.containers.run.side_effect = docker.errors.ContainerError('error', -1, 'test', 'test', b'Container execution failed')
-        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        command = json.loads('{"stdout":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
         status, result = l.launch_container('test', command)
         assert(status == 'failed')
         assert(result == expected) 
@@ -116,7 +116,7 @@ class TestLaunch:
                                    mock_rmtree, mock_resource):
         expected = 'Job finished with exit code: -1\nImage not found' 
         mock_client.return_value.containers.run.side_effect = docker.errors.ImageNotFound('Image not found')
-        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        command = json.loads('{"stdout":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
         status, result = l.launch_container('test', command)
         assert(status == 'failed')
         assert(result == expected) 
