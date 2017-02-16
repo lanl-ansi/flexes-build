@@ -7,6 +7,8 @@ import local_launch
 import utils
 import worker
 from botocore.exceptions import ClientError
+from docker.errors import ImageNotFound
+from settings import *
 
 docker_success = 'it worked!'
 
@@ -45,14 +47,14 @@ class TestWorker:
         self.mock_db.get.return_value = b'{}'
 
     def mock_execute(self):
-        return ('complete', docker_success)
+        return (STATUS_COMPLETE, docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     @mock.patch('boto3.resource')
     def test_valid_message(self, mock_resource):
         self.message['body'] = '{"command":[]}' 
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'complete')
+        assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
     @mock.patch('boto3.resource')
@@ -60,7 +62,7 @@ class TestWorker:
     def test_valid_message_s3_stdin(self, mock_resource):
         self.message['body'] = json.dumps(commands['std_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'complete')
+        assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
@@ -68,7 +70,7 @@ class TestWorker:
     def test_valid_message_s3_cmd(self, mock_resource):
         self.message['body'] = json.dumps(commands['full_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'complete')
+        assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
@@ -76,13 +78,13 @@ class TestWorker:
     def test_invalid_json_message(self, mock_resource):
         self.message['body'] = '{command:[]}'
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'failed')
+        assert(status == STATUS_FAIL)
         assert('Expecting property name' in result)
 
     def test_invalid_schema_message(self):
         self.message['body'] = json.dumps(commands['bad_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'failed')
+        assert(status == STATUS_FAIL)
         assert('Failed validating' in result)
 
     @mock.patch('boto3.resource')
@@ -96,8 +98,26 @@ class TestWorker:
     def test_active_check_message(self, mock_resource):
         self.message['body'] = json.dumps(commands['test_command'])
         status, result = worker.process_message(self.mock_db, 'native', [], self.message)
-        assert(status == 'active')
+        assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('docker.DockerClient')
+    def test_active_check_docker_message(self, mock_client, mock_resource):
+        self.message['body'] = json.dumps(commands['test_command'])
+        status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
+        assert(status == STATUS_ACTIVE)
+        assert('Service is active' in result)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('docker.DockerClient')
+    def test_active_check_fail_docker_message(self, mock_client, mock_resource):
+        mock_client.return_value.images.get.side_effect = ImageNotFound('Image not found')
+        mock_client.return_value.images.pull.side_effect = ImageNotFound('Image not found')
+        self.message['body'] = json.dumps(commands['test_command'])
+        status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
+        assert(status == STATUS_FAIL)
+        assert('Image for worker not found' in result)
 
     @mock.patch('boto3.resource')
     @mock.patch.object(local_launch.Command, 'execute')
@@ -105,7 +125,7 @@ class TestWorker:
         mock_cmd.side_effect = ClientError({'Error': {'Code': 404}}, 'download')
         self.message['body'] = json.dumps(commands['basic_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
-        assert(status == 'failed')
+        assert(status == STATUS_FAIL)
         assert('error occurred (404)' in result)
 
     ### Test Native CLI with
