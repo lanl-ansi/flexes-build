@@ -153,6 +153,8 @@ def persist_command(command):
             persist_resource(parameter['value'])
 
 
+# This is not currently used, but may still be useful
+
 def build_bash_command(local_command):
     bash_command = []
 
@@ -174,7 +176,7 @@ def build_bash_command(local_command):
     return bash_command
 
 
-def build_python_command(local_command):
+def build_command_parts(local_command):
     python_command = []
     stdin = None
     stdout = None
@@ -235,7 +237,7 @@ def launch_native(cmd_prefix, command):
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
 
-    native_cmd, stdin_file, stdout_file, stderr_file = build_python_command(local_command)
+    native_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
 
     native_cmd = cmd_prefix + native_cmd
 
@@ -281,23 +283,49 @@ def launch_native(cmd_prefix, command):
 def launch_container(image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
+    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    print('\nDocker Image: {}'.format(image))
+
     local_command = build_localized_command(command)
+    local_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
+
+    if stdin_file != None:
+        return worker_cleanup(command, 999, 'stdin is not currently supported on generic workers')
+
     docker_command = dockerize_command(local_command)
-    docker_cmd = build_bash_command(docker_command)
+    docker_cmd, docker_stdin_file, docker_stdout_file, docker_stderr_file = build_command_parts(docker_command)
+
     docker_cmd = ' '.join(docker_cmd)
     print('\nDocker command: {}'.format(docker_cmd))
 
     print('\nSetting up docker container')
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    
     docker_volume = os.path.join('/', LOCAL_FILES_DIR)
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
     print(volumes)
+
     try:
-        logs = client.containers.run(image, volumes=volumes, command=docker_cmd,
-                                     remove=True, stdout=True, stderr=True)
-        logs = logs.decode('utf-8')
-        exit_code = 0
+        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True)
+
+        # this is bascially useless
+        #print(container.status)
+
+        #blocks until container's work is done
+        exit_code = container.wait()
+
+        logs = container.logs(stdout=True, stderr=True).decode('utf-8')
+
+        if stdout_file != None:
+            with open(stdout_file, 'w') as stdout:
+                stdout.write(container.logs(stdout=True, stderr=False).decode('utf-8'))
+
+        if stderr_file != None:
+            with open(stderr_file, 'w') as stderr:
+                stderr.write(container.logs(stdout=False, stderr=True).decode('utf-8'))
+
+        container.remove()
+
     except docker.errors.ContainerError as e:
         print('Container error: {}'.format(e))
         logs = e.stderr.decode('utf-8')
