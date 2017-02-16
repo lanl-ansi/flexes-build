@@ -26,13 +26,75 @@ class TestEndpoints:
         service_url = url_for('post_job', service='foo')
         assert(self.client.get(service_url).status_code == 404)
     
+    @mock.patch('requests.get')
     @mock.patch('app.boto', return_value=MockBoto())
     @mock.patch('app.submit_job', return_value='job_id')
-    def test_service_post(self, mock_boto, mock_submit):
+    def test_service_post(self, mock_submit, mock_boto, mock_request):
+        mock_request.return_value.json.return_value = {'name': 'test'}
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
         service_url = url_for('post_job', service='test')
+        command = {
+            'stderr': 's3://path/to/data.json',
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        data = json.dumps(command)
+        resp = self.client.post(service_url, data=data, content_type='application/json')
+        assert(resp.json == expected)
+
+    @mock.patch('requests.get')
+    def test_service_post_image_not_found(self, mock_request):
+        mock_request.return_value.json.return_value = {'errors': []}
+        expected = {'job_id': None, 
+                    'status': 'error',
+                    'message': 'a docker image for test does not exist'}
+        service_url = url_for('post_job', service='test')
+        command = {
+            'stderr': 's3://path/to/data.json',
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        data = json.dumps(command)
+        resp = self.client.post(service_url, data=data, content_type='application/json')
+        assert(resp.json == expected)
+
+    @mock.patch('app.boto', return_value=MockBoto())
+    @mock.patch('app.submit_job', return_value='job_id')
+    def test_native_dev_post(self, mock_submit, mock_boto):
+        expected = {'job_id': 'job_id', 
+                    'status': 'submitted',
+                    'message': 'job submitted'}
+        service_url = url_for('native_dev')
+        command = {
+            'stderr': 's3://path/to/data.json',
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        data = json.dumps(command)
+        resp = self.client.post(service_url, data=data, content_type='application/json')
+        assert(resp.json == expected)
+
+    @mock.patch('app.boto', return_value=MockBoto())
+    @mock.patch('app.submit_job', return_value='job_id')
+    def test_powerworld_post(self, mock_submit, mock_boto):
+        expected = {'job_id': 'job_id', 
+                    'status': 'submitted',
+                    'message': 'job submitted'}
+        service_url = url_for('powerworld')
         command = {
             'stderr': 's3://path/to/data.json',
             'command': [
@@ -64,15 +126,36 @@ class TestEndpoints:
 
 
 class TestUtils:
+    def setup_method(self):
+        self.db = mock.MagicMock()
+        self.sqs = mock.MagicMock()
+        self.dyn = mock.MagicMock()
+
     def test_submit_job(self):
-        mock_db = mock.MagicMock()
-        mock_sqs = mock.MagicMock()
-        mock_dyn = mock.MagicMock()
-        mock_sqs.get_queue_by_name.return_value.send_message.return_value = {'MessageId': 'job'}
+        self.sqs.get_queue_by_name.return_value.send_message.return_value = {'MessageId': 'job'}
         message = {'foo': 'bar'}
         attributes = {'Service': 'test', 'ServiceType': 'generic'}
-        job_id = utils.submit_job(mock_db, mock_dyn, mock_sqs, message, attributes)
+        job_id = utils.submit_job(self.db, self.dyn, self.sqs, message, attributes)
         assert(job_id == 'job')
+
+    def test_query_job(self):
+        self.db.get.return_value = b'{"foo": "bar"}'
+        expected = {'foo': 'bar'}
+        query_result = utils.query_job(self.db, self.dyn, 'job_id')
+        assert(query_result == expected)
+
+    def test_query_job_old(self):
+        self.db.get.return_value = None
+        self.dyn.Table.return_value.get_item.return_value = {'Item': {'foo': 'bar'}}
+        expected = {'foo': 'bar'}
+        query_result = utils.query_job(self.db, self.dyn, 'job_id')
+        assert(query_result == expected)
+
+    def test_all_jobs(self):
+        self.dyn.Table.return_value.scan.return_value = {'Items': [1, 2, 3]}
+        expected = [1, 2, 3]
+        query_result = utils.all_jobs(self.dyn)
+        assert(query_result == expected)
 
 
 class TestSchema:

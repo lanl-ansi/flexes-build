@@ -48,6 +48,19 @@ def service_response(message, attributes):
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
+    elif attributes['ServiceType'] == 'generic':
+        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['Service']))
+        if 'errors' in resp.json():
+            response = {'job_id': None,
+                        'status': 'error',
+                        'message': 'a docker image for {} does not exist'.format(attributes['Service'])}
+        else:
+            dyn = boto.resources['dynamodb']
+            sqs = boto.resources['sqs']
+            job_id = submit_job(db, dyn, sqs, message, attributes)
+            response = {'job_id': job_id,
+                        'status': 'submitted',
+                        'message': 'job submitted'}
     else:
         dyn = boto.resources['dynamodb']
         sqs = boto.resources['sqs']
