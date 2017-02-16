@@ -90,3 +90,17 @@ def isvalid(obj, schema):
         return True
     except ValidationError:
         return False
+
+
+def image_exists(image_name):
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    try:
+        image = client.images.get(image)
+        return True
+    except docker.errors.ImageNotFound:
+        try:
+            client.images.pull(image)
+            return True
+        except docker.errors.ImageNotFound:
+            return False

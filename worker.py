@@ -22,8 +22,10 @@ def process_message(db, cmd_type, cmd_prefix, message):
         msg_body = json.loads(message['body'])
         validate(msg_body, utils.message_schema)
         if 'test' in msg_body and msg_body['test']:
+            utils.update_job(db, message['id'], STATUS_RUNNING, None)
             if cmd_type == 'docker':
-                if image_exists(message['service']):
+                if utils.image_exists(message['service']):
+                    print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
                     return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
                 else:
                     return utils.update_job(db, message['id'], STATUS_FAIL, 
@@ -50,20 +52,6 @@ def process_message(db, cmd_type, cmd_prefix, message):
     return utils.update_job(db, message['id'], status, result)
 
 
-def image_exists(image_name):
-    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
-    try:
-        image = client.images.get(image)
-        return True
-    except docker.errors.ImageNotFound:
-        try:
-            client.images.pull(image)
-            return True
-        except docker.errors.ImageNotFound:
-            return False
-
-        
 def handle_exception(db, msg_id, e):
     traceback.print_exc()
     return utils.update_job(db, msg_id, STATUS_FAIL, str(e))

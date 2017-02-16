@@ -102,18 +102,16 @@ class TestWorker:
         assert('Service is active' in result)
 
     @mock.patch('boto3.resource')
-    @mock.patch('docker.DockerClient')
-    def test_active_check_docker_message(self, mock_client, mock_resource):
+    @mock.patch('utils.image_exists', return_value=True)
+    def test_active_check_docker_message(self, mock_image_exists, mock_resource):
         self.message['body'] = json.dumps(commands['test_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
 
     @mock.patch('boto3.resource')
-    @mock.patch('docker.DockerClient')
-    def test_active_check_fail_docker_message(self, mock_client, mock_resource):
-        mock_client.return_value.images.get.side_effect = ImageNotFound('Image not found')
-        mock_client.return_value.images.pull.side_effect = ImageNotFound('Image not found')
+    @mock.patch('utils.image_exists', return_value=False)
+    def test_active_check_fail_docker_message(self, mock_image_exists, mock_resource):
         self.message['body'] = json.dumps(commands['test_command'])
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_FAIL)

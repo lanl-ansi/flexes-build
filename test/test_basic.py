@@ -9,6 +9,7 @@ import worker
 from argparse import ArgumentParser
 from botocore.exceptions import ClientError
 from collections import namedtuple
+from docker.errors import ImageNotFound
 
 class TestIO:
     def setup_method(self, _):
@@ -75,6 +76,22 @@ class TestIO:
         calls = [mock.call(local_file + ext, key + ext) for ext in extensions]
         utils.put_file_s3(mock_resource, local_file, uri)
         mock_resource.Bucket.return_value.upload_file.assert_has_calls(calls)
+
+class TestUtils:
+    @mock.patch('docker.DockerClient')
+    def test_image_exists(self, mock_client):
+        assert(utils.image_exists('test'))
+
+    @mock.patch('docker.DockerClient')
+    def test_image_exists_remote(self, mock_client):
+        mock_client.return_value.images.get.side_effect = ImageNotFound('image not found')
+        assert(utils.image_exists('test'))
+
+    @mock.patch('docker.DockerClient')
+    def test_image_exists_fail(self, mock_client):
+        mock_client.return_value.images.get.side_effect = ImageNotFound('image not found')
+        mock_client.return_value.images.pull.side_effect = ImageNotFound('image not found')
+        assert(utils.image_exists('test') is False)
 
 class TestCLI:
     def test_build_cli(self):
