@@ -9,10 +9,6 @@ import json
 import mock
 from flask import url_for, jsonify
 
-class MockBoto:
-    def __init__(self):
-        self.resources = {'sqs': mock.MagicMock(), 'dynamodb': mock.MagicMock()}
-
 @pytest.mark.usefixtures('client_class')
 class TestEndpoints:
     def test_index(self):
@@ -27,9 +23,8 @@ class TestEndpoints:
         assert(self.client.get(service_url).status_code == 404)
     
     @mock.patch('requests.get')
-    @mock.patch('app.boto', return_value=MockBoto())
     @mock.patch('app.submit_job', return_value='job_id')
-    def test_service_post(self, mock_submit, mock_boto, mock_request):
+    def test_service_post(self, mock_submit, mock_request):
         mock_request.return_value.json.return_value = {'name': 'test'}
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
@@ -68,9 +63,8 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
-    @mock.patch('app.boto', return_value=MockBoto())
     @mock.patch('app.submit_job', return_value='job_id')
-    def test_native_dev_post(self, mock_submit, mock_boto):
+    def test_native_dev_post(self, mock_submit):
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
@@ -88,9 +82,8 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
-    @mock.patch('app.boto', return_value=MockBoto())
     @mock.patch('app.submit_job', return_value='job_id')
-    def test_powerworld_post(self, mock_submit, mock_boto):
+    def test_powerworld_post(self, mock_submit):
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
@@ -128,7 +121,6 @@ class TestEndpoints:
 class TestUtils:
     def setup_method(self):
         self.db = mock.MagicMock()
-        self.dyn = mock.MagicMock()
 
     @mock.patch('utils.uuid4', return_value='test_job')
     def test_submit_job(self, mock_uuid):
@@ -140,20 +132,22 @@ class TestUtils:
     def test_query_job(self):
         self.db.get.return_value = b'{"foo": "bar"}'
         expected = {'foo': 'bar'}
-        query_result = utils.query_job(self.db, self.dyn, 'job_id')
+        query_result = utils.query_job(self.db, 'job_id')
         assert(query_result == expected)
 
-    def test_query_job_old(self):
+    @mock.patch('boto3.resource')
+    def test_query_job_old(self, mock_resource):
         self.db.get.return_value = None
-        self.dyn.Table.return_value.get_item.return_value = {'Item': {'foo': 'bar'}}
+        mock_resource.return_value.Table.return_value.get_item.return_value = {'Item': {'foo': 'bar'}}
         expected = {'foo': 'bar'}
-        query_result = utils.query_job(self.db, self.dyn, 'job_id')
+        query_result = utils.query_job(self.db, 'job_id')
         assert(query_result == expected)
 
-    def test_all_jobs(self):
-        self.dyn.Table.return_value.scan.return_value = {'Items': [1, 2, 3]}
+    @mock.patch('boto3.resource')
+    def test_all_jobs(self, mock_resource):
+        mock_resource.return_value.Table.return_value.scan.return_value = {'Items': [1, 2, 3]}
         expected = [1, 2, 3]
-        query_result = utils.all_jobs(self.dyn)
+        query_result = utils.all_jobs()
         assert(query_result == expected)
 
 
