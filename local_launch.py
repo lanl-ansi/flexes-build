@@ -13,7 +13,7 @@ from settings import *
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
     if 'HOMEPATH' in os.environ:
-        HOME = os.environ['HOMEPATH']
+        HOME = os.environ['HOMEDRIVE'] + os.environ['HOMEPATH']
 else:
     if 'HOME' in os.environ:
         HOME = os.environ['HOME']
