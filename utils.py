@@ -1,8 +1,8 @@
-from __future__ import print_function
 import boto3
 import botocore
 import json
 import sys
+from uuid import uuid4
 
 def send_message(sqs, message, attributes):
     try:
@@ -12,25 +12,18 @@ def send_message(sqs, message, attributes):
         resp = queue.send_message(MessageBody=json.dumps(message),
                                   MessageAttributes=message_attributes)
         return resp.get('MessageId')
-    except botocore.exceptions.NoRegionError:
-        print('No region specified, has an .aws/config file been created?', file=sys.stderr)
-        return
 
 
-def add_job(db, dyn, job_id, command, service):
+def submit_job(db, message, attributes):
+    job_id = str(uuid4())
+    queue = attributes['ServiceType']
     job = {'job_id': job_id,
-           'service': service,
-           'command': json.dumps(command),
-           'result': None,
+           'service': attributes['Service'],
+           'command': command,
            'status': 'submitted'}
-    db.set(job_id, json.dumps(job))
-    table = dyn.Table('jobs')
-    table.put_item(Item=job)
-
-
-def submit_job(db, dyn, sqs, message, attributes):
-    job_id = send_message(sqs, message, attributes)
-    add_job(db, dyn, job_id, message, attributes['Service'])
+    job = json.dumps(job)
+    db.lpush(queue, job)
+    db.set(job_id, job)
     return job_id
 
 
