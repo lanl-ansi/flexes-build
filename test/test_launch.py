@@ -60,7 +60,7 @@ class TestCommands:
     @mock.patch('local_launch.launch_container')
     def test_execute_docker(self, mock_launch_container):
         message = {'service': 'test', 'id': '1234',
-                    'body': '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'}
+                    'command': {'stdin':'s3://lanlytics/path/to/input/test.geojson', 'command':[]}}
         cmd = l.Command('docker', message, [])
         cmd.execute()
         assert(mock_launch_container.called)
@@ -68,7 +68,7 @@ class TestCommands:
     @mock.patch('local_launch.launch_native')
     def test_execute_native(self, mock_launch_native):
         message = {'service': 'test', 'id': '1234',
-                    'body': '{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}'}
+                    'command': {'stdin':'s3://lanlytics/path/to/input/test.geojson', 'command':[]}}
         cmd = l.Command('native', message, [])
         cmd.execute()
         assert(mock_launch_native.called)

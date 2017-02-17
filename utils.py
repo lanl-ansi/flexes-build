@@ -37,21 +37,12 @@ def put_file_s3(s3, local_file, uri):
             bucket.upload_file(local_file + ext, key + ext)
 
 
-def receive_message(sqs, service):
-    queue = sqs.get_queue_by_name(QueueName='services')
-
-    for msg in queue.receive_messages(MessageAttributeNames=['Service', 'ServiceType']):
-        if msg.message_attributes is not None:
-            service_type = msg.message_attributes.get('ServiceType').get('StringValue')
-            service_name = msg.message_attributes.get('Service').get('StringValue')
-            if service_type == service:
-                message = {'service': service_name, 
-                           'body': msg.body, 
-                           'id': msg.message_id}
-                msg.delete()
-                return message
-    else:
-        return
+def receive_message(db, service):
+    message = db.rpoplpush(service, 'running')
+    if message is not None:
+        message = json.loads(message.decode())
+        update_job(db, message['job_id'], STATUS_RUNNING)
+    return message
 
 
 def update_job(db, job_id, status, result=None):
@@ -100,6 +91,7 @@ def image_exists(image_name):
         return True
     except docker.errors.ImageNotFound:
         try:
+            print('Image {} not found locally'.format(image))
             client.images.pull(image)
             return True
         except docker.errors.ImageNotFound:
