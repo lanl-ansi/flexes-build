@@ -128,15 +128,14 @@ class TestEndpoints:
 class TestUtils:
     def setup_method(self):
         self.db = mock.MagicMock()
-        self.sqs = mock.MagicMock()
         self.dyn = mock.MagicMock()
 
-    def test_submit_job(self):
-        self.sqs.get_queue_by_name.return_value.send_message.return_value = {'MessageId': 'job'}
+    @mock.patch('utils.uuid4', return_value='test_job')
+    def test_submit_job(self, mock_uuid):
         message = {'foo': 'bar'}
         attributes = {'Service': 'test', 'ServiceType': 'generic'}
-        job_id = utils.submit_job(self.db, self.dyn, self.sqs, message, attributes)
-        assert(job_id == 'job')
+        job_id = utils.submit_job(self.db, message, attributes)
+        assert(job_id == 'test_job')
 
     def test_query_job(self):
         self.db.get.return_value = b'{"foo": "bar"}'
