@@ -10,6 +10,7 @@ import sys
 import time
 import traceback
 import utils
+from itertools import cycle
 from jsonschema import validate, ValidationError
 from local_launch import Command
 from settings import *
@@ -68,14 +69,16 @@ def run_worker(args):
         return
     print('Command prefix: {}'.format(args.cmd_prefix))
 
+    spinner = cycle(['/', '-', '\\', '|'])
     while True:
         message = utils.receive_message(db, args.worker_type)
         if message is not None:
             process_message(db, args.exec_type, args.cmd_prefix, message)
         else:
-            sys.stdout.write('.')
+            sys.stdout.write(next(spinner))
             sys.stdout.flush()
             time.sleep(args.poll_frequency)
+            sys.stdout.write('\b')
 
 
 def build_cli_parser():
