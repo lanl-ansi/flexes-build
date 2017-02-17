@@ -28,6 +28,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
                     print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
                     return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
                 else:
+                    print('Image not found for {} worker of type {}'.format(cmd_type, message['service']))
                     return utils.update_job(db, message['id'], STATUS_FAIL, 
                                             'Image for {} not found'.format(message['service']))
             else:
