@@ -29,7 +29,7 @@ class Command:
         if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-        self.command = json.loads(message['body'])
+        self.command = message['command']
         self.prefix = cmd_prefix
         self.service = message['service']
         self.type = cmd_type

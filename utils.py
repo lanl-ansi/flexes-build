@@ -38,8 +38,10 @@ def put_file_s3(s3, local_file, uri):
 
 
 def receive_message(db, service):
-    message = json.loads(db.rpoplpush(service, 'running'))
-    update_job(db, message['job_id'], STATUS_RUNNING)
+    message = db.rpoplpush(service, 'running')
+    if message is not None:
+        message = json.loads(message.decode())
+        update_job(db, message['job_id'], STATUS_RUNNING)
     return message
 
 
@@ -89,6 +91,7 @@ def image_exists(image_name):
         return True
     except docker.errors.ImageNotFound:
         try:
+            print('Image {} not found locally'.format(image))
             client.images.pull(image)
             return True
         except docker.errors.ImageNotFound:

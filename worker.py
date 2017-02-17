@@ -16,40 +16,36 @@ from settings import *
 
 
 def process_message(db, cmd_type, cmd_prefix, message):
-    print('Received message: {}'.format(message['id']))
+    print('Received message: {}'.format(message['job_id']))
 
     try:
-        msg_body = json.loads(message['body'])
-        validate(msg_body, utils.message_schema)
-        if 'test' in msg_body and msg_body['test']:
-            utils.update_job(db, message['id'], STATUS_RUNNING, None)
+        validate(message['command'], utils.message_schema)
+        if 'test' in message['command'] and message['command']['test']:
+            utils.update_job(db, message['job_id'], STATUS_RUNNING, None)
             if cmd_type == 'docker':
                 if utils.image_exists(message['service']):
                     print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
-                    return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
+                    return utils.update_job(db, message['job_id'], STATUS_ACTIVE, 'Service is active')
                 else:
-                    return utils.update_job(db, message['id'], STATUS_FAIL, 
+                    return utils.update_job(db, message['job_id'], STATUS_FAIL, 
                                             'Image for {} not found'.format(message['service']))
             else:
                 print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
-                return utils.update_job(db, message['id'], STATUS_ACTIVE, 'Service is active')
-    except ValueError as e:
-        print('Message string was not valid JSON')
-        return handle_exception(db, message['id'], e)
+                return utils.update_job(db, message['job_id'], STATUS_ACTIVE, 'Service is active')
     except ValidationError as e:
         print('Message JSON failed validation')
-        return handle_exception(db, message['id'], e)
+        return handle_exception(db, message['job_id'], e)
 
-    utils.update_job(db, message['id'], STATUS_RUNNING)
+    utils.update_job(db, message['job_id'], STATUS_RUNNING)
 
     command = Command(cmd_type, message, cmd_prefix)
     try:
         status, result = command.execute()
         print('Result: {}'.format(result))
     except Exception as e:
-        return handle_exception(db, message['id'], e)
+        return handle_exception(db, message['job_id'], e)
 
-    return utils.update_job(db, message['id'], status, result)
+    return utils.update_job(db, message['job_id'], status, result)
 
 
 def handle_exception(db, msg_id, e):
@@ -60,7 +56,6 @@ def handle_exception(db, msg_id, e):
 def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
-    sqs = boto3.resource('sqs')
     db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
     try:
@@ -74,7 +69,7 @@ def run_worker(args):
     print('Command prefix: {}'.format(args.cmd_prefix))
 
     while True:
-        message = utils.receive_message(sqs, args.worker_type)
+        message = utils.receive_message(db, args.worker_type)
         if message is not None:
             process_message(db, args.exec_type, args.cmd_prefix, message)
         else:
