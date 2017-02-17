@@ -57,14 +57,14 @@ def service_response(message, attributes):
         else:
             dyn = boto.resources['dynamodb']
             sqs = boto.resources['sqs']
-            job_id = submit_job(db, dyn, sqs, message, attributes)
+            job_id = submit_job(db, message, attributes)
             response = {'job_id': job_id,
                         'status': 'submitted',
                         'message': 'job submitted'}
     else:
         dyn = boto.resources['dynamodb']
         sqs = boto.resources['sqs']
-        job_id = submit_job(db, dyn, sqs, message, attributes)
+        job_id = submit_job(db, message, attributes)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
@@ -114,7 +114,7 @@ def native_dev():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': 'null', 'ServiceType': service}
+        attributes = {'Service': service, 'ServiceType': service}
         response = service_response(message, attributes)
         return jsonify(**response)
 
@@ -129,7 +129,7 @@ def powerworld():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': 'null', 'ServiceType': service}
+        attributes = {'Service': service, 'ServiceType': service}
         response = service_response(message, attributes)
         return jsonify(**response)
 
@@ -163,4 +163,4 @@ def page_not_found(e):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

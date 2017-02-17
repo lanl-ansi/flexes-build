@@ -5,16 +5,15 @@ import sys
 from uuid import uuid4
 
 def send_message(sqs, message, attributes):
-    try:
-        queue = sqs.get_queue_by_name(QueueName='services')
-        message_attributes = {attr: {'StringValue': val, 'DataType': 'String'}
-                              for attr, val in attributes.items()}
-        resp = queue.send_message(MessageBody=json.dumps(message),
-                                  MessageAttributes=message_attributes)
-        return resp.get('MessageId')
+    queue = sqs.get_queue_by_name(QueueName='services')
+    message_attributes = {attr: {'StringValue': val, 'DataType': 'String'}
+                          for attr, val in attributes.items()}
+    resp = queue.send_message(MessageBody=json.dumps(message),
+                              MessageAttributes=message_attributes)
+    return resp.get('MessageId')
 
 
-def submit_job(db, message, attributes):
+def submit_job(db, command, attributes):
     job_id = str(uuid4())
     queue = attributes['ServiceType']
     job = {'job_id': job_id,
