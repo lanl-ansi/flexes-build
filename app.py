@@ -154,4 +154,4 @@ def page_not_found(e):
 
 
 if __name__ == '__main__': # pragma: no cover
-    app.run() # pragma: no cover
+    app.run()
