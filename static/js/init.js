@@ -5,18 +5,21 @@ $(function () {
   $.material.init();
 });
 
-$('body').on('click', '#PopEconSubmit', function () {
-  var input = $('#PopEconInput').val();
-  $.post('./popecon', input, function(response) {
+$('body').on('click', '.job-submit', function () {
+  var service = $(this).val();
+  var input = $('#ServiceInput').val();
+  $.post('./' + service, input, function(response) {
     jobId = response.job_id;
-    $('#PopEconQueryDiv').show(1000);
+    $('.query-result').empty();
+    $('#QueryDiv').show(1000);
   });
 });
 
-$('body').on('click', '#PopEconQueryBtn', function () {
-  var url = './popecon/jobs/' + jobId;
+$('body').on('click', '.job-check', function () {
+  var service = $(this).val();
+  var url = './' + service + '/jobs/' + jobId;
   $.get(url, function(response) {
-    $('#PopEconQueryResult').empty();
-    $('#PopEconQueryResult').text(JSON.stringify(response));
+    $('.query-result').empty();
+    $('.query-result').text(JSON.stringify(response));
   })
 });
