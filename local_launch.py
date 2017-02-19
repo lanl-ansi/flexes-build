@@ -338,7 +338,7 @@ def launch_container(image_name, command):
     return worker_cleanup(command, exit_code, logs)
 
 
-if __name__ == '__main__':
-    print(sys.argv[1])
-    print(sys.argv[2])
-    launch_container(sys.argv[1], sys.argv[2])
+if __name__ == '__main__': # pragma: no cover
+    print(sys.argv[1]) # pragma: no cover
+    print(sys.argv[2]) # pragma: no cover
+    launch_container(sys.argv[1], sys.argv[2]) # pragma: no cover

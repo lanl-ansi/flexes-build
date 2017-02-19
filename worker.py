@@ -104,11 +104,11 @@ def build_cli_parser():
     return parser
 
 
-if __name__ == '__main__':
-    parser = build_cli_parser()
-    args = parser.parse_args()
-    try:
-        run_worker(args)
-    except KeyboardInterrupt:
-        print('Stopping worker')
-        sys.exit()
+if __name__ == '__main__': # pragma: no cover
+    parser = build_cli_parser() # pragma: no cover
+    args = parser.parse_args() # pragma: no cover
+    try: # pragma: no cover
+        run_worker(args) # pragma: no cover
+    except KeyboardInterrupt: # pragma: no cover
+        print('Stopping worker') # pragma: no cover
+        sys.exit() # pragma: no cover
