@@ -339,6 +339,6 @@ def launch_container(image_name, command):
 
 
 if __name__ == '__main__': # pragma: no cover
-    print(sys.argv[1]) # pragma: no cover
-    print(sys.argv[2]) # pragma: no cover
-    launch_container(sys.argv[1], sys.argv[2]) # pragma: no cover
+    print(sys.argv[1])
+    print(sys.argv[2])
+    launch_container(sys.argv[1], sys.argv[2])
