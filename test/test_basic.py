@@ -134,6 +134,17 @@ class TestEndpoints:
         service_url = url_for('render_docs', service='foo')
         assert(self.client.get(service_url).status_code == 404)
 
+    @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])
+    def test_dashboard(self, mock_all_jobs):
+        service_url = url_for('dashboard')
+        assert(self.client.get(service_url).status_code == 200)
+
+    @mock.patch('requests.get')
+    def test_services(self, mock_request):
+        mock_request.return_value.json.return_value = {'repositories': ['a', 'b', 'c']}
+        service_url = url_for('services')
+        assert(self.client.get(service_url).status_code == 200)
+
 
 class TestUtils:
     def setup_method(self):
