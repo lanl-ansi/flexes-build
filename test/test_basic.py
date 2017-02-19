@@ -82,6 +82,10 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
+    def test_bad_native_dev_get(self):
+        service_url = url_for('native_dev')
+        assert(self.client.get(service_url).status_code == 404)
+    
     @mock.patch('app.submit_job', return_value='job_id')
     def test_powerworld_post(self, mock_submit):
         expected = {'job_id': 'job_id', 
@@ -101,12 +105,25 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
+    def test_bad_powerworld_get(self):
+        service_url = url_for('powerworld')
+        assert(self.client.get(service_url).status_code == 404)
+
     def test_service_post_empty(self):
         expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'no message found in request'}
         service_url = url_for('post_job', service='test')
         resp = self.client.post(service_url)
+        assert(resp.json == expected)
+
+    def test_service_post_invalid(self):
+        expected = {'job_id': None, 
+                    'status': 'error',
+                    'message': 'not a valid input'}
+        service_url = url_for('post_job', service='test')
+        data = json.dumps({'foo': 'bar'})
+        resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
     def test_service_docs(self):
