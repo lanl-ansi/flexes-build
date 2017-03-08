@@ -283,7 +283,7 @@ def launch_native(cmd_prefix, command):
 def launch_container(image_name, command):
     print('\n\033[1mStarting Docker Job\033[0m')
 
-    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    image = '{}/{}:latest'.format(DOCKER_REGISTRY, image_name)
     print('\nDocker Image: {}'.format(image))
 
     local_command = build_localized_command(command)
@@ -306,14 +306,9 @@ def launch_container(image_name, command):
     print(volumes)
 
     try:
+        client.images.pull(image)
         container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True)
-
-        # this is bascially useless
-        #print(container.status)
-
-        #blocks until container's work is done
         exit_code = container.wait()
-
         logs = container.logs(stdout=True, stderr=True).decode('utf-8')
 
         if stdout_file != None:

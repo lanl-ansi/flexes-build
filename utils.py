@@ -85,7 +85,7 @@ def isvalid(obj, schema):
 
 def image_exists(image_name):
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = 'hub.lanlytics.com/{}:latest'.format(image_name)
+    image = '{}/{}:latest'.format(DOCKER_REGISTRY, image_name)
     try:
         image = client.images.get(image)
         return True
