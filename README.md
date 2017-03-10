@@ -9,9 +9,20 @@ Messages come from the client in JSON format.
 ```json
 {
   "test": true,
-  "stdin": "s3://bucket/path/to/stdin.txt",
-  "stdout": "s3://bucket/path/to/stdout.txt",
-  "stderr": "s3://bucket/path/to/stderr.txt",
+
+  "stdin": {
+    "type":"pipe",
+    "value":"raw input data"
+  }
+  "stdout": {
+    "type":"pipe",
+    "value":null
+  }
+  "stderr": {
+    "type":"uri",
+    "type":"s3://bucket/path/to/stderr.txt"
+  }
+
   "command": [
     {
       "type": "input",
@@ -33,6 +44,7 @@ Messages come from the client in JSON format.
   "output": ["s3://bucket/path/to/some/output"]
 }
 ```
+
 `test` is used to see if there is a worker that is listening to a particular endpoint.
 
 `stdin`, `stdout`, `stderr` parameters will write the output from the respective streams out to file and stored on S3 at the specified path.
