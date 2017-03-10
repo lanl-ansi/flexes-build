@@ -24,7 +24,7 @@ class TestWorker:
         self.mock_db.get.return_value = b'{}'
 
     def mock_execute(self):
-        return (STATUS_COMPLETE, docker_success)
+        return (STATUS_COMPLETE, docker_success, None, None)
 
     @mock.patch.object(local_launch.Command, 'execute', mock_execute)
     @mock.patch('boto3.resource')

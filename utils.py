@@ -45,9 +45,14 @@ def receive_message(db, service):
     return message
 
 
-def update_job(db, job_id, status, result=None):
+def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
     val = json.loads(db.get(job_id).decode())
-    val.update({'status': status, 'result': result})
+    val.update({
+        'status': status, 
+        'result': result,
+        'stdout': stdout_data,
+        'stderr': stderr_data
+    })
     db.set(job_id, json.dumps(val))
     if status == STATUS_COMPLETE:
         db.expire(job_id, 60)

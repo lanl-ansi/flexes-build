@@ -40,7 +40,7 @@ class TestCommands:
     @mock.patch('shutil.rmtree')
     def test_worker_cleanup(self, mock_rmtree, mock_put_s3, mock_resource):
         command = commands['output_command']
-        status, feedback = l.worker_cleanup(command, 0, 'worker log')
+        status, feedback, stdout_data, stderr_data = l.worker_cleanup(command, 0, 'worker log', None, None)
         assert(mock_put_s3.call_count == 2)
 
     def test_build_bash_command(self):
@@ -53,14 +53,14 @@ class TestCommands:
     @mock.patch('local_launch.localize_resource', return_value='/path/to/resource.txt')
     @mock.patch('os.makedirs', return_value=None)
     def test_localize_command(self, mock_localize_resource, mock_makedirs):
-        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        command = json.loads('{"stdin":{"type":"uri", "value":"s3://lanlytics/path/to/input/test.geojson"}, "command":[]}')
         local_command = l.localize_command(command)
         assert(isinstance(local_command, dict))
 
     @mock.patch('local_launch.launch_container')
     def test_execute_docker(self, mock_launch_container):
         message = {'service': 'test', 'id': '1234',
-                    'command': {'stdin':'s3://lanlytics/path/to/input/test.geojson', 'command':[]}}
+                    'command': {'stdin':{'type':'uri', 'value':'s3://lanlytics/path/to/input/test.geojson'}, 'command':[]}}
         cmd = l.Command('docker', message, [])
         cmd.execute()
         assert(mock_launch_container.called)
@@ -68,7 +68,7 @@ class TestCommands:
     @mock.patch('local_launch.launch_native')
     def test_execute_native(self, mock_launch_native):
         message = {'service': 'test', 'id': '1234',
-                    'command': {'stdin':'s3://lanlytics/path/to/input/test.geojson', 'command':[]}}
+                    'command': {'stdin':{'type':'uri', 'value':'s3://lanlytics/path/to/input/test.geojson'}, 'command':[]}}
         cmd = l.Command('native', message, [])
         cmd.execute()
         assert(mock_launch_native.called)
@@ -85,7 +85,7 @@ class TestLaunch:
                               mock_makedirs, mock_client,
                               mock_rmtree, mock_resource):
         mock_client.return_value.containers.run.return_value = str.encode('logs')
-        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
+        command = json.loads('{"stdin":{"type":"uri", "value":"s3://lanlytics/path/to/input/test.geojson"}, "command":[]}')
         result = l.launch_container('test', command)
         assert(mock_rmtree.called)
 
@@ -100,8 +100,8 @@ class TestLaunch:
                                    mock_rmtree, mock_resource):
         expected = 'Job finished with exit code: -1\nContainer execution failed' 
         mock_client.return_value.containers.run.side_effect = docker.errors.ContainerError('error', -1, 'test', 'test', b'Container execution failed')
-        command = json.loads('{"stdout":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        status, result = l.launch_container('test', command)
+        command = json.loads('{"stdout":{"type":"uri", "value":"s3://lanlytics/path/to/output/test.geojson"}, "command":[]}')
+        status, result, stdout_data, stderr_data = l.launch_container('test', command)
         assert(status == 'failed')
         assert(result == expected) 
 
@@ -116,8 +116,8 @@ class TestLaunch:
                                    mock_rmtree, mock_resource):
         expected = 'Job finished with exit code: -1\nImage not found' 
         mock_client.return_value.containers.run.side_effect = docker.errors.ImageNotFound('Image not found')
-        command = json.loads('{"stdout":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        status, result = l.launch_container('test', command)
+        command = json.loads('{"stdout":{"type":"uri", "value":"s3://lanlytics/path/to/output/test.geojson"}, "command":[]}')
+        status, result, stdout_data, stderr_data = l.launch_container('test', command)
         assert(status == 'failed')
         assert(result == expected) 
 
@@ -131,6 +131,6 @@ class TestLaunch:
                            mock_makedirs, mock_rmtree, mock_resource):
         mock_subprocess.return_value.communicate.return_value = (b'test', b'test')
         mock_subprocess.return_value.returncode = 0
-        command = json.loads('{"stdin":"s3://lanlytics/path/to/input/test.geojson", "command":[]}')
-        status, result = l.launch_native(['python', 'test.py'], command)
+        command = json.loads('{"stdin":{"type":"uri", "value":"s3://lanlytics/path/to/input/test.geojson"}, "command":[]}')
+        status, result, stdout_data, stderr_data = l.launch_native(['python', 'test.py'], command)
         assert(mock_rmtree.called)

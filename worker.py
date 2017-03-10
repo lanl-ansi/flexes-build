@@ -42,12 +42,12 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
     command = Command(cmd_type, message, cmd_prefix)
     try:
-        status, result = command.execute()
+        status, result, stdout_data, stderr_data = command.execute()
         print('Result: {}'.format(result))
     except Exception as e:
         return handle_exception(db, message['job_id'], e)
 
-    return utils.update_job(db, message['job_id'], status, result)
+    return utils.update_job(db, message['job_id'], status, result, stdout_data, stderr_data)
 
 
 def handle_exception(db, msg_id, e):
