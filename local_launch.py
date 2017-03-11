@@ -261,13 +261,25 @@ def launch_native(cmd_prefix, command):
     native_cmd = cmd_prefix + native_cmd
 
     if stdin_file != None:
-        stdin = open(stdin_file, 'r')
+        if stdin_pipe:
+            stdin = io.StringIO(stdin_file)
+        else:
+            stdin = open(stdin_file, 'r')
 
     if stdout_file != None:
         stdout = open(stdout_file, 'w')
+    if stdout_pipe:
+        assert(stdout_file == None)
+        stdout_file = ''
+        stdout = io.StringIO(stdout_file)
 
     if stderr_file != None:
         stderr = open(stderr_file, 'w')
+    if stderr_pipe:
+        assert(stderr_file == None)
+        stderr_file = ''
+        stderr = io.StringIO(stderr_file)
+
 
     print('\nNative command:')
     print(native_cmd)
@@ -282,15 +294,20 @@ def launch_native(cmd_prefix, command):
 
     stdout_log, stderr_log = process.communicate()
 
-    stdout_data = None
-    stderr_data = None
-
     if stdout_log != None:
         stdout_log = lines_tail(stdout_log.decode('utf-8'), LOG_LINE_LIMIT)
     if stderr_log != None:
         stderr_log = lines_tail(stderr_log.decode('utf-8'), LOG_LINE_LIMIT)
 
     worker_log = 'stdout:\n{}\n\nstderr:\n{}'.format(stdout_log, stderr_log)
+
+    stdout_data = None
+    stderr_data = None
+    if stdout_pipe:
+        stdout_data = stdout_file
+    if stderr_pipe:
+        stderr_data = stderr_file
+
 
     if stdin_file != None:
         stdin.close()
