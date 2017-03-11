@@ -8,9 +8,8 @@ import mock
 
 import local_launch as l
 
-test_commands = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_commands.json')
-with open(test_commands) as f:
-    commands = json.load(f)
+from test_common import test_commands
+
 
 class TestLocalize:
     def setup_method(self, _):
@@ -31,7 +30,7 @@ class TestCommands:
     @mock.patch('utils.get_s3_file')
     @mock.patch('os.makedirs', return_value=None)
     def test_build_localized_command(self, mock_makedirs, mock_get_s3, mock_resource):
-        command = commands['input_command']
+        command = test_commands['input_command']
         local_command = l.build_localized_command(command)
         assert(mock_get_s3.call_count == 2)
 
@@ -39,7 +38,7 @@ class TestCommands:
     @mock.patch('utils.put_file_s3')
     @mock.patch('shutil.rmtree')
     def test_worker_cleanup(self, mock_rmtree, mock_put_s3, mock_resource):
-        command = commands['output_command']
+        command = test_commands['output_command']
         status, feedback, stdout_data, stderr_data = l.worker_cleanup(command, 0, 'worker log', None, None)
         assert(mock_put_s3.call_count == 2)
 
@@ -81,12 +80,48 @@ class TestLaunch:
     @mock.patch('os.makedirs', return_value=None)
     @mock.patch('local_launch.localize_resource', 
                 return_value='/path/to/resource.txt')
+    @mock.patch('docker.models.containers.Container.wait', return_value=0)
     def test_launch_container(self, mock_localize_resource, 
                               mock_makedirs, mock_client,
-                              mock_rmtree, mock_resource):
-        mock_client.return_value.containers.run.return_value = str.encode('logs')
-        command = json.loads('{"stdin":{"type":"uri", "value":"s3://lanlytics/path/to/input/test.geojson"}, "command":[]}')
-        result = l.launch_container('test', command)
+                              mock_rmtree, mock_resource, mock_wait):
+        status, feedback, stdout_data, stderr_data = l.launch_container('test', test_commands['basic_command'])
+        assert(status == 'failed')
+        #assert(feedback == TBD)
+        assert(stdout_data == None)
+        assert(stderr_data == None)
+        assert(mock_rmtree.called)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('shutil.rmtree')
+    @mock.patch('docker.DockerClient', autospec=True)
+    @mock.patch('os.makedirs', return_value=None)
+    @mock.patch('local_launch.localize_resource', 
+                return_value='/path/to/resource.txt')
+    @mock.patch('docker.models.containers.Container.wait', return_value=0)
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    def test_launch_container_pipe(self, mock_localize_resource, 
+                              mock_makedirs, mock_client,
+                              mock_rmtree, mock_resource, mock_wait, mock_open):
+        status, feedback, stdout_data, stderr_data = l.launch_container('test', test_commands['pipe_command'])
+        assert(status == 'failed')
+        #assert(feedback == TBD)
+        assert(stdout_data == None)
+        assert(stderr_data == None)
+        #mock_open.assert_called_with('/bucket/path/to/stderr.txt', 'w')
+        #assert(mock_rmtree.called)
+
+    @mock.patch('boto3.resource')
+    @mock.patch('shutil.rmtree')
+    @mock.patch('os.makedirs', return_value=None)
+    @mock.patch('local_launch.localize_resource', 
+                return_value='test/data/test.txt')
+    @mock.patch('subprocess.Popen', autospec=True)
+    def test_launch_native(self, mock_subprocess, mock_localize_resource, 
+                           mock_makedirs, mock_rmtree, mock_resource):
+        mock_subprocess.return_value.communicate.return_value = (b'test', b'test')
+        mock_subprocess.return_value.returncode = 0
+        command = json.loads('"command":[]}')
+        status, result, stdout_data, stderr_data = l.launch_native(['python', 'test.py'], command)
         assert(mock_rmtree.called)
 
     @mock.patch('boto3.resource')

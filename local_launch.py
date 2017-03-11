@@ -180,22 +180,37 @@ def build_bash_command(local_command):
 def build_command_parts(local_command):
     python_command = []
     stdin = None
+    stdin_pipe = False
     stdout = None
+    stdout_pipe = False
     stderr = None
+    stderr_pipe = False
     
     for parameter in local_command['command']:
         param = parameter['value']
         if 'name' in parameter:
             param = parameter['name'] + param
         python_command.append(param)
-    if 'stdin' in local_command and local_command['stdin']['type'] == 'uri':
-        stdin = local_command['stdin']['value']
-    if 'stdout' in local_command and local_command['stdout']['type'] == 'uri':
-        stdout = local_command['stdout']['value']
-    if 'stderr' in local_command and local_command['stderr']['type'] == 'uri':
-        stderr = local_command['stderr']['value']
 
-    return python_command, stdin, stdout, stderr
+    if 'stdin' in local_command:
+        stdin = local_command['stdin']['value']
+        stdin_pipe = local_command['stdin']['type'] == 'pipe'
+
+    if 'stdout' in local_command:
+        if local_command['stdout']['type'] == 'uri':
+            stdout = local_command['stdout']['value']
+        else:
+            assert(local_command['stdout']['type'] == 'pipe')
+            stdout_pipe = True
+
+    if 'stderr' in local_command:
+        if local_command['stderr']['type'] == 'uri':
+            stdout = local_command['stderr']['value']
+        else:
+            assert(local_command['stderr']['type'] == 'pipe')
+            stderr_pipe = True
+
+    return python_command, stdin, stdin_pipe, stdout, stdout_pipe, stderr, stderr_pipe
 
 
 def build_localized_command(command, cmd_prefix=[]):
@@ -241,7 +256,7 @@ def launch_native(cmd_prefix, command):
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
 
-    native_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
+    native_cmd, stdin_file, stdin_pipe, stdout_file, stdout_pipe, stderr_file, stderr_pipe = build_command_parts(local_command)
 
     native_cmd = cmd_prefix + native_cmd
 
@@ -294,20 +309,18 @@ def launch_container(image_name, command):
     print('\nDocker Image: {}'.format(image))
 
     local_command = build_localized_command(command)
-    local_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
+    local_cmd, stdin_file, stdin_pipe, stdout_file, stdout_pipe, stderr_file, stderr_pipe = build_command_parts(local_command)
 
     docker_command = dockerize_command(local_command)
-    docker_cmd, docker_stdin_file, docker_stdout_file, docker_stderr_file = build_command_parts(docker_command)
+    docker_cmd, *docker_other = build_command_parts(docker_command)
 
     stdin_data = None
-    if 'stdin' in local_command:
-        if local_command['stdin']['type'] == 'uri':
-            assert(stdin_file != None)
+    if stdin_file != None:
+        if stdin_pipe:
+            stdin_data = stdin_file
+        else:
             with open(stdin_file, 'r') as stdin:
                 stdin_data = stdin.read()
-        else:
-            assert(local_command['stdin']['type'] == 'pipe')
-            stdin_data = local_command['stdin']['value']
 
     docker_cmd = ' '.join(docker_cmd)
     print('\nDocker command: {}'.format(docker_cmd))
@@ -338,14 +351,14 @@ def launch_container(image_name, command):
             with open(stdout_file, 'w') as stdout:
                 stdout.write(container.logs(stdout=True, stderr=False).decode('utf-8'))
         else:
-            if 'stdout' in local_command and local_command['stdout']['type'] == 'pipe':
+            if stdout_pipe:
                 stdout_data = container.logs(stdout=True, stderr=False).decode('utf-8')
 
         if stderr_file != None:
             with open(stderr_file, 'w') as stderr:
                 stderr.write(container.logs(stdout=False, stderr=True).decode('utf-8'))
         else:
-            if 'stderr' in local_command and local_command['stderr']['type'] == 'pipe':
+            if stderr_pipe:
                 stderr_data = container.logs(stdout=False, stderr=True).decode('utf-8')
 
         container.remove()
