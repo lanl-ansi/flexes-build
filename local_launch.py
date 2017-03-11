@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 import utils
+import io
 from settings import *
 
 HOME = os.path.abspath(os.sep)
@@ -222,7 +223,10 @@ def worker_cleanup(command, exit_code, worker_log, stdout_data, stderr_data):
         persist_command(command)
 
     print('\nCleaning local cache: {}'.format(LOCAL_FILES_PATH))
-    shutil.rmtree(LOCAL_FILES_PATH)
+    try:
+        shutil.rmtree(LOCAL_FILES_PATH)
+    except FileNotFoundError as e:
+        pass # this is needed in case the job terminates before it starts
 
     print('\nJob completed.')
     return status, feedback, stdout_data, stderr_data
@@ -292,11 +296,18 @@ def launch_container(image_name, command):
     local_command = build_localized_command(command)
     local_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
 
-    if stdin_file != None:
-        return worker_cleanup(command, 999, 'stdin is not currently supported on generic workers', None, None)
-
     docker_command = dockerize_command(local_command)
     docker_cmd, docker_stdin_file, docker_stdout_file, docker_stderr_file = build_command_parts(docker_command)
+
+    stdin_data = None
+    if 'stdin' in local_command:
+        if local_command['stdin']['type'] == 'uri':
+            assert(stdin_file != None)
+            with open(stdin_file, 'r') as stdin:
+                stdin_data = stdin.read()
+        else:
+            assert(local_command['stdin']['type'] == 'pipe')
+            stdin_data = local_command['stdin']['value']
 
     docker_cmd = ' '.join(docker_cmd)
     print('\nDocker command: {}'.format(docker_cmd))
@@ -312,7 +323,14 @@ def launch_container(image_name, command):
     stderr_data = None
     try:
         client.images.pull(image)
-        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True)
+        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True, stdin_open = (stdin_data != None))
+
+        if stdin_data != None:
+            socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
+            os.write(socket.fileno(), stdin_data.encode())
+            socket.close()
+            print('input socket closed')
+
         exit_code = container.wait()
         logs = container.logs(stdout=True, stderr=True).decode('utf-8')
 

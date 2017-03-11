@@ -13,15 +13,15 @@ Messages come from the client in JSON format.
   "stdin": {
     "type":"pipe",
     "value":"raw input data"
-  }
+  },
   "stdout": {
     "type":"pipe",
     "value":null
-  }
+  },
   "stderr": {
     "type":"uri",
-    "type":"s3://bucket/path/to/stderr.txt"
-  }
+    "value":"s3://bucket/path/to/stderr.txt"
+  },
 
   "command": [
     {
