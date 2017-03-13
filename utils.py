@@ -4,17 +4,15 @@ import json
 import sys
 from uuid import uuid4
 
-def submit_job(db, command, attributes):
+def submit_job(db, message):
     job_id = str(uuid4())
-    queue = attributes['queue']
-    job = {'job_id': job_id,
-           'service': attributes['service'],
-           'command': command,
-           'status': 'submitted'}
-    db.lpush(queue, json.dumps(job))
-    # Remove command key from job while querying status
-    job.pop('command')
-    db.set(job_id, json.dumps(job))
+    message['job_id'] = job_id
+    message['status'] = 'submitted'
+    queue = message['queue'] if 'queue' in message.keys() else 'docker'
+    db.lpush(queue, json.dumps(message))
+    # Remove command key from message for status queries
+    message.pop('command')
+    db.set(job_id, json.dumps(message))
     return job_id
 
 
