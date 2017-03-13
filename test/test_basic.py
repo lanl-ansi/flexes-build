@@ -8,6 +8,7 @@ import utils
 import json
 import mock
 from flask import url_for, jsonify
+from flask_redis import FlaskRedis
 
 @pytest.mark.usefixtures('client_class')
 class TestEndpoints:
@@ -42,6 +43,33 @@ class TestEndpoints:
         data = json.dumps(command)
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
+
+    @mock.patch('requests.get')
+    @mock.patch('app.submit_job', return_value='job_id')
+    @mock.patch('app.db', return_value=mock.MagicMock())
+    def test_service_post_queue_override(self, mock_db, mock_submit, mock_request):
+        mock_request.return_value.json.return_value = {'name': 'test'}
+        expected = {'job_id': 'job_id', 
+                    'status': 'submitted',
+                    'message': 'job submitted'}
+        service_url = url_for('post_job', service='test')
+        command = {
+            'queue': 'custom-queue',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
+            'command': [
+                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                {'type': 'parameter', 'name': 'param2', 'value': 3},
+                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+            ]    
+        }
+        attributes = {'service': 'test', 
+                      'service_type': 'docker', 
+                      'queue': 'custom-queue'}
+        data = json.dumps(command)
+        resp = self.client.post(service_url, data=data, content_type='application/json')
+        assert(resp.json == expected)
+        mock_submit.assert_called_with(mock_db, command, attributes)
 
     @mock.patch('requests.get')
     def test_service_post_image_not_found(self, mock_request):
