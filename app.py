@@ -90,6 +90,10 @@ def service():
             return render_template('{}.html'.format(service))
         except TemplateNotFound:
             abort(404)
+    elif request.method == 'POST':
+        message = request.get_json()
+        response = service_response(message)
+        return jsonify(**response)
 
 
 @app.route('/api/docs', methods=['GET'])

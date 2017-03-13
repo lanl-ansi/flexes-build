@@ -39,7 +39,7 @@
         },
         "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
         "stdout": {"$ref": "#/definitions/uri_or_pipe"},
-        "stderr": {"$ref": "#/definitions/uri_or_pipe"},
+        "stderr": {"$ref": "#/definitions/uri_or_pipe"}
       }
     },
     "uri_or_pipe": {

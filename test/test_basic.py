@@ -17,12 +17,12 @@ class TestEndpoints:
     def test_service_get(self):
         service_url = url_for('service')
         params = {'service': 'popecon'}
-        assert(self.client.get(service_url, params=params).status_code == 200)
+        assert(self.client.get(service_url, query_string=params).status_code == 200)
 
     def test_bad_service_get(self):
         service_url = url_for('service')
         params = {'service': 'foo'}
-        assert(self.client.get(service_url, params=params).status_code == 404)
+        assert(self.client.get(service_url, query_string=params).status_code == 404)
     
     @mock.patch('requests.get')
     @mock.patch('app.submit_job', return_value='job_id')
@@ -31,11 +31,11 @@ class TestEndpoints:
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
-        service_url = url_for('post_job', service='test')
-        command = {
+        service_url = url_for('service')
+        message = {
             'service': 'test',
             'command': {
-                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
                 'arguments': [
                     {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                     {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -44,8 +44,9 @@ class TestEndpoints:
                 ]
             }
         }
-        data = json.dumps(command)
+        data = json.dumps(message)
         resp = self.client.post(service_url, data=data, content_type='application/json')
+        print(resp.data)
         assert(resp.json == expected)
 
     @mock.patch('requests.get')
@@ -56,12 +57,12 @@ class TestEndpoints:
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
-        service_url = url_for('post_job', service='test')
-        command = {
+        service_url = url_for('service')
+        message = {
             'queue': 'custom-queue',
             'service': 'test',
             'command': {
-                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
                 'arguments': [
                     {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                     {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -70,10 +71,10 @@ class TestEndpoints:
                 ]
             }
         }
-        data = json.dumps(command)
+        data = json.dumps(message)
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
-        mock_submit.assert_called_with(mock_db, command)
+        mock_submit.assert_called_with(mock_db, message)
 
 #    @mock.patch('requests.get')
 #    def test_service_post_image_not_found(self, mock_request):
@@ -115,12 +116,12 @@ class TestEndpoints:
     def test_service_docs(self):
         service_url = url_for('docs')
         params = {'service': 'popecon'}
-        assert(self.client.get(service_url, params=params).status_code == 200)
+        assert(self.client.get(service_url, query_string=params).status_code == 200)
 
     def test_bad_service_docs(self):
         service_url = url_for('docs')
         params = {'service': 'foo'}
-        assert(self.client.get(service_url, params=params).status_code == 404)
+        assert(self.client.get(service_url, query_string=params).status_code == 404)
 
     @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])
     def test_dashboard(self, mock_all_jobs):
@@ -140,7 +141,7 @@ class TestUtils:
 
     @mock.patch('utils.uuid4', return_value='test_job')
     def test_submit_job(self, mock_uuid):
-        message = {'service': 'test'}
+        message = {'service': 'test', 'command': {'arguments': []}}
         job_id = utils.submit_job(self.db, message)
         assert(job_id == 'test_job')
 
@@ -173,11 +174,11 @@ class TestSchema:
             self.input_schema = json.load(f)
 
     def test_valid_input(self):
-        command = {
+        message = {
             'queue': 'custom-queue',
             'service': 'test',
             'command': {
-                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
                 'arguments': [
                     {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                     {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -186,10 +187,10 @@ class TestSchema:
                 ]
             }
         }
-        assert(app.isvalid(command, self.input_schema) is True)
+        assert(app.isvalid(message, self.input_schema) is True)
 
     def test_invalid_input(self):
-        command = {
+        message = {
             'stderr': '/path/to/data.json',
             'command': [
                 {'type': 'random', 'name': 'my_input', 'value': 'foo'},
@@ -199,4 +200,4 @@ class TestSchema:
             ],
             'someprop': 'stuff'
         }
-        assert(app.isvalid(command, self.input_schema) is False)
+        assert(app.isvalid(message, self.input_schema) is False)
