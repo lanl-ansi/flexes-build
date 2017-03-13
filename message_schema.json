@@ -5,9 +5,9 @@
   "additionalProperties": false,
   "required":["command"],
   "properties": {
-    "stdin":  {"$ref": "#/definitions/s3_uri"},
-    "stdout": {"$ref": "#/definitions/s3_uri"},
-    "stderr": {"$ref": "#/definitions/s3_uri"},
+    "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
+    "stdout": {"$ref": "#/definitions/uri_or_pipe"},
+    "stderr": {"$ref": "#/definitions/uri_or_pipe"},
     "command": {
       "type": "array",
       "items": {"$ref": "#/definitions/command"}
@@ -32,6 +32,26 @@
         "name": {"type": "string"},
         "value": {"type": ["string", "number"]}
       }
+    },
+    "uri_or_pipe": {
+      "type": "object",
+      "required":["type", "value"],
+      "oneOf": [
+        {
+          "properties":{
+            "type": {"enum": ["uri"]},
+            "value": {"$ref": "#/definitions/s3_uri"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "properties":{
+            "type": {"enum": ["pipe"]},
+            "value": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "s3_uri":{
       "type": "string",

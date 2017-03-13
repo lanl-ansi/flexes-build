@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 import utils
+import io
 from settings import *
 
 HOME = os.path.abspath(os.sep)
@@ -101,12 +102,12 @@ def persist_resource(uri):
 
 def localize_command(command):
     local_command = copy.deepcopy(command)
-    if 'stdin' in local_command:
-        local_command['stdin'] = localize_resource(local_command['stdin'])
-    if 'stdout' in local_command:
-        local_command['stdout'] = localize_output(local_command['stdout'])
-    if 'stderr' in local_command:
-        local_command['stderr'] = localize_output(local_command['stderr'])
+    if 'stdin' in local_command and local_command['stdin']['type'] == 'uri':
+        local_command['stdin']['value'] = localize_resource(local_command['stdin']['value'])
+    if 'stdout' in local_command and local_command['stdout']['type'] == 'uri': 
+        local_command['stdout']['value'] = localize_output(local_command['stdout']['value'])
+    if 'stderr' in local_command and local_command['stdout']['type'] == 'uri':
+        local_command['stderr']['value'] = localize_output(local_command['stderr']['value'])
     if 'input' in local_command:
         for uri in local_command['input']:
             localize_resource(uri)
@@ -125,12 +126,12 @@ def localize_command(command):
 
 def dockerize_command(local_command):
     docker_command = copy.deepcopy(local_command)
-    if 'stdin' in docker_command:
-        docker_command['stdin'] = get_docker_path(docker_command['stdin'])
-    if 'stdout' in docker_command:
-        docker_command['stdout'] = get_docker_path(docker_command['stdout'])
-    if 'stderr' in docker_command:
-        docker_command['stderr'] = get_docker_path(docker_command['stderr'])
+    if 'stdin' in docker_command and docker_command['stdin']['type'] == 'uri':
+        docker_command['stdin']['value'] = get_docker_path(docker_command['stdin']['value'])
+    if 'stdout' in docker_command and docker_command['stdout']['type'] == 'uri':
+        docker_command['stdout']['value'] = get_docker_path(docker_command['stdout']['value'])
+    if 'stderr' in docker_command and docker_command['stderr']['type'] == 'uri':
+        docker_command['stderr']['value'] = get_docker_path(docker_command['stderr']['value'])
     for parameter in docker_command['command']:
         if parameter['type'] == 'input':
             parameter['value'] = get_docker_path(parameter['value'])
@@ -141,10 +142,10 @@ def dockerize_command(local_command):
 
 def persist_command(command):
     print(command)
-    if 'stdout' in command:
-        persist_resource(command['stdout'])
-    if 'stderr' in command:
-        persist_resource(command['stderr'])
+    if 'stdout' in command and command['stdout']['type'] == 'uri':
+        persist_resource(command['stdout']['value'])
+    if 'stderr' in command and command['stderr']['type'] == 'uri':
+        persist_resource(command['stderr']['value'])
     if 'output' in command:
         for uri in command['output']:
             persist_resource(uri)
@@ -164,13 +165,13 @@ def build_bash_command(local_command):
             param = '{} {}'.format(parameter['name'], param)
         bash_command.append(param)
     if 'stdin' in local_command:
-        stdin = '< {}'.format(local_command['stdin'])
+        stdin = '< {}'.format(local_command['stdin']['value'])
         bash_command.append(stdin)
     if 'stdout' in local_command:
-        stdout = '> {}'.format(local_command['stdout'])
+        stdout = '> {}'.format(local_command['stdout']['value'])
         bash_command.append(stdout)
     if 'stderr' in local_command:
-        stderr = '2> {}'.format(local_command['stderr'])
+        stderr = '2> {}'.format(local_command['stderr']['value'])
         bash_command.append(stderr)
 
     return bash_command
@@ -179,22 +180,37 @@ def build_bash_command(local_command):
 def build_command_parts(local_command):
     python_command = []
     stdin = None
+    stdin_pipe = False
     stdout = None
+    stdout_pipe = False
     stderr = None
+    stderr_pipe = False
     
     for parameter in local_command['command']:
         param = parameter['value']
         if 'name' in parameter:
             param = parameter['name'] + param
         python_command.append(param)
-    if 'stdin' in local_command:
-        stdin = local_command['stdin']
-    if 'stdout' in local_command:
-        stdout = local_command['stdout']
-    if 'stderr' in local_command:
-        stderr = local_command['stderr']
 
-    return python_command, stdin, stdout, stderr
+    if 'stdin' in local_command:
+        stdin = local_command['stdin']['value']
+        stdin_pipe = local_command['stdin']['type'] == 'pipe'
+
+    if 'stdout' in local_command:
+        if local_command['stdout']['type'] == 'uri':
+            stdout = local_command['stdout']['value']
+        else:
+            assert(local_command['stdout']['type'] == 'pipe')
+            stdout_pipe = True
+
+    if 'stderr' in local_command:
+        if local_command['stderr']['type'] == 'uri':
+            stdout = local_command['stderr']['value']
+        else:
+            assert(local_command['stderr']['type'] == 'pipe')
+            stderr_pipe = True
+
+    return python_command, stdin, stdin_pipe, stdout, stdout_pipe, stderr, stderr_pipe
 
 
 def build_localized_command(command, cmd_prefix=[]):
@@ -207,7 +223,7 @@ def build_localized_command(command, cmd_prefix=[]):
     return local_command
 
 
-def worker_cleanup(command, exit_code, worker_log):
+def worker_cleanup(command, exit_code, worker_log, stdout_data, stderr_data):
     print('Exit code: {}'.format(exit_code))
     feedback = 'Job finished with exit code: {}'.format(exit_code)
     
@@ -222,10 +238,13 @@ def worker_cleanup(command, exit_code, worker_log):
         persist_command(command)
 
     print('\nCleaning local cache: {}'.format(LOCAL_FILES_PATH))
-    shutil.rmtree(LOCAL_FILES_PATH)
+    try:
+        shutil.rmtree(LOCAL_FILES_PATH)
+    except FileNotFoundError as e:
+        pass # this is needed in case the job terminates before it starts
 
     print('\nJob completed.')
-    return status, feedback
+    return status, feedback, stdout_data, stderr_data
 
 
 def launch_native(cmd_prefix, command):
@@ -237,18 +256,30 @@ def launch_native(cmd_prefix, command):
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
 
-    native_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
+    native_cmd, stdin_file, stdin_pipe, stdout_file, stdout_pipe, stderr_file, stderr_pipe = build_command_parts(local_command)
 
     native_cmd = cmd_prefix + native_cmd
 
     if stdin_file != None:
-        stdin = open(stdin_file, 'r')
+        if stdin_pipe:
+            stdin = io.StringIO(stdin_file)
+        else:
+            stdin = open(stdin_file, 'r')
 
     if stdout_file != None:
         stdout = open(stdout_file, 'w')
+    if stdout_pipe:
+        assert(stdout_file == None)
+        stdout_file = ''
+        stdout = io.StringIO(stdout_file)
 
     if stderr_file != None:
         stderr = open(stderr_file, 'w')
+    if stderr_pipe:
+        assert(stderr_file == None)
+        stderr_file = ''
+        stderr = io.StringIO(stderr_file)
+
 
     print('\nNative command:')
     print(native_cmd)
@@ -270,6 +301,14 @@ def launch_native(cmd_prefix, command):
 
     worker_log = 'stdout:\n{}\n\nstderr:\n{}'.format(stdout_log, stderr_log)
 
+    stdout_data = None
+    stderr_data = None
+    if stdout_pipe:
+        stdout_data = stdout_file
+    if stderr_pipe:
+        stderr_data = stderr_file
+
+
     if stdin_file != None:
         stdin.close()
     if stdout_file != None:
@@ -277,7 +316,7 @@ def launch_native(cmd_prefix, command):
     if stderr_file != None:
         stderr.close()
 
-    return worker_cleanup(command, process.returncode, worker_log)
+    return worker_cleanup(command, process.returncode, worker_log, stdout_data, stderr_data)
 
 
 def launch_container(image_name, command):
@@ -287,13 +326,18 @@ def launch_container(image_name, command):
     print('\nDocker Image: {}'.format(image))
 
     local_command = build_localized_command(command)
-    local_cmd, stdin_file, stdout_file, stderr_file = build_command_parts(local_command)
-
-    if stdin_file != None:
-        return worker_cleanup(command, 999, 'stdin is not currently supported on generic workers')
+    local_cmd, stdin_file, stdin_pipe, stdout_file, stdout_pipe, stderr_file, stderr_pipe = build_command_parts(local_command)
 
     docker_command = dockerize_command(local_command)
-    docker_cmd, docker_stdin_file, docker_stdout_file, docker_stderr_file = build_command_parts(docker_command)
+    docker_cmd, *docker_other = build_command_parts(docker_command)
+
+    stdin_data = None
+    if stdin_file != None:
+        if stdin_pipe:
+            stdin_data = stdin_file
+        else:
+            with open(stdin_file, 'r') as stdin:
+                stdin_data = stdin.read()
 
     docker_cmd = ' '.join(docker_cmd)
     print('\nDocker command: {}'.format(docker_cmd))
@@ -305,19 +349,34 @@ def launch_container(image_name, command):
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
     print(volumes)
 
+    stdout_data = None
+    stderr_data = None
     try:
         client.images.pull(image)
-        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True)
+        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True, stdin_open = (stdin_data != None))
+
+        if stdin_data != None:
+            socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
+            os.write(socket.fileno(), stdin_data.encode())
+            socket.close()
+            print('input socket closed')
+
         exit_code = container.wait()
         logs = container.logs(stdout=True, stderr=True).decode('utf-8')
 
         if stdout_file != None:
             with open(stdout_file, 'w') as stdout:
                 stdout.write(container.logs(stdout=True, stderr=False).decode('utf-8'))
+        else:
+            if stdout_pipe:
+                stdout_data = container.logs(stdout=True, stderr=False).decode('utf-8')
 
         if stderr_file != None:
             with open(stderr_file, 'w') as stderr:
                 stderr.write(container.logs(stdout=False, stderr=True).decode('utf-8'))
+        else:
+            if stderr_pipe:
+                stderr_data = container.logs(stdout=False, stderr=True).decode('utf-8')
 
         container.remove()
 
@@ -330,7 +389,7 @@ def launch_container(image_name, command):
         logs = 'Image not found'
         exit_code = -1
 
-    return worker_cleanup(command, exit_code, logs)
+    return worker_cleanup(command, exit_code, logs, stdout_data, stderr_data)
 
 
 if __name__ == '__main__': # pragma: no cover
