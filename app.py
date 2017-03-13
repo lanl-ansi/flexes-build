@@ -64,9 +64,14 @@ def service_response(message):
     return response
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'GET':
+        return render_template('index.html')
+    elif request.method == 'POST':
+        message = request.get_json()
+        response = service_response(message)
+        return jsonify(**response)
 
 
 @app.route('/services', methods=['GET'])
@@ -82,24 +87,18 @@ def dashboard():
     return render_template('dashboard.html', jobs=jobs)
 
 
-@app.route('/api', methods=['GET', 'POST'])
-def service():
+@app.route('/<service_name>', methods=['GET'])
+def service(service_name):
     if request.method == 'GET':
-        service = request.args.get('service')
         try:
-            return render_template('{}.html'.format(service))
+            return render_template('{}.html'.format(service_name))
         except TemplateNotFound:
             abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        response = service_response(message)
-        return jsonify(**response)
 
 
-@app.route('/api/docs', methods=['GET'])
-def docs():
-    service = request.args.get('service')
-    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service))
+@app.route('/<service_name>/docs', methods=['GET'])
+def docs(service_name):
+    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service_name))
     if os.path.isfile(doc_path):
         with app.open_resource(doc_path) as f:
             content = f.read()
@@ -109,9 +108,8 @@ def docs():
         abort(404)
 
 
-@app.route('/api/jobs', methods=['GET'])
-def query_status():
-    job_id = request.args.get('job_id')
+@app.route('/jobs/<job_id>', methods=['GET'])
+def query_status(job_id):
     return jsonify(**query_job(db, job_id))
 
 
