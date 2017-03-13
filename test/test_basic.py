@@ -15,14 +15,12 @@ class TestEndpoints:
         assert(self.client.get(url_for('index')).status_code == 200)
 
     def test_service_get(self):
-        service_url = url_for('service')
-        params = {'service': 'popecon'}
-        assert(self.client.get(service_url, query_string=params).status_code == 200)
+        service_url = url_for('service', service_name='popecon')
+        assert(self.client.get(service_url).status_code == 200)
 
     def test_bad_service_get(self):
-        service_url = url_for('service')
-        params = {'service': 'foo'}
-        assert(self.client.get(service_url, query_string=params).status_code == 404)
+        service_url = url_for('service', service_name='foo')
+        assert(self.client.get(service_url).status_code == 404)
     
     @mock.patch('requests.get')
     @mock.patch('app.submit_job', return_value='job_id')
@@ -31,7 +29,7 @@ class TestEndpoints:
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
-        service_url = url_for('service')
+        service_url = url_for('index')
         message = {
             'service': 'test',
             'command': {
@@ -57,7 +55,7 @@ class TestEndpoints:
         expected = {'job_id': 'job_id', 
                     'status': 'submitted',
                     'message': 'job submitted'}
-        service_url = url_for('service')
+        service_url = url_for('index')
         message = {
             'queue': 'custom-queue',
             'service': 'test',
@@ -100,7 +98,7 @@ class TestEndpoints:
         expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'no message found in request'}
-        service_url = url_for('service')
+        service_url = url_for('index')
         resp = self.client.post(service_url)
         assert(resp.json == expected)
 
@@ -108,20 +106,18 @@ class TestEndpoints:
         expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'not a valid input'}
-        service_url = url_for('service')
+        service_url = url_for('index')
         data = json.dumps({'foo': 'bar'})
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
     def test_service_docs(self):
-        service_url = url_for('docs')
-        params = {'service': 'popecon'}
-        assert(self.client.get(service_url, query_string=params).status_code == 200)
+        service_url = url_for('docs', service_name='popecon')
+        assert(self.client.get(service_url).status_code == 200)
 
     def test_bad_service_docs(self):
-        service_url = url_for('docs')
-        params = {'service': 'foo'}
-        assert(self.client.get(service_url, query_string=params).status_code == 404)
+        service_url = url_for('docs', service_name='foo')
+        assert(self.client.get(service_url).status_code == 404)
 
     @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])
     def test_dashboard(self, mock_all_jobs):
