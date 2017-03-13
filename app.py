@@ -36,7 +36,7 @@ def isvalid(obj, schema):
         return False
 
 
-def service_response(message, attributes):
+def service_response(message):
     if message is None:
         response = {'job_id': None, 
                     'status': 'error', 
@@ -45,19 +45,19 @@ def service_response(message, attributes):
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
-    elif attributes['service_type'] == 'docker':
-        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['service']))
-        if 'errors' in resp.json():
-            response = {'job_id': None,
-                        'status': 'error',
-                        'message': 'a docker image for {} does not exist'.format(attributes['service'])}
-        else:
-            job_id = submit_job(db, message, attributes)
-            response = {'job_id': job_id,
-                        'status': 'submitted',
-                        'message': 'job submitted'}
+#    elif attributes['service_type'] == 'docker':
+#        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['service']))
+#        if 'errors' in resp.json():
+#            response = {'job_id': None,
+#                        'status': 'error',
+#                        'message': 'a docker image for {} does not exist'.format(attributes['service'])}
+#        else:
+#            job_id = submit_job(db, message, attributes)
+#            response = {'job_id': job_id,
+#                        'status': 'submitted',
+#                        'message': 'job submitted'}
     else:
-        job_id = submit_job(db, message, attributes)
+        job_id = submit_job(db, message)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
@@ -82,67 +82,19 @@ def dashboard():
     return render_template('dashboard.html', jobs=jobs)
 
 
-@app.route('/<service>', methods=['GET', 'POST'])
-def post_job(service):
+@app.route('/api', methods=['GET', 'POST'])
+def job():
     if request.method == 'GET':
+        service = request.args.get('service')
         try:
             return render_template('{}.html'.format(service))
         except TemplateNotFound:
             abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'service': service, 
-                      'service_type': 'docker', 
-                      'queue': 'docker'}
-        # Override queue if specified
-        if message is not None and 'queue' in message.keys():
-            attributes['queue'] = message['queue']
-        response = service_response(message, attributes)
-        return jsonify(**response)
 
 
-@app.route('/native-dev', methods=['GET', 'POST'])
-def native_dev():
-    service = 'native-dev'
-    if request.method == 'GET':
-        try:
-            return render_template('{}.html'.format(service))
-        except TemplateNotFound:
-            abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'service': service, 
-                      'service_type': 'native', 
-                      'queue': service}
-        # Override queue if specified
-        if message is not None and 'queue' in message.keys():
-            attributes['queue'] = message['queue']
-        response = service_response(message, attributes)
-        return jsonify(**response)
-
-
-@app.route('/powerworld', methods=['GET', 'POST'])
-def powerworld():
-    service = 'powerworld'
-    if request.method == 'GET':
-        try:
-            return render_template('{}.html'.format(service))
-        except TemplateNotFound:
-            abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'service': service, 
-                      'service_type': 'native', 
-                      'queue': service}
-        # Override queue if specified
-        if message is not None and 'queue' in message.keys():
-            attributes['queue'] = message['queue']
-        response = service_response(message, attributes)
-        return jsonify(**response)
-
-
-@app.route('/<service>/docs', methods=['GET'])
-def render_docs(service):
+@app.route('/api/docs', methods=['GET'])
+def render_docs():
+    service = request.args.get('service')
     doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service))
     if os.path.isfile(doc_path):
         with app.open_resource(doc_path) as f:
@@ -153,8 +105,9 @@ def render_docs(service):
         abort(404)
 
 
-@app.route('/<service>/jobs/<job_id>', methods=['GET'])
-def query_status(service, job_id):
+@app.route('/api/jobs', methods=['GET'])
+def query_status():
+    job_id = request.args.get('job_id')
     return jsonify(**query_job(db, job_id))
 
 
