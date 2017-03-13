@@ -8,7 +8,6 @@ import utils
 import json
 import mock
 from flask import url_for, jsonify
-from flask_redis import FlaskRedis
 
 @pytest.mark.usefixtures('client_class')
 class TestEndpoints:
@@ -16,12 +15,14 @@ class TestEndpoints:
         assert(self.client.get(url_for('index')).status_code == 200)
 
     def test_service_get(self):
-        service_url = url_for('post_job', service='popecon')
-        assert(self.client.get(service_url).status_code == 200)
+        service_url = url_for('service')
+        params = {'service': 'popecon'}
+        assert(self.client.get(service_url, params=params).status_code == 200)
 
     def test_bad_service_get(self):
-        service_url = url_for('post_job', service='foo')
-        assert(self.client.get(service_url).status_code == 404)
+        service_url = url_for('service')
+        params = {'service': 'foo'}
+        assert(self.client.get(service_url, params=params).status_code == 404)
     
     @mock.patch('requests.get')
     @mock.patch('app.submit_job', return_value='job_id')
@@ -32,13 +33,16 @@ class TestEndpoints:
                     'message': 'job submitted'}
         service_url = url_for('post_job', service='test')
         command = {
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
+            'service': 'test',
+            'command': {
+                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'arguments': [
+                    {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                    {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                    {'type': 'parameter', 'name': 'param2', 'value': 3},
+                    {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+                ]
+            }
         }
         data = json.dumps(command)
         resp = self.client.post(service_url, data=data, content_type='application/json')
@@ -55,93 +59,47 @@ class TestEndpoints:
         service_url = url_for('post_job', service='test')
         command = {
             'queue': 'custom-queue',
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
-        }
-        attributes = {'service': 'test', 
-                      'service_type': 'docker', 
-                      'queue': 'custom-queue'}
-        data = json.dumps(command)
-        resp = self.client.post(service_url, data=data, content_type='application/json')
-        assert(resp.json == expected)
-        mock_submit.assert_called_with(mock_db, command, attributes)
-
-    @mock.patch('requests.get')
-    def test_service_post_image_not_found(self, mock_request):
-        mock_request.return_value.json.return_value = {'errors': []}
-        expected = {'job_id': None, 
-                    'status': 'error',
-                    'message': 'a docker image for test does not exist'}
-        service_url = url_for('post_job', service='test')
-        command = {
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
+            'service': 'test',
+            'command': {
+                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'arguments': [
+                    {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                    {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                    {'type': 'parameter', 'name': 'param2', 'value': 3},
+                    {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+                ]
+            }
         }
         data = json.dumps(command)
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
+        mock_submit.assert_called_with(mock_db, command)
 
-    @mock.patch('app.submit_job', return_value='job_id')
-    def test_native_dev_post(self, mock_submit):
-        expected = {'job_id': 'job_id', 
-                    'status': 'submitted',
-                    'message': 'job submitted'}
-        service_url = url_for('native_dev')
-        command = {
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
-        }
-        data = json.dumps(command)
-        resp = self.client.post(service_url, data=data, content_type='application/json')
-        assert(resp.json == expected)
-
-    def test_bad_native_dev_get(self):
-        service_url = url_for('native_dev')
-        assert(self.client.get(service_url).status_code == 404)
-    
-    @mock.patch('app.submit_job', return_value='job_id')
-    def test_powerworld_post(self, mock_submit):
-        expected = {'job_id': 'job_id', 
-                    'status': 'submitted',
-                    'message': 'job submitted'}
-        service_url = url_for('powerworld')
-        command = {
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
-        }
-        data = json.dumps(command)
-        resp = self.client.post(service_url, data=data, content_type='application/json')
-        assert(resp.json == expected)
-
-    def test_bad_powerworld_get(self):
-        service_url = url_for('powerworld')
-        assert(self.client.get(service_url).status_code == 404)
+#    @mock.patch('requests.get')
+#    def test_service_post_image_not_found(self, mock_request):
+#        mock_request.return_value.json.return_value = {'errors': []}
+#        expected = {'job_id': None, 
+#                    'status': 'error',
+#                    'message': 'a docker image for test does not exist'}
+#        service_url = url_for('post_job', service='test')
+#        command = {
+#            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
+#            'command': [
+#                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+#                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+#                {'type': 'parameter', 'name': 'param2', 'value': 3},
+#                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+#            ]    
+#        }
+#        data = json.dumps(command)
+#        resp = self.client.post(service_url, data=data, content_type='application/json')
+#        assert(resp.json == expected)
 
     def test_service_post_empty(self):
         expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'no message found in request'}
-        service_url = url_for('post_job', service='test')
+        service_url = url_for('service')
         resp = self.client.post(service_url)
         assert(resp.json == expected)
 
@@ -149,18 +107,20 @@ class TestEndpoints:
         expected = {'job_id': None, 
                     'status': 'error',
                     'message': 'not a valid input'}
-        service_url = url_for('post_job', service='test')
+        service_url = url_for('service')
         data = json.dumps({'foo': 'bar'})
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
     def test_service_docs(self):
-        service_url = url_for('render_docs', service='popecon')
-        assert(self.client.get(service_url).status_code == 200)
+        service_url = url_for('docs')
+        params = {'service': 'popecon'}
+        assert(self.client.get(service_url, params=params).status_code == 200)
 
     def test_bad_service_docs(self):
-        service_url = url_for('render_docs', service='foo')
-        assert(self.client.get(service_url).status_code == 404)
+        service_url = url_for('docs')
+        params = {'service': 'foo'}
+        assert(self.client.get(service_url, params=params).status_code == 404)
 
     @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])
     def test_dashboard(self, mock_all_jobs):
@@ -180,11 +140,8 @@ class TestUtils:
 
     @mock.patch('utils.uuid4', return_value='test_job')
     def test_submit_job(self, mock_uuid):
-        message = {'foo': 'bar'}
-        attributes = {'service': 'test', 
-                      'service_type': 'docker',
-                      'queue': 'docker'}
-        job_id = utils.submit_job(self.db, message, attributes)
+        message = {'service': 'test'}
+        job_id = utils.submit_job(self.db, message)
         assert(job_id == 'test_job')
 
     def test_query_job(self):
@@ -217,13 +174,17 @@ class TestSchema:
 
     def test_valid_input(self):
         command = {
-            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-            'command': [
-                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-                {'type': 'parameter', 'name': 'param2', 'value': 3},
-                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-            ]    
+            'queue': 'custom-queue',
+            'service': 'test',
+            'command': {
+                'stderr' {'type' 'uri', 'value' 's3//path/to/data.json'},
+                'arguments': [
+                    {'type': 'input', 'name': 'my_input', 'value': 'foo'},
+                    {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
+                    {'type': 'parameter', 'name': 'param2', 'value': 3},
+                    {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
+                ]
+            }
         }
         assert(app.isvalid(command, self.input_schema) is True)
 

@@ -83,7 +83,7 @@ def dashboard():
 
 
 @app.route('/api', methods=['GET', 'POST'])
-def job():
+def service():
     if request.method == 'GET':
         service = request.args.get('service')
         try:
@@ -93,7 +93,7 @@ def job():
 
 
 @app.route('/api/docs', methods=['GET'])
-def render_docs():
+def docs():
     service = request.args.get('service')
     doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service))
     if os.path.isfile(doc_path):
