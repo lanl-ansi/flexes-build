@@ -5,9 +5,6 @@
   "additionalProperties": false,
   "required":["command"],
   "properties": {
-    "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
-    "stdout": {"$ref": "#/definitions/uri_or_pipe"},
-    "stderr": {"$ref": "#/definitions/uri_or_pipe"},
     "command": {
       "type": "array",
       "items": {"$ref": "#/definitions/command"}
@@ -20,6 +17,10 @@
       "type": "array",
       "items": {"$ref": "#/definitions/s3_uri"}
     },
+    "queue": {"type": "string"},
+    "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
+    "stdout": {"$ref": "#/definitions/uri_or_pipe"},
+    "stderr": {"$ref": "#/definitions/uri_or_pipe"},
     "test": {"type": "boolean"}
   },
   "definitions": {
