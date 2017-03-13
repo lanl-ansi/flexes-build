@@ -3,28 +3,15 @@
   "title": "lanlytics API input schema",
   "type": "object",
   "additionalProperties": false,
-  "required":["command"],
+  "required":["command", "service"],
   "properties": {
-    "command": {
-      "type": "array",
-      "items": {"$ref": "#/definitions/command"}
-    },
-    "input": {
-      "type": "array",
-      "items": {"$ref": "#/definitions/s3_uri"}
-    },
-    "output": {
-      "type": "array",
-      "items": {"$ref": "#/definitions/s3_uri"}
-    },
+    "command": {"$ref": "#/definitions/command"},
     "queue": {"type": "string"},
-    "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
-    "stdout": {"$ref": "#/definitions/uri_or_pipe"},
-    "stderr": {"$ref": "#/definitions/uri_or_pipe"},
+    "service": {"type": "string"},
     "test": {"type": "boolean"}
   },
   "definitions": {
-    "command": {
+    "argument": {
       "type": "object",
       "additionalProperties": false,
       "required":["type", "value"],
@@ -32,6 +19,27 @@
         "type": {"enum": ["input", "output", "parameter"]},
         "name": {"type": "string"},
         "value": {"type": ["string", "number"]}
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["arguments"],
+      "properties": {
+        "arguments": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/argument"}
+        },
+        "input": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/s3_uri"}
+        },
+        "output": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/s3_uri"}
+        },
+        "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
+        "stdout": {"$ref": "#/definitions/uri_or_pipe"},
+        "stderr": {"$ref": "#/definitions/uri_or_pipe"},
       }
     },
     "uri_or_pipe": {
