@@ -8,7 +8,7 @@ def submit_job(db, command, attributes):
     job_id = str(uuid4())
     queue = attributes['queue']
     job = {'job_id': job_id,
-           'service': attributes['Service'],
+           'service': attributes['service'],
            'command': command,
            'status': 'submitted'}
     db.lpush(queue, json.dumps(job))

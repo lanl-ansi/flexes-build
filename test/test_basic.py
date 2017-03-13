@@ -153,7 +153,9 @@ class TestUtils:
     @mock.patch('utils.uuid4', return_value='test_job')
     def test_submit_job(self, mock_uuid):
         message = {'foo': 'bar'}
-        attributes = {'Service': 'test', 'ServiceType': 'generic'}
+        attributes = {'service': 'test', 
+                      'service_type': 'docker',
+                      'queue': 'docker'}
         job_id = utils.submit_job(self.db, message, attributes)
         assert(job_id == 'test_job')
 

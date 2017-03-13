@@ -46,11 +46,11 @@ def service_response(message, attributes):
                     'status': 'error',
                     'message': 'not a valid input'}
     elif attributes['service_type'] == 'docker':
-        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['Service']))
+        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['service']))
         if 'errors' in resp.json():
             response = {'job_id': None,
                         'status': 'error',
-                        'message': 'a docker image for {} does not exist'.format(attributes['Service'])}
+                        'message': 'a docker image for {} does not exist'.format(attributes['service'])}
         else:
             job_id = submit_job(db, message, attributes)
             response = {'job_id': job_id,
@@ -95,7 +95,7 @@ def post_job(service):
                       'service_type': 'docker', 
                       'queue': 'docker'}
         # Override queue if specified
-        if 'queue' in message.keys():
+        if message is not None and 'queue' in message.keys():
             attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
@@ -115,7 +115,7 @@ def native_dev():
                       'service_type': 'native', 
                       'queue': service}
         # Override queue if specified
-        if 'queue' in message.keys():
+        if message is not None and 'queue' in message.keys():
             attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
@@ -135,7 +135,7 @@ def powerworld():
                       'service_type': 'native', 
                       'queue': service}
         # Override queue if specified
-        if 'queue' in message.keys():
+        if message is not None and 'queue' in message.keys():
             attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
