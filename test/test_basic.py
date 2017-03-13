@@ -31,7 +31,7 @@ class TestEndpoints:
                     'message': 'job submitted'}
         service_url = url_for('post_job', service='test')
         command = {
-            'stderr': 's3://path/to/data.json',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
             'command': [
                 {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                 {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -51,7 +51,7 @@ class TestEndpoints:
                     'message': 'a docker image for test does not exist'}
         service_url = url_for('post_job', service='test')
         command = {
-            'stderr': 's3://path/to/data.json',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
             'command': [
                 {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                 {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -70,7 +70,7 @@ class TestEndpoints:
                     'message': 'job submitted'}
         service_url = url_for('native_dev')
         command = {
-            'stderr': 's3://path/to/data.json',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
             'command': [
                 {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                 {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -93,7 +93,7 @@ class TestEndpoints:
                     'message': 'job submitted'}
         service_url = url_for('powerworld')
         command = {
-            'stderr': 's3://path/to/data.json',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
             'command': [
                 {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                 {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
@@ -187,7 +187,7 @@ class TestSchema:
 
     def test_valid_input(self):
         command = {
-            'stderr': 's3://path/to/data.json',
+            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
             'command': [
                 {'type': 'input', 'name': 'my_input', 'value': 'foo'},
                 {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
