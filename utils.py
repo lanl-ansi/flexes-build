@@ -6,14 +6,15 @@ from uuid import uuid4
 
 def submit_job(db, command, attributes):
     job_id = str(uuid4())
-    queue = attributes['ServiceType']
+    queue = attributes['queue']
     job = {'job_id': job_id,
            'service': attributes['Service'],
            'command': command,
            'status': 'submitted'}
-    job = json.dumps(job)
-    db.lpush(queue, job)
-    db.set(job_id, job)
+    db.lpush(queue, json.dumps(job))
+    # Remove command key from job while querying status
+    job.pop('command')
+    db.set(job_id, json.dumps(job))
     return job_id
 
 

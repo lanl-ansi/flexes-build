@@ -45,7 +45,7 @@ def service_response(message, attributes):
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
-    elif attributes['ServiceType'] == 'generic':
+    elif attributes['service_type'] == 'docker':
         resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['Service']))
         if 'errors' in resp.json():
             response = {'job_id': None,
@@ -91,7 +91,12 @@ def post_job(service):
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': 'generic'}
+        attributes = {'service': service, 
+                      'service_type': 'docker', 
+                      'queue': 'docker'}
+        # Override queue if specified
+        if 'queue' in message.keys():
+            attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
 
@@ -106,7 +111,12 @@ def native_dev():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': service}
+        attributes = {'service': service, 
+                      'service_type': 'native', 
+                      'queue': service}
+        # Override queue if specified
+        if 'queue' in message.keys():
+            attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
 
@@ -121,7 +131,12 @@ def powerworld():
             abort(404)
     elif request.method == 'POST':
         message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': service}
+        attributes = {'service': service, 
+                      'service_type': 'native', 
+                      'queue': service}
+        # Override queue if specified
+        if 'queue' in message.keys():
+            attributes['queue'] = message['queue']
         response = service_response(message, attributes)
         return jsonify(**response)
 
