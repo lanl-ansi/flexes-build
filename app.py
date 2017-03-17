@@ -36,7 +36,7 @@ def isvalid(obj, schema):
         return False
 
 
-def service_response(message, attributes):
+def service_response(message):
     if message is None:
         response = {'job_id': None, 
                     'status': 'error', 
@@ -45,28 +45,33 @@ def service_response(message, attributes):
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
-    elif attributes['ServiceType'] == 'generic':
-        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['Service']))
-        if 'errors' in resp.json():
-            response = {'job_id': None,
-                        'status': 'error',
-                        'message': 'a docker image for {} does not exist'.format(attributes['Service'])}
-        else:
-            job_id = submit_job(db, message, attributes)
-            response = {'job_id': job_id,
-                        'status': 'submitted',
-                        'message': 'job submitted'}
+#    elif attributes['service_type'] == 'docker':
+#        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['service']))
+#        if 'errors' in resp.json():
+#            response = {'job_id': None,
+#                        'status': 'error',
+#                        'message': 'a docker image for {} does not exist'.format(attributes['service'])}
+#        else:
+#            job_id = submit_job(db, message, attributes)
+#            response = {'job_id': job_id,
+#                        'status': 'submitted',
+#                        'message': 'job submitted'}
     else:
-        job_id = submit_job(db, message, attributes)
+        job_id = submit_job(db, message)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
     return response
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'GET':
+        return render_template('index.html')
+    elif request.method == 'POST':
+        message = request.get_json()
+        response = service_response(message)
+        return jsonify(**response)
 
 
 @app.route('/services', methods=['GET'])
@@ -82,53 +87,18 @@ def dashboard():
     return render_template('dashboard.html', jobs=jobs)
 
 
-@app.route('/<service>', methods=['GET', 'POST'])
-def post_job(service):
+@app.route('/<service_name>', methods=['GET'])
+def service(service_name):
     if request.method == 'GET':
         try:
-            return render_template('{}.html'.format(service))
+            return render_template('{}.html'.format(service_name))
         except TemplateNotFound:
             abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': 'generic'}
-        response = service_response(message, attributes)
-        return jsonify(**response)
 
 
-@app.route('/native-dev', methods=['GET', 'POST'])
-def native_dev():
-    service = 'native-dev'
-    if request.method == 'GET':
-        try:
-            return render_template('{}.html'.format(service))
-        except TemplateNotFound:
-            abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': service}
-        response = service_response(message, attributes)
-        return jsonify(**response)
-
-
-@app.route('/powerworld', methods=['GET', 'POST'])
-def powerworld():
-    service = 'powerworld'
-    if request.method == 'GET':
-        try:
-            return render_template('{}.html'.format(service))
-        except TemplateNotFound:
-            abort(404)
-    elif request.method == 'POST':
-        message = request.get_json()
-        attributes = {'Service': service, 'ServiceType': service}
-        response = service_response(message, attributes)
-        return jsonify(**response)
-
-
-@app.route('/<service>/docs', methods=['GET'])
-def render_docs(service):
-    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service))
+@app.route('/<service_name>/docs', methods=['GET'])
+def docs(service_name):
+    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service_name))
     if os.path.isfile(doc_path):
         with app.open_resource(doc_path) as f:
             content = f.read()
@@ -138,8 +108,8 @@ def render_docs(service):
         abort(404)
 
 
-@app.route('/<service>/jobs/<job_id>', methods=['GET'])
-def query_status(service, job_id):
+@app.route('/jobs/<job_id>', methods=['GET'])
+def query_status(job_id):
     return jsonify(**query_job(db, job_id))
 
 
