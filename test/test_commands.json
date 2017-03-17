@@ -125,9 +125,6 @@
   },
   "test_command": {
     "test": true,
-    "service": "test",
-    "command": {
-      "arguments": []
-    }
+    "service": "test"
   }
 }
