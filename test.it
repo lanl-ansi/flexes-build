@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 -m pytest test/ --cov worker.py --cov local_launch.py --cov utils.py --cov settings.py $@
+python3 -m pytest test/ --cov worker.py --cov launch.py --cov utils.py $@

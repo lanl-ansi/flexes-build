@@ -37,8 +37,8 @@ def put_file_s3(s3, local_file, uri):
             bucket.upload_file(local_file + ext, key + ext)
 
 
-def receive_message(db, service):
-    message = db.rpoplpush(service, 'running')
+def receive_message(db, queue):
+    message = db.rpop(queue)
     if message is not None:
         message = json.loads(message.decode())
         update_job(db, message['job_id'], STATUS_RUNNING)

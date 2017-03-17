@@ -26,13 +26,13 @@ LOG_LINE_LIMIT = 10
 
 
 class Command:
-    def __init__(self, cmd_type, message, cmd_prefix):
+    def __init__(self, cmd_type, cmd_prefix, service, command):
         if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
-        self.command = message['command']
+        self.command = command
         self.prefix = cmd_prefix
-        self.service = message['service']
+        self.service = service
         self.type = cmd_type
 
     def execute(self):
@@ -114,12 +114,12 @@ def localize_command(command):
     if 'output' in local_command:
         for uri in local_command['output']:
             localize_output(uri)
-    for parameter in local_command['command']:
-        if parameter['type'] == 'input':
-            parameter['value'] = localize_resource(parameter['value'])
-        if parameter['type'] == 'output':
-            parameter['value'] = localize_output(parameter['value'])
-        if parameter['type'] == 'parameter' and utils.is_s3_uri(parameter['value']):
+    for arg in local_command['arguments']:
+        if arg['type'] == 'input':
+            arg['value'] = localize_resource(arg['value'])
+        if arg['type'] == 'output':
+            arg['value'] = localize_output(arg['value'])
+        if arg['type'] == 'parameter' and utils.is_s3_uri(arg['value']):
             print('WARNING: s3 uri used in a parameter')
     return local_command
 
@@ -132,11 +132,11 @@ def dockerize_command(local_command):
         docker_command['stdout']['value'] = get_docker_path(docker_command['stdout']['value'])
     if 'stderr' in docker_command and docker_command['stderr']['type'] == 'uri':
         docker_command['stderr']['value'] = get_docker_path(docker_command['stderr']['value'])
-    for parameter in docker_command['command']:
-        if parameter['type'] == 'input':
-            parameter['value'] = get_docker_path(parameter['value'])
-        if parameter['type'] == 'output':
-            parameter['value'] = get_docker_path(parameter['value'])
+    for arg in docker_command['arguments']:
+        if arg['type'] == 'input':
+            arg['value'] = get_docker_path(arg['value'])
+        if arg['type'] == 'output':
+            arg['value'] = get_docker_path(arg['value'])
     return docker_command
 
 
@@ -149,9 +149,9 @@ def persist_command(command):
     if 'output' in command:
         for uri in command['output']:
             persist_resource(uri)
-    for parameter in command['command']:
-        if parameter['type'] == 'output':
-            persist_resource(parameter['value'])
+    for arg in command['arguments']:
+        if arg['type'] == 'output':
+            persist_resource(arg['value'])
 
 
 # This is not currently used, but may still be useful
@@ -159,10 +159,10 @@ def persist_command(command):
 def build_bash_command(local_command):
     bash_command = []
 
-    for parameter in local_command['command']:
-        param = parameter['value']
-        if 'name' in parameter:
-            param = '{} {}'.format(parameter['name'], param)
+    for arg in local_command['arguments']:
+        param = arg['value']
+        if 'name' in arg:
+            param = '{} {}'.format(arg['name'], param)
         bash_command.append(param)
     if 'stdin' in local_command:
         stdin = '< {}'.format(local_command['stdin']['value'])
@@ -186,10 +186,10 @@ def build_command_parts(local_command):
     stderr = None
     stderr_pipe = False
     
-    for parameter in local_command['command']:
-        param = parameter['value']
-        if 'name' in parameter:
-            param = parameter['name'] + param
+    for arg in local_command['arguments']:
+        param = arg['value']
+        if 'name' in arg:
+            param = arg['name'] + param
         python_command.append(param)
 
     if 'stdin' in local_command:
@@ -287,7 +287,7 @@ def launch_native(cmd_prefix, command):
     print('stdout: {}'.format(stdout))
     print('stderr: {}'.format(stderr))
     
-    # Shell parameter used for Windows support
+    # Shell command used for Windows support
     process = subprocess.Popen(native_cmd, stdin=stdin, 
                                stdout=stdout, stderr=stderr, 
                                shell=(os.name == 'nt'))

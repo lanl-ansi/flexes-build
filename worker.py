@@ -12,7 +12,7 @@ import traceback
 import utils
 from itertools import cycle
 from jsonschema import validate, ValidationError
-from local_launch import Command
+from launch import Command
 from settings import *
 
 
@@ -20,8 +20,8 @@ def process_message(db, cmd_type, cmd_prefix, message):
     print('Received message: {}'.format(message['job_id']))
 
     try:
-        validate(message['command'], utils.message_schema)
-        if 'test' in message['command'] and message['command']['test']:
+        validate(message, utils.message_schema)
+        if 'test' in message and message['test']:
             utils.update_job(db, message['job_id'], STATUS_RUNNING, None)
             if cmd_type == 'docker':
                 if utils.image_exists(message['service']):
@@ -40,7 +40,7 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
     utils.update_job(db, message['job_id'], STATUS_RUNNING)
 
-    command = Command(cmd_type, message, cmd_prefix)
+    command = Command(cmd_type, cmd_prefix, message['service'], message['command'])
     try:
         status, result, stdout_data, stderr_data = command.execute()
         print('Result: {}'.format(result))
@@ -72,7 +72,7 @@ def run_worker(args):
 
     spinner = cycle(['/', '-', '\\', '|'])
     while True:
-        message = utils.receive_message(db, args.worker_type)
+        message = utils.receive_message(db, args.queue)
         if message is not None:
             process_message(db, args.exec_type, args.cmd_prefix, message)
         else:
@@ -86,6 +86,8 @@ def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-pf', '--poll_frequency', default=60, type=int, 
                         help='time to wait between polling the work queue (seconds)')
+    parser.add_argument('-q', '--queue', default='docker', 
+                        help='queue for the worker to pull work from (default is docker)')
 
     subparsers = parser.add_subparsers(dest='exec_type', help='worker type')
     subparsers.required = True

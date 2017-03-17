@@ -3,7 +3,7 @@ import os, pytest, sys
 sys.path.append('.')
 import json
 import mock
-import local_launch
+import launch
 import utils
 import worker
 from botocore.exceptions import ClientError
@@ -25,26 +25,26 @@ class TestWorker:
     def mock_execute(self):
         return (STATUS_COMPLETE, docker_success, None, None)
 
-    @mock.patch.object(local_launch.Command, 'execute', mock_execute)
+    @mock.patch.object(launch.Command, 'execute', mock_execute)
     @mock.patch('boto3.resource')
     def test_valid_message(self, mock_resource):
-        self.message['command'] = {'command':[]}
+        self.message['command'] = {'arguments': []}
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
     @mock.patch('boto3.resource')
-    @mock.patch.object(local_launch.Command, 'execute', mock_execute)
+    @mock.patch.object(launch.Command, 'execute', mock_execute)
     def test_valid_message_s3_stdin(self, mock_resource):
-        self.message['command'] = test_commands['std_command']
+        self.message['command'] = test_commands['std_command']['command']
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
-    @mock.patch.object(local_launch.Command, 'execute', mock_execute)
+    @mock.patch.object(launch.Command, 'execute', mock_execute)
     @mock.patch('boto3.resource')
     def test_valid_message_s3_cmd(self, mock_resource):
-        self.message['command'] = test_commands['full_command']
+        self.message['command'] = test_commands['full_command']['command']
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
@@ -56,38 +56,41 @@ class TestWorker:
         assert('Failed validating' in result)
 
     def test_receive_message(self):
-        self.mock_db.rpoplpush.return_value = b'{"job_id": "test_id"}' 
+        self.mock_db.rpop.return_value = b'{"job_id": "test_id"}' 
         message = utils.receive_message(self.mock_db, 'test')
         assert(message['job_id'] == 'test_id')
 
     @mock.patch('boto3.resource')
     def test_active_check_message(self, mock_resource):
-        self.message['command'] = test_commands['test_command']
-        status, result = worker.process_message(self.mock_db, 'native', [], self.message)
+        message = test_commands['test_command']
+        message['job_id'] = '1234'
+        status, result = worker.process_message(self.mock_db, 'native', [], message)
         assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
 
     @mock.patch('boto3.resource')
     @mock.patch('utils.image_exists', return_value=True)
     def test_active_check_docker_message(self, mock_image_exists, mock_resource):
-        self.message['command'] = test_commands['test_command']
-        status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
+        message = test_commands['test_command']
+        message['job_id'] = '1234'
+        status, result = worker.process_message(self.mock_db, 'docker', [], message)
         assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
 
     @mock.patch('boto3.resource')
     @mock.patch('utils.image_exists', return_value=False)
     def test_active_check_fail_docker_message(self, mock_image_exists, mock_resource):
-        self.message['command'] = test_commands['test_command']
-        status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
+        message = test_commands['test_command']
+        message['job_id'] = '1234'
+        status, result = worker.process_message(self.mock_db, 'docker', [], message)
         assert(status == STATUS_FAIL)
-        assert('Image for worker not found' in result)
+        assert('Image for test not found' in result)
 
     @mock.patch('boto3.resource')
-    @mock.patch.object(local_launch.Command, 'execute')
+    @mock.patch.object(launch.Command, 'execute')
     def test_s3_file_not_found(self, mock_cmd, mock_resource):
         mock_cmd.side_effect = ClientError({'Error': {'Code': 404}}, 'download')
-        self.message['command'] = test_commands['basic_command']
+        self.message['command'] = test_commands['basic_command']['command']
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_FAIL)
         assert('error occurred (404)' in result)

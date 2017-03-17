@@ -9,39 +9,41 @@ Messages come from the client in JSON format.
 ```json
 {
   "test": true,
-
-  "stdin": {
-    "type":"pipe",
-    "value":"raw input data"
-  },
-  "stdout": {
-    "type":"pipe",
-    "value":null
-  },
-  "stderr": {
-    "type":"uri",
-    "value":"s3://bucket/path/to/stderr.txt"
-  },
-
-  "command": [
-    {
-      "type": "input",
-      "name": "--infile",
-      "value": "s3://bucket/path/to/input.txt"
+  "service": "my_service",
+  "queue": "docker",
+  "command": {
+    "stdin": {
+      "type":"pipe",
+      "value":"raw input data"
     },
-    {
-      "type": "parameter",
-      "name": "--arg1",
-      "value": "myargvalue"
+    "stdout": {
+      "type":"pipe",
+      "value":null
     },
-    {
-      "type": "output",
-      "name": "--outfile",
-      "value": "s3://bucket/path/to/output.txt"
-    }
-  ],
-  "input": ["s3://bucket/path/to/some/input"],
-  "output": ["s3://bucket/path/to/some/output"]
+    "stderr": {
+      "type":"uri",
+      "value":"s3://bucket/path/to/stderr.txt"
+    },
+    "arguments":[
+      {
+        "type": "input",
+        "name": "--infile",
+        "value": "s3://bucket/path/to/input.txt"
+      },
+      {
+        "type": "parameter",
+        "name": "--arg1",
+        "value": "myargvalue"
+      },
+      {
+        "type": "output",
+        "name": "--outfile",
+        "value": "s3://bucket/path/to/output.txt"
+      }
+    ],
+    "input": ["s3://bucket/path/to/some/input"],
+    "output": ["s3://bucket/path/to/some/output"]
+  }
 }
 ```
 

@@ -3,7 +3,7 @@ import os, pytest, sys
 sys.path.append('.')
 import json
 import mock
-import local_launch as dw
+import launch as l
 import utils
 import worker
 from argparse import ArgumentParser
@@ -17,17 +17,17 @@ class TestIO:
         self.local_file = '/bucket/path/to/file.txt'
 
     def test_get_local_path_s3(self):
-        expected = dw.LOCAL_FILES_PATH + self.local_file
-        local_path = dw.get_local_path(self.uri)
+        expected = l.LOCAL_FILES_PATH + self.local_file
+        local_path = l.get_local_path(self.uri)
         assert(local_path == expected)
 
     def test_resolve_input_local(self):
-        local_path = dw.get_local_path(self.local_file)
+        local_path = l.get_local_path(self.local_file)
         assert(local_path == self.local_file)
 
     def test_get_local_path_json(self):
         filename = '{"foo": "bar"}'
-        json_input = dw.get_local_path(filename)
+        json_input = l.get_local_path(filename)
         assert(json_input == filename)
 
     @mock.patch('boto3.resource')
