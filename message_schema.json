@@ -2,14 +2,11 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "lanlytics API input schema",
   "type": "object",
-  "additionalProperties": false,
   "required":["command", "service"],
   "properties": {
     "command": {"$ref": "#/definitions/command"},
-    "job_id": {"type": "string"},
     "queue": {"type": "string"},
     "service": {"type": "string"},
-    "status": {"type": "string"},
     "test": {"type": "boolean"}
   },
   "definitions": {
