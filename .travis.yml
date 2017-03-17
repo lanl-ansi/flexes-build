@@ -9,4 +9,4 @@ install: pip install -r requirements.txt
 
 script: py.test --cov=app.py --cov=utils.py
 
-after_success: bash <(curl -s https://mycodecov.company.com/bash) -t "zvYVxfDUQ2Swtbv11JFS" -r nisac/lanlytics-api
+after_success: bash <(curl -s https://cov.lanlytics.com/bash) -t "zvYVxfDUQ2Swtbv11JFS" -r nisac/lanlytics-api
