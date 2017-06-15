@@ -5,7 +5,7 @@ After=multi-user.target
 [Service]
 Type=idle
 User=ubuntu
-ExecStart=/home/ubuntu/lanlytics-api-worker/env/bin/python /home/ubuntu/lanlytics-api-worker/worker.py -pf 1 -q auto-test docker
+ExecStart=/home/ubuntu/lanlytics-api-worker/env/bin/python /home/ubuntu/lanlytics-api-worker/worker.py docker
 
 [Install]
 WantedBy=multi-user.target
