@@ -2,11 +2,13 @@ import boto3
 import docker
 import json
 import os
+import random
+import time
 from jsonschema import validate, ValidationError
 from settings import *
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as file:
-    message_schema = json.load(file)
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as f:
+    message_schema = json.load(f)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
 # AWS methods
@@ -37,6 +39,21 @@ def put_file_s3(s3, local_file, uri):
             bucket.upload_file(local_file + ext, key + ext)
 
 
+# Database
+def db_get_with_retry(db, job_id):
+    for i in range(5):
+        try:
+            return json.loads(db.get(job_id).decode())
+        except Exception:
+            wait_time = random.uniform(0.5, 5)
+            time.sleep(wait_time)
+            continue
+        else:
+            break
+    else:
+        return
+
+
 def receive_message(db, queue):
     message = db.rpop(queue)
     if message is not None:
@@ -46,7 +63,10 @@ def receive_message(db, queue):
 
 
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    val = json.loads(db.get(job_id).decode())
+    val = db_get_with_retry(db, job_id)
+    if val is None:
+        return STATUS_FAILED, 'Job retrieval failed'
+
     val.update({
         'status': status, 
         'result': result,
