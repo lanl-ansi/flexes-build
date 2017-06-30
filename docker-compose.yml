@@ -7,8 +7,8 @@ services:
       dockerfile: ./dockerfiles/nginx
     container_name: nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:8080"
+      - "443:8443"
     links:
       - flask:flask
   flask:
@@ -19,4 +19,4 @@ services:
     container_name: flask
     expose: 
       - "8000"
-    command: gunicorn app:app -b :8000 --name lanlytics-api
+    command: gunicorn app:app -b :8000 -u flask --name lanlytics-api

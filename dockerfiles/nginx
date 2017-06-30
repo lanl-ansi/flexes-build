@@ -2,5 +2,12 @@ FROM nginx:alpine
 
 MAINTAINER James Arnold <arnold_j@lanl.gov>
 
-RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/nginx.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Create non-root user
+RUN addgroup -S www && adduser -S -g www www && \
+  touch /var/run/nginx.pid && \
+  chown -R www:www /var/run/nginx.pid && \
+  chown -R www:www /var/cache/nginx
+
+USER www
