@@ -1,0 +1,22 @@
+version: '2'
+services:
+  nginx:
+    restart: always
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    links:
+      - flask:flask
+  flask:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./dockerfiles/flask
+    container_name: flask
+    expose: 
+      - "8000"
+    command: gunicorn app:app -b :8000 --name lanlytics-api
