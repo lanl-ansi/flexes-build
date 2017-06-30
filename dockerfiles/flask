@@ -8,7 +8,6 @@ RUN addgroup -S flask && adduser -S -g flask flask
 # Copy files
 ENV AWS_DEFAULT_REGION us-gov-west-1
 ENV APP_DIR /home/flask/lanlytics-api
-#RUN mkdir -p $APP_DIR/
 WORKDIR $APP_DIR/
 
 COPY deploy.py app.py requirements.txt utils.py message_schema.json $APP_DIR/
