@@ -9,11 +9,13 @@ def submit_job(db, message):
     message['job_id'] = job_id
     message['status'] = 'submitted'
     queue = message['queue'] if 'queue' in message.keys() else 'docker'
-    db.lpush(queue, json.dumps(message))
+    queue_message = json.dumps(message)
     # Remove command key from message for status queries
     if 'command' in message:
         message.pop('command')
     db.set(job_id, json.dumps(message))
+    # Push to queue
+    db.lpush(queue, queue_message)
     return job_id
 
 
