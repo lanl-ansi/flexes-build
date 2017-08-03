@@ -65,7 +65,7 @@ def receive_message(db, queue):
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
     val = db_get_with_retry(db, job_id)
     if val is None:
-        return STATUS_FAILED, 'Job retrieval failed'
+        return STATUS_FAIL, 'Job retrieval failed'
 
     val.update({
         'status': status, 
