@@ -94,16 +94,16 @@ class TestUtils:
         assert(utils.image_exists('test') is False)
 
     # These tests take too long to run because of retry
-#    def test_db_get_with_retry_fail(self):
-#        db = mock.Mock()
-#        val = utils.db_get_with_retry(db, 'job-1234')
-#        assert(val is None)
-#
-#    def test_db_get_with_retry(self):
-#        db = mock.Mock()
-#        db.get.side_effect = [None, None, b'{}']
-#        val = utils.db_get_with_retry(db, 'job-1234')
-#        assert(val == {})
+    def test_db_get_with_retry_fail(self):
+        db = mock.Mock()
+        val = utils.db_get_with_retry(db, 'job-1234')
+        assert(val is None)
+
+    def test_db_get_with_retry(self):
+        db = mock.Mock()
+        db.get.side_effect = [None, None, b'{}']
+        val = utils.db_get_with_retry(db, 'job-1234')
+        assert(val == {})
 
 class TestCLI:
     def test_build_cli(self):
