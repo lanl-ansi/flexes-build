@@ -76,7 +76,7 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
         'stderr': stderr_data
     })
     db.set(job_id, json.dumps(val))
-    if status == STATUS_COMPLETE:
+    if status in [STATUS_COMPLETE, STATUS_FAIL]:
         db.expire(job_id, 60)
         dyn = boto3.resource('dynamodb')
         table = dyn.Table('jobs')
