@@ -2,7 +2,10 @@ import boto3
 import botocore
 import json
 import sys
+from settings import *
 from uuid import uuid4
+
+boto3.Session(region_name=AWS_REGION)
 
 def submit_job(db, message):
     job_id = str(uuid4())
@@ -25,13 +28,13 @@ def query_job(db, job_id):
         return json.loads(response.decode())
     else:
         dyn = boto3.resource('dynamodb')
-        table = dyn.Table('jobs')
+        table = dyn.Table(TABLE_NAME)
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
 
 
 def all_jobs():
     dyn = boto3.resource('dynamodb')
-    table = dyn.Table('jobs')
+    table = dyn.Table(TABLE_NAME)
     response = table.scan(Select='ALL_ATTRIBUTES')
     return response['Items']

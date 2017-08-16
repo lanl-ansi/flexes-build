@@ -2,15 +2,14 @@
 
 import json
 import os
-import redis
 import requests
-from deploy import deploy
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from markdown2 import markdown
+from settings import *
 from utils import query_job, submit_job, all_jobs
 
 app = Flask(__name__)
@@ -18,8 +17,6 @@ app = Flask(__name__)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-REDIS_HOST = 'jobs.be6b1p.0001.usgw1.cache.amazonaws.com'
-REDIS_PORT = 6379
 REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
 app.config['REDIS_URL'] = REDIS_URL
 db = FlaskRedis(app)
