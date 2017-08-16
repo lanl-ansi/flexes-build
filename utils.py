@@ -12,6 +12,8 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_sche
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
 # AWS methods
+boto3.Session(region_name=AWS_REGION)
+
 def s3_get_uri(s3, uri):
     bucket_name, key = uri.split('/', 3)[2:]
     return (s3.Bucket(bucket_name), key)
