@@ -3,6 +3,8 @@ STATUS_ACTIVE = 'active'
 STATUS_RUNNING = 'running'
 STATUS_FAIL = 'failed'
 
+AWS_REGION = 'us-gov-west-1'
+
 DOCKER_WORKER_TYPE = 'docker'
 DOCKER_REGISTRY = 'hub.lanlytics.com'
 
