@@ -49,7 +49,8 @@ class TestWorker:
         assert(status == STATUS_COMPLETE)
         assert(result == docker_success)
 
-    def test_invalid_schema_message(self):
+    @mock.patch('boto3.resource')
+    def test_invalid_schema_message(self, mock_resource):
         self.message['command'] = test_commands['bad_command']
         status, result = worker.process_message(self.mock_db, 'docker', [], self.message)
         assert(status == STATUS_FAIL)
