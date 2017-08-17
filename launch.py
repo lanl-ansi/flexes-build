@@ -11,7 +11,7 @@ import utils
 import io
 from settings import *
 
-boto3.Session(region_name=AWS_REGION)
+boto3.setup_default_session(region_name=AWS_REGION)
 
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
