@@ -13,13 +13,14 @@ import botocore.exceptions
 import socket
 import os
 import optparse
+import random
 
 
 class Deployment:
     def __init__(self, session):
         self.session = session
         self.ec2 = self.session.resource("ec2")
-        
+
     def make_vpc(self, vpc_name):
         cidr_block = "10.33.0.0/16"
         filters = [{"Name": "tag:Name", "Values": [vpc_name]}]
@@ -37,10 +38,37 @@ class Deployment:
         # Enable external DNS for this VPC
         self.vpc.modify_attribute(EnableDnsHostnames={"Value": True})
         
-        print(self.vpc.id)
+    def make_bucket(self, bucket_name):
+        s3 = boto3.client("s3")
+        try:
+            s3.get_bucket_location(Bucket=bucket_name)
+        except: # XXX: is there no way to catch only the Not Owned By You exception?
+            s3.create_bucket(
+                Bucket=bucket_name,
+                ACL='private',
+                CreateBucketConfiguration={
+                    "LocationConstraint": self.session.region_name
+                },
+            )
+
+    def make_redis(self, redis_name):
+        elasticache = boto3.client("elasticache")
+        elasticache.describe_cache_clusters(CacheClusterId=redis_name)
+        try:
+            elasticache.describe_cache_clusters(CacheClusterId=redis_name)
+        except:
+            elasticache.create_cache_cluster(
+                CacheClusterId=redis_name,
+                NumCacheNodes=1,
+                CacheNodeType='cache.t2.micro',
+                Engine='redis',
+            )
 
     def build(self):
-        self.make_vpc("NISAC")
+        name = "nisac"
+        self.make_vpc(name)
+        self.make_bucket(name)
+        self.make_redis(name)
 
 
 def setup():
