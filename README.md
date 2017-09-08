@@ -9,6 +9,8 @@ running bursa will give you a fully-deployed lanlytics setup.
 Getting Ready
 -------------
 
+### Access Key
+
 You will need an access key.
 We recommend creating an access key specifically for bursa.
 
@@ -21,6 +23,13 @@ select the "Create access key" button.
 Download the `.csv` file to a safe location
 (you may need it again later).
 Open the `.csv` to obtain your "access key ID" and "secret access key".
+
+### Management Server
+
+Create a management server in your cloud,
+from which to run bursa,
+and perform administrative tasks on your deployment.
+We used CoreOS on a `t2.nano` instance.
 
 
 Dependencies
