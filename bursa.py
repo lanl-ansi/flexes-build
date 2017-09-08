@@ -14,6 +14,7 @@ import socket
 import os
 import optparse
 import random
+import json
 
 
 class Deployment:
@@ -31,7 +32,7 @@ class Deployment:
         elif len(vpcs) > 1:
             raise RuntimeError("You have more than one VPC named %s" % vpc_name)
         else:
-            # Let's get to making this VPC
+            # Let"s get to making this VPC
             self.vpc = self.ec2.create_vpc(CidrBlock=cidr_block)
             self.vpc.create_tags(Tags=[{"Key": "Name", "Value": vpc_name}])
 
@@ -45,7 +46,7 @@ class Deployment:
         except: # XXX: is there no way to catch only the Not Owned By You exception?
             client.create_bucket(
                 Bucket=bucket_name,
-                ACL='private',
+                ACL="private",
                 CreateBucketConfiguration={
                     "LocationConstraint": self.session.region_name
                 },
@@ -59,8 +60,8 @@ class Deployment:
             client.create_cache_cluster(
                 CacheClusterId=redis_name,
                 NumCacheNodes=1,
-                CacheNodeType='cache.t2.micro',
-                Engine='redis',
+                CacheNodeType="cache.t2.micro",
+                Engine="redis",
             )
             
     def make_table(self, table_name):
@@ -74,6 +75,61 @@ class Deployment:
                 KeySchema=[{"AttributeName": "job_id", "KeyType": "HASH"}],
                 ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             )
+            
+    def make_roles(self, role_prefix):
+        client = boto3.client("iam")
+        
+        policyDoc = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "ec2.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                },
+            ]
+        }
+
+        
+        # Make API-Worker
+        roleName = "%s+API-Worker" % role_prefix
+        try:
+            role = client.get_role(RoleName=roleName)
+        except:
+            role = None
+        
+        if not role:
+            client.create_role(
+                RoleName=roleName,
+                AssumeRolePolicyDocument=json.dumps(policyDoc),
+                Description="Allows API workers to access S3 and DynamoDB",
+            )
+        client.attach_role_policy(
+            RoleName=roleName,
+            PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
+        )
+        client.attach_role_policy(
+            RoleName=roleName,
+            PolicyArn="arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
+        )
+
+        # Make S3-Full-Access
+        roleName = "%s+S3-Full-Access" % role_prefix
+        try:
+            role = client.get_role(RoleName=roleName)
+        except:
+            role = None
+            
+        if not role:
+            client.create_role(
+                RoleName=roleName,
+                AssumeRolePolicyDocument=json.dumps(policyDoc),
+                Description="Allows full access to S3",
+            )
+        client.attach_role_policy(
+            RoleName=roleName,
+            PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
+        )
 
     def build(self):
         name = "nisac"
@@ -81,10 +137,11 @@ class Deployment:
         self.make_bucket(name)
         self.make_redis(name)
         self.make_table(name)
+        self.make_roles(name)
 
 
 def setup():
-  # Set up proxy if we're at LANL
+  # Set up proxy if we"re at LANL
     fqdn = socket.getfqdn()
     if fqdn.endswith("lanl.gov"):
         proxy = "http://proxyout.lanl.gov:8080/"
