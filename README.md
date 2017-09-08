@@ -1,5 +1,13 @@
-Running Bursa
-=============
+Bursa
+=====
+
+Bursa is a lanlytics provisioning script.
+After setting up AWS credentials,
+running bursa will give you a fully-deployed lanlytics setup.
+
+
+Getting Ready
+-------------
 
 You will need an access key.
 We recommend creating an access key specifically for bursa.

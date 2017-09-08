@@ -39,11 +39,11 @@ class Deployment:
         self.vpc.modify_attribute(EnableDnsHostnames={"Value": True})
         
     def make_bucket(self, bucket_name):
-        s3 = boto3.client("s3")
+        client = boto3.client("s3")
         try:
-            s3.get_bucket_location(Bucket=bucket_name)
+            client.get_bucket_location(Bucket=bucket_name)
         except: # XXX: is there no way to catch only the Not Owned By You exception?
-            s3.create_bucket(
+            client.create_bucket(
                 Bucket=bucket_name,
                 ACL='private',
                 CreateBucketConfiguration={
@@ -52,15 +52,27 @@ class Deployment:
             )
 
     def make_redis(self, redis_name):
-        elasticache = boto3.client("elasticache")
+        client = boto3.client("elasticache")
         try:
-            elasticache.describe_cache_clusters(CacheClusterId=redis_name)
+            client.describe_cache_clusters(CacheClusterId=redis_name)
         except:
-            elasticache.create_cache_cluster(
+            client.create_cache_cluster(
                 CacheClusterId=redis_name,
                 NumCacheNodes=1,
                 CacheNodeType='cache.t2.micro',
                 Engine='redis',
+            )
+            
+    def make_table(self, table_name):
+        client = boto3.client("dynamodb")
+        try:
+            client.describe_table(TableName=table_name)
+        except:
+            response = client.create_table(
+                TableName=table_name,
+                AttributeDefinitions=[{"AttributeName": "job_id", "AttributeType": "S"}],
+                KeySchema=[{"AttributeName": "job_id", "KeyType": "HASH"}],
+                ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             )
 
     def build(self):
@@ -68,6 +80,7 @@ class Deployment:
         self.make_vpc(name)
         self.make_bucket(name)
         self.make_redis(name)
+        self.make_table(name)
 
 
 def setup():
