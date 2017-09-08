@@ -53,7 +53,6 @@ class Deployment:
 
     def make_redis(self, redis_name):
         elasticache = boto3.client("elasticache")
-        elasticache.describe_cache_clusters(CacheClusterId=redis_name)
         try:
             elasticache.describe_cache_clusters(CacheClusterId=redis_name)
         except:
