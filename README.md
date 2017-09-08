@@ -23,6 +23,7 @@ select the "Create access key" button.
 Download the `.csv` file to a safe location
 (you may need it again later).
 Open the `.csv` to obtain your "access key ID" and "secret access key".
+You will use these values when running the setup script.
 
 ### Management Server
 
