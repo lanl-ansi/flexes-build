@@ -131,7 +131,7 @@ class Deployment:
             PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
         )
     
-    def create_secgroup(self, client, groupName):
+    def create_secgroup(self, client, groupName, desc):
         filters = [
             {
                 "Name": "group-name",
@@ -143,17 +143,18 @@ class Deployment:
         if not groups:
             client.create_security_group(
                 GroupName=groupName,
-                Description="Machines serving redis",
+                Description=desc,
                 VpcId=self.vpc.id,
             )
 
     def make_secgroups(self, basename):
         client = boto3.client("ec2")
         
-        for service in ("Redis", "Docker", "Management"):
+        for service in ("Redis", "Docker Registry", "Management"):
             for role in ("Clients", "Server"):
                 groupName = "%s+%s-%s" % (basename, service, role)
-                self.create_secgroup(client, groupName)
+                desc = "%s %s" % (service, role)
+                self.create_secgroup(client, groupName, desc)
 
         raise NotImplementedError("Set rules on the services")
 
