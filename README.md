@@ -14,6 +14,35 @@ Download the `.csv` file to a safe location
 (you may need it again later).
 Open the `.csv` to obtain your "access key ID" and "secret access key".
 
-Now you are ready to run bursa:
 
-    python3 bursa $access_key_id $secret_access_key
+Dependencies
+------------
+
+Bursa has been tested on CoreOS-stable.
+CoreOS is a minimalistic self-upgrading Linux distribution,
+made specifically for hosting containers.
+
+Due to the constraints imposed by CoreOS,
+bursa only needs `bash`, `docker`, and Internet access.
+
+
+Setup Script
+-------------
+
+`setup.sh` sets up some bash aliases for debugging,
+and creates the AWS credentials file.
+
+Run it like this:
+
+    export region=us-west-2 # or whatever region you want
+    export aws_access_key_id=YOUR_ACCESS_KEY
+    export aws_secret_access_key=YOUR_SECRET_KEY
+    sh setup.sh
+
+
+Running bursa
+-------------
+
+After you have set up your account, you can run bursa:
+
+    sh bursa.sh
