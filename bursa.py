@@ -217,50 +217,6 @@ class Deployment:
                         pass
                     else:
                         raise e
-    
-    def update_mgmt_secgroup(self):
-        """Update default security group to allow access from management server"""
-        
-        client = boto3.client("ec2")
-        
-        # Put ourselves in the Management Servers security group
-        mgmtServerGroupName = "%s-Management-Server" % self.basename
-        mgmtServerGroupId = self.create_secgroup(client, mgmtServerGroupName, "Management server")
-        # I am compelled to write this down somewhere:
-        # I have an opinion about the boto3 API
-        groups = set()
-        for g in self.myInstance.security_groups:
-            groups.add(g["GroupId"])
-        if mgmtServerGroupId not in groups:
-            groups.add(mgmtServerGroupId)
-            self.myInstance.modify_attribute(
-                Groups=list(groups),
-            )
-
-        # What's the default security policy for this VPC?
-        filters = [{"Name": "group-name", "Values": ["default"]}]
-        groups = list(self.myVpc.security_groups.filter(Filters=filters))
-        assert len(groups) == 1
-        defaultGroup = groups[0]
-        try:
-            defaultGroup.authorize_ingress(
-                IpPermissions=[
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 22,
-                        "ToPort": 22,
-                        "UserIdGroupPairs": [{"GroupId": clientGroup}],
-                    },
-                ],
-            )
-        except botocore.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "InvalidPermission.Duplicate":
-                # The rule we're trying to create already exists. Splendid!
-                pass
-            else:
-                raise e
-        print(me, defaultGroup)
-        
 
     def go_run(self, method, *args):
         name = method.__name__
@@ -277,7 +233,6 @@ class Deployment:
         self.go_run(self.make_table)
         self.go_run(self.make_roles)
         self.go_run(self.make_secgroups)
-        self.go_run(self.update_mgmt_secgroup)
 
 
 def setup():
