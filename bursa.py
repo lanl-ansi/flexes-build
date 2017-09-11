@@ -41,8 +41,7 @@ class Deployment:
         try:
             iid = urllib.request.urlopen("http://169.254.169.254/latest/meta-data/instance-id").read().decode()
         except Exception as e:
-            print("  ERROR: can't find this machine's EC2 instance ID: skipping step")
-            return
+            raise RuntimeError("Can't get instance ID: am I running on an EC2 instance?")
         self.myInstance = self.ec2.Instance(iid)
         self.myVpc = self.ec2.Vpc(self.myInstance.vpc_id)
 
