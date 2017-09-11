@@ -32,7 +32,7 @@ class Deployment:
         
         """
         
-        print("  * %-30s %s" % (name, desc))
+        print("  %-30s | %s" % (name, desc))
 
     def make_vpc(self, vpc_name):
         """Create machine group for this service"""
@@ -220,12 +220,17 @@ class Deployment:
                         pass
                     else:
                         raise e
+    
+    def update_default_secgroup(self):
+        """Update default security group to allow access from management server"""
+        
+        pass
 
     def go_run(self, method, *args):
         name = method.__name__
         desc = method.__doc__
         
-        print("=== [%-15s] %s" % (name, desc))
+        print("%-25s | %s" % (name, desc))
         method(*args)
 
     def build(self):
@@ -236,6 +241,7 @@ class Deployment:
         self.go_run(self.make_table, name)
         self.go_run(self.make_roles, name)
         self.go_run(self.make_secgroups, name)
+        self.go_run(self.update_default_secgroup)
 
 
 def setup():
