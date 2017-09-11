@@ -43,6 +43,10 @@ made specifically for hosting containers.
 Due to the constraints imposed by CoreOS,
 bursa only needs `bash`, `docker`, and Internet access.
 
+Therefore,
+bursa should run fine in Ubuntu, Debian, Red Hat, Arch, Slackware,
+or anything else that has `bash` and `docker`.
+
 
 Setup Script
 -------------
