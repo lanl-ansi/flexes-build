@@ -15,12 +15,14 @@ import os
 import optparse
 import random
 import json
+import urllib.request
 
 
 class Deployment:
-    def __init__(self, session):
+    def __init__(self, session, basename):
         self.session = session
         self.ec2 = self.session.resource("ec2")
+        self.basename = basename
 
     def log_item(self, name, desc=""):
         """Log that we're going to start working on something.
@@ -34,28 +36,20 @@ class Deployment:
         
         print("  %-30s | %s" % (name, desc))
 
-    def make_vpc(self, vpc_name):
-        """Create machine group for this service"""
-        
-        cidr_block = "10.33.0.0/16"
-        filters = [{"Name": "tag:Name", "Values": [vpc_name]}]
-        vpcs = list(self.ec2.vpcs.filter(Filters=filters))
-        if len(vpcs) == 1:
-            self.vpc = vpcs[0]
-            assert self.vpc.cidr_block == cidr_block
-        elif len(vpcs) > 1:
-            raise RuntimeError("You have more than one VPC named %s" % vpc_name)
-        else:
-            # Let"s get to making this VPC
-            self.vpc = self.ec2.create_vpc(CidrBlock=cidr_block)
-            self.vpc.create_tags(Tags=[{"Key": "Name", "Value": vpc_name}])
+    def setup(self):
+        """Figure out where to deploy"""
+        try:
+            iid = urllib.request.urlopen("http://169.254.169.254/latest/meta-data/instance-id").read().decode()
+        except Exception as e:
+            print("  ERROR: can't find this machine's EC2 instance ID: skipping step")
+            return
+        self.myInstance = self.ec2.Instance(iid)
+        self.myVpc = self.ec2.Vpc(self.myInstance.vpc_id)
 
-        # Enable external DNS for this VPC
-        self.vpc.modify_attribute(EnableDnsHostnames={"Value": True})
-        
-    def make_bucket(self, bucket_name):
+    def make_bucket(self):
         """Create cloud storage buckets"""
         
+        bucket_name = self.basename
         client = boto3.client("s3")
         try:
             client.get_bucket_location(Bucket=bucket_name)
@@ -68,9 +62,10 @@ class Deployment:
                 },
             )
 
-    def make_redis(self, redis_name):
+    def make_redis(self):
         """Create data structure store"""
         
+        redis_name = self.basename
         client = boto3.client("elasticache")
         try:
             client.describe_cache_clusters(CacheClusterId=redis_name)
@@ -82,9 +77,10 @@ class Deployment:
                 Engine="redis",
             )
             
-    def make_table(self, table_name):
+    def make_table(self):
         """Create NoSQL database table"""
         
+        table_name = self.basename
         client = boto3.client("dynamodb")
         try:
             client.describe_table(TableName=table_name)
@@ -96,9 +92,10 @@ class Deployment:
                 ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             )
             
-    def make_roles(self, role_prefix):
+    def make_roles(self):
         """Set up authentication roles"""
         
+        role_prefix = self.basename
         client = boto3.client("iam")
         
         policyDoc = {
@@ -170,23 +167,23 @@ class Deployment:
             group = client.create_security_group(
                 GroupName=groupName,
                 Description=desc,
-                VpcId=self.vpc.id,
+                VpcId=self.myVpc.id,
             )
             return group["GroupId"]
+        elif len(groups) > 1:
+            raise RuntimeError("Security Group %s: Multiple groups with this name" % groupName)
         else:
-            for group in groups:
-               if group["GroupName"] == groupName:
-                 return group["GroupId"]
+            return groups[0]["GroupId"]
         raise RuntimeError("Security Group %s: Unable to determine GroupID" % groupName)
 
-    def make_secgroups(self, basename):
+    def make_secgroups(self):
         """Establish network security groups"""
 
+        basename = self.basename
         client = boto3.client("ec2")
         services = (
             ("Redis", [6379]),
-            ("Docker Registry", [80,443]),
-            ("Management", [22]),
+            ("Docker Registry", [80, 443]),
         )
         
         self.secgroupIds = {}
@@ -221,10 +218,67 @@ class Deployment:
                     else:
                         raise e
     
-    def update_default_secgroup(self):
+    def update_mgmt_secgroup(self):
         """Update default security group to allow access from management server"""
         
-        pass
+        client = boto3.client("ec2")
+        
+        # Put ourselves in the Management Servers security group
+        mgmtServerGroupName = "%s-Management-Server" % self.basename
+        mgmtServerGroupId = self.create_secgroup(client, mgmtServerGroupName, "Management server")
+        resp = client.describe_instance_attribute(
+            Attribute="groupSet",
+            InstanceId=me,
+        )
+        print(resp)
+        groups = set()
+        # I have an opinion about the boto3 API
+        for d in groups:
+            groups.add(d["GroupId"])
+        if mgmtServerGroupId not in groups:
+            groups.add(mgmtServerGroupId)
+            client.modify_instance_attribute(
+                InstanceId=me,
+                Groups=list(groups),
+            )
+        print(resp)
+        client.mo
+        
+
+        # What's the default security policy for this VPC?
+        filters = [
+            {
+                "Name": "group-name",
+                "Values": ["default"],
+            }, {
+                "Name": "vpc-id",
+                "Values": [self.myVpc.id],
+            },
+        ]
+        resp = client.describe_security_groups(Filters=filters)
+        groups = resp["SecurityGroups"]
+        assert len(groups) == 1
+        defaultGroup = groups[0]['GroupId']
+        try:
+            client.authorize_security_group_ingress(
+                GroupId=defaultGroup,
+                IpPermissions=[
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "UserIdGroupPairs": [{"GroupId": clientGroup}],
+                    },
+                ],
+            )
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "InvalidPermission.Duplicate":
+                # The rule we're trying to create already exists. Splendid!
+                pass
+            else:
+                raise e
+        print(me, defaultGroup)
+        
 
     def go_run(self, method, *args):
         name = method.__name__
@@ -234,14 +288,15 @@ class Deployment:
         method(*args)
 
     def build(self):
-        name = "nisac"
-        self.go_run(self.make_vpc, name)
-        self.go_run(self.make_bucket, name)
-        self.go_run(self.make_redis, name)
-        self.go_run(self.make_table, name)
-        self.go_run(self.make_roles, name)
-        self.go_run(self.make_secgroups, name)
-        self.go_run(self.update_default_secgroup)
+        self.go_run(self.setup)
+
+        self.go_run(self.make_vpc)
+        self.go_run(self.make_bucket)
+        self.go_run(self.make_redis)
+        self.go_run(self.make_table)
+        self.go_run(self.make_roles)
+        self.go_run(self.make_secgroups)
+        self.go_run(self.update_mgmt_secgroup)
 
 
 def setup():
@@ -285,7 +340,7 @@ def main():
         region_name=options.region
     )
     
-    dpl = Deployment(session)
+    dpl = Deployment(session, "nisac")
     dpl.build()
 
   
