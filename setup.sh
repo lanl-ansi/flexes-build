@@ -55,6 +55,8 @@ aliases () {
   dumpAliases $0 > $HOME/.bashrc-lanlytics
 
   if ! grep -q bashrc-lanlytics $HOME/.bashrc; then
+    mv $HOME/.bashrc $HOME/.bashrc.orig
+    cat $HOME/.bashrc.orig > $HOME/.bashrc
     echo '. $HOME/.bashrc-lanlytics' >> $HOME/.bashrc
   fi
 }

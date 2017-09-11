@@ -226,42 +226,24 @@ class Deployment:
         # Put ourselves in the Management Servers security group
         mgmtServerGroupName = "%s-Management-Server" % self.basename
         mgmtServerGroupId = self.create_secgroup(client, mgmtServerGroupName, "Management server")
-        resp = client.describe_instance_attribute(
-            Attribute="groupSet",
-            InstanceId=me,
-        )
-        print(resp)
-        groups = set()
+        # I am compelled to write this down somewhere:
         # I have an opinion about the boto3 API
-        for d in groups:
-            groups.add(d["GroupId"])
+        groups = set()
+        for g in self.myInstance.security_groups:
+            groups.add(g["GroupId"])
         if mgmtServerGroupId not in groups:
             groups.add(mgmtServerGroupId)
-            client.modify_instance_attribute(
-                InstanceId=me,
+            self.myInstance.modify_attribute(
                 Groups=list(groups),
             )
-        print(resp)
-        client.mo
-        
 
         # What's the default security policy for this VPC?
-        filters = [
-            {
-                "Name": "group-name",
-                "Values": ["default"],
-            }, {
-                "Name": "vpc-id",
-                "Values": [self.myVpc.id],
-            },
-        ]
-        resp = client.describe_security_groups(Filters=filters)
-        groups = resp["SecurityGroups"]
+        filters = [{"Name": "group-name", "Values": ["default"]}]
+        groups = list(self.myVpc.security_groups.filter(Filters=filters))
         assert len(groups) == 1
-        defaultGroup = groups[0]['GroupId']
+        defaultGroup = groups[0]
         try:
-            client.authorize_security_group_ingress(
-                GroupId=defaultGroup,
+            defaultGroup.authorize_ingress(
                 IpPermissions=[
                     {
                         "IpProtocol": "tcp",
@@ -290,7 +272,6 @@ class Deployment:
     def build(self):
         self.go_run(self.setup)
 
-        self.go_run(self.make_vpc)
         self.go_run(self.make_bucket)
         self.go_run(self.make_redis)
         self.go_run(self.make_table)
