@@ -23,6 +23,8 @@ class Deployment:
         self.ec2 = self.session.resource("ec2")
 
     def make_vpc(self, vpc_name):
+        """Create machine group for this service"""
+        
         cidr_block = "10.33.0.0/16"
         filters = [{"Name": "tag:Name", "Values": [vpc_name]}]
         vpcs = list(self.ec2.vpcs.filter(Filters=filters))
@@ -40,6 +42,8 @@ class Deployment:
         self.vpc.modify_attribute(EnableDnsHostnames={"Value": True})
         
     def make_bucket(self, bucket_name):
+        """Create cloud storage buckets"""
+        
         client = boto3.client("s3")
         try:
             client.get_bucket_location(Bucket=bucket_name)
@@ -53,6 +57,8 @@ class Deployment:
             )
 
     def make_redis(self, redis_name):
+        """Create data structure store"""
+        
         client = boto3.client("elasticache")
         try:
             client.describe_cache_clusters(CacheClusterId=redis_name)
@@ -65,6 +71,8 @@ class Deployment:
             )
             
     def make_table(self, table_name):
+        """Create NoSQL database table"""
+        
         client = boto3.client("dynamodb")
         try:
             client.describe_table(TableName=table_name)
@@ -77,6 +85,8 @@ class Deployment:
             )
             
     def make_roles(self, role_prefix):
+        """Set up authentication roles"""
+        
         client = boto3.client("iam")
         
         policyDoc = {
@@ -154,6 +164,8 @@ class Deployment:
         raise RuntimeError("Security Group %s: Unable to determine GroupID" % groupName)
 
     def make_secgroups(self, basename):
+        """Establish network security groups"""
+
         client = boto3.client("ec2")
         services = (
             ("Redis", [6379]),
@@ -166,6 +178,8 @@ class Deployment:
             for role in ("Server", "Clients"):
                 groupName = "%s+%s-%s" % (basename, service, role)
                 desc = "%s %s" % (service, role)
+                print("  * %-30s %s" % (groupName, desc))
+                
                 groupId = self.create_secgroup(client, groupName, desc)
                 self.secgroupIds[groupName] = groupId
                 if role == "Server":
@@ -192,14 +206,21 @@ class Deployment:
                     else:
                         raise e
 
+    def go_run(self, method, *args):
+        name = method.__name__
+        desc = method.__doc__
+        
+        print("=== [%-15s] %s" % (name, desc))
+        method(*args)
+
     def build(self):
         name = "nisac"
-        self.make_vpc(name)
-        self.make_bucket(name)
-        self.make_redis(name)
-        self.make_table(name)
-        self.make_roles(name)
-        self.make_secgroups(name)
+        self.go_run(self.make_vpc, name)
+        self.go_run(self.make_bucket, name)
+        self.go_run(self.make_redis, name)
+        self.go_run(self.make_table, name)
+        self.go_run(self.make_roles, name)
+        self.go_run(self.make_secgroups, name)
 
 
 def setup():

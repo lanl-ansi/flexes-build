@@ -11,6 +11,7 @@ fi
 
 docker run \
   --rm \
+  -t \
   --volume $HOME/.aws:/root/.aws:ro \
   --volume $cwd:/project:ro \
   aws-python \
