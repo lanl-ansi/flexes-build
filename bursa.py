@@ -22,6 +22,18 @@ class Deployment:
         self.session = session
         self.ec2 = self.session.resource("ec2")
 
+    def log_item(self, name, desc=""):
+        """Log that we're going to start working on something.
+        
+        Don't call this if your method only works on one thing.
+        This is meant to illustrate that we're doing lots of important work,
+        but flooding the output with "nisac" over and over
+        isn't helpful.
+        
+        """
+        
+        print("  * %-30s %s" % (name, desc))
+
     def make_vpc(self, vpc_name):
         """Create machine group for this service"""
         
@@ -103,16 +115,18 @@ class Deployment:
         
         # Make API-Worker
         roleName = "%s+API-Worker" % role_prefix
+        roleDesc = "Allows API workers to access S3 and DynamoDB"
+        self.log_item(roleName, roleDesc)
         try:
             role = client.get_role(RoleName=roleName)
         except:
             role = None
-        
+
         if not role:
             client.create_role(
                 RoleName=roleName,
                 AssumeRolePolicyDocument=json.dumps(policyDoc),
-                Description="Allows API workers to access S3 and DynamoDB",
+                Description=roleDesc,
             )
         client.attach_role_policy(
             RoleName=roleName,
@@ -125,6 +139,8 @@ class Deployment:
 
         # Make S3-Full-Access
         roleName = "%s+S3-Full-Access" % role_prefix
+        roleDesc = "Allows full access to S3"
+        self.log_item(roleName, roleDesc)
         try:
             role = client.get_role(RoleName=roleName)
         except:
@@ -134,7 +150,7 @@ class Deployment:
             client.create_role(
                 RoleName=roleName,
                 AssumeRolePolicyDocument=json.dumps(policyDoc),
-                Description="Allows full access to S3",
+                Description=roleDesc,
             )
         client.attach_role_policy(
             RoleName=roleName,
@@ -178,8 +194,7 @@ class Deployment:
             for role in ("Server", "Clients"):
                 groupName = "%s+%s-%s" % (basename, service, role)
                 desc = "%s %s" % (service, role)
-                print("  * %-30s %s" % (groupName, desc))
-                
+                self.log_item(groupName, desc)
                 groupId = self.create_secgroup(client, groupName, desc)
                 self.secgroupIds[groupName] = groupId
                 if role == "Server":
