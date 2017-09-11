@@ -141,22 +141,56 @@ class Deployment:
         resp = client.describe_security_groups(Filters=filters)
         groups = resp['SecurityGroups']
         if not groups:
-            client.create_security_group(
+            group = client.create_security_group(
                 GroupName=groupName,
                 Description=desc,
                 VpcId=self.vpc.id,
             )
+            return group["GroupId"]
+        else:
+            for group in groups:
+               if group["GroupName"] == groupName:
+                 return group["GroupId"]
+        raise RuntimeError("Security Group %s: Unable to determine GroupID" % groupName)
 
     def make_secgroups(self, basename):
         client = boto3.client("ec2")
+        services = (
+            ("Redis", [6379]),
+            ("Docker Registry", [80,443]),
+            ("Management", [22]),
+        )
         
-        for service in ("Redis", "Docker Registry", "Management"):
-            for role in ("Clients", "Server"):
+        self.secgroupIds = {}
+        for service, ports in services:
+            for role in ("Server", "Clients"):
                 groupName = "%s+%s-%s" % (basename, service, role)
                 desc = "%s %s" % (service, role)
-                self.create_secgroup(client, groupName, desc)
-
-        raise NotImplementedError("Set rules on the services")
+                groupId = self.create_secgroup(client, groupName, desc)
+                self.secgroupIds[groupName] = groupId
+                if role == "Server":
+                    serverGroup = groupId
+                else:
+                    clientGroup = groupId
+            for port in ports:
+                try:
+                    client.authorize_security_group_ingress(
+                        GroupId=serverGroup,
+                        IpPermissions=[
+                            {
+                                "IpProtocol": "tcp",
+                                "FromPort": port,
+                                "ToPort": port,
+                                "UserIdGroupPairs": [{"GroupId": clientGroup}],
+                            },
+                        ],
+                    )
+                except botocore.exceptions.ClientError as e:
+                    if e.response["Error"]["Code"] == "InvalidPermission.Duplicate":
+                        # The rule we're trying to create already exists. Splendid!
+                        pass
+                    else:
+                        raise e
 
     def build(self):
         name = "nisac"
