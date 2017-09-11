@@ -25,22 +25,30 @@ Download the `.csv` file to a safe location
 Open the `.csv` to obtain your "access key ID" and "secret access key".
 You will use these values when running the setup script.
 
+### Make a VPC
+
+You can use the default VPC if you want,
+or you can make a new VPC for lanlytics.
+Bursa will put all the instances it creates
+in whichever VPC the management server is in.
+
 ### Management Server
 
-Create a management server in your cloud,
+Create a management server in your VPC,
 from which to run bursa,
 and perform administrative tasks on your deployment.
-We used CoreOS on a `t2.nano` instance.
+
+We used CoreOS Container Linux on a `t2.nano` instance.
 
 
 Dependencies
 ------------
 
 Bursa has been tested on CoreOS-stable.
-CoreOS is a minimalistic self-upgrading Linux distribution,
+CoreOS Container Linux is a minimalistic self-upgrading Linux distribution,
 made specifically for hosting containers.
 
-Due to the constraints imposed by CoreOS,
+Due to the constraints imposed by CoreOS Container Linux,
 bursa only needs `bash`, `docker`, and Internet access.
 
 Therefore,
