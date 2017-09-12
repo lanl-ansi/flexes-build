@@ -16,6 +16,7 @@ import optparse
 import random
 import json
 import urllib.request
+import warnings
 
 
 class Deployment:
@@ -66,6 +67,7 @@ class Deployment:
         
         redis_name = self.basename
         client = boto3.client("elasticache")
+        warnings.warn("Create a subnet, so we can enroll this in the correct VPC")
         try:
             client.describe_cache_clusters(CacheClusterId=redis_name)
         except:
