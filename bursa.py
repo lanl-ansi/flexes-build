@@ -14,6 +14,7 @@ import socket
 import os
 import optparse
 import random
+import shelve
 import json
 import urllib.request
 import warnings
@@ -24,6 +25,12 @@ class Deployment:
         self.session = session
         self.ec2 = self.session.resource("ec2")
         self.basename = basename
+        
+        shelfdir = os.path.expanduser("~/.local/share/bursa")
+        os.makedirs(shelfdir, exist_ok=True)
+        shelffn = os.path.join(shelfdir, "%s.shelf" % basename)
+        self.shelf = shelve.open(shelffn)
+        os.chmod(shelffn, 0o700)
 
     def log_item(self, name, desc=""):
         """Log that we're going to start working on something.
@@ -66,17 +73,32 @@ class Deployment:
         """Create data structure store"""
         
         redis_name = self.basename
+
         client = boto3.client("elasticache")
-        warnings.warn("Create a subnet, so we can enroll this in the correct VPC")
         try:
             client.describe_cache_clusters(CacheClusterId=redis_name)
+            return
         except:
-            client.create_cache_cluster(
-                CacheClusterId=redis_name,
-                NumCacheNodes=1,
-                CacheNodeType="cache.t2.micro",
-                Engine="redis",
-            )
+            pass
+
+        subnet = list(self.myVpc.subnets.all())[0]
+
+        resp = client.create_cache_subnet_group(
+            CacheSubnetGroupName=self.basename,
+            CacheSubnetGroupDescription="Cache subnet for redis",
+            SubnetIds=[subnet.id],
+        )
+        subnets = resp["CacheSubnetGroup"]["Subnets"]
+        assert len(subnets) == 1
+        subnetId = subnets[0]["SubnetIdentifier"]
+        
+        client.create_cache_cluster(
+            CacheClusterId=redis_name,
+            CacheSubnetGroupName=self.basename,
+            NumCacheNodes=1,
+            CacheNodeType="cache.t2.micro",
+            Engine="redis",
+        )
             
     def make_table(self):
         """Create NoSQL database table"""
@@ -96,7 +118,6 @@ class Deployment:
     def make_roles(self):
         """Set up authentication roles"""
         
-        role_prefix = self.basename
         client = boto3.client("iam")
         
         policyDoc = {
@@ -111,8 +132,8 @@ class Deployment:
         }
 
         
-        # Make API-Worker
-        roleName = "%s+API-Worker" % role_prefix
+        # API-Worker
+        roleName = "%s+API-Worker" % self.basename
         roleDesc = "Allows API workers to access S3 and DynamoDB"
         self.log_item(roleName, roleDesc)
         try:
@@ -135,8 +156,8 @@ class Deployment:
             PolicyArn="arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
         )
 
-        # Make S3-Full-Access
-        roleName = "%s+S3-Full-Access" % role_prefix
+        # S3-Full-Access
+        roleName = "%s+S3-Full-Access" % self.basename
         roleDesc = "Allows full access to S3"
         self.log_item(roleName, roleDesc)
         try:
@@ -154,7 +175,40 @@ class Deployment:
             RoleName=roleName,
             PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
         )
-    
+        
+    def make_user(self):
+        """Create IAM Users"""
+        
+        iam = boto3.resource("iam")
+        
+        # Docker-Registry
+        userName = "%s-Docker-Registry" % self.basename
+        userDesc = "Docker Registry"
+        self.log_item(userName, userDesc)
+        user = iam.User(userName)
+        try:
+            user.load()
+        except:
+            user.create()
+        user.attach_policy(
+            PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
+        )
+        
+        key = self.shelf.get("DockerRegistryAccessKey")
+        if key:
+            keyId, keySecret = key
+            # Make sure the one we recorded is still around
+            try:
+                keyObj = user.AccessKey(keyId)
+            except:
+                key = None
+        if not key:
+            keyPair = user.create_access_key_pair()
+            keyId = keyPair.access_key_id
+            keySecret = keyPair.secret_access_key
+            key = (keyId, keySecret)
+            self.shelf["DockerRegistryAccessKey"] = key
+
     def create_secgroup(self, client, groupName, desc):
         filters = [
             {
@@ -233,6 +287,7 @@ class Deployment:
         self.go_run(self.make_redis)
         self.go_run(self.make_table)
         self.go_run(self.make_roles)
+        self.go_run(self.make_user)
         self.go_run(self.make_secgroups)
 
 

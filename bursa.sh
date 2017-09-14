@@ -21,7 +21,9 @@ fi
 docker run \
   --rm \
   -t \
-  --volume $HOME/.aws:/root/.aws:ro \
+  --user $(id -u):$(id -g) \
+  --env HOME=$HOME \
   --volume $cwd:/project:ro \
+  --volume $HOME:$HOME \
   aws-python \
   bursa.py

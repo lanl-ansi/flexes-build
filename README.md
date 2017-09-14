@@ -76,3 +76,5 @@ Running bursa
 After you have set up your account, you can run bursa:
 
     sh bursa.sh
+
+Bursa stores important state information in `~/.local/share/bursa/`.
