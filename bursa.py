@@ -301,17 +301,25 @@ class Deployment:
         raise KeyError("No images match")
         
     def create_instance(self, image, secGroups, instanceName):
+        instances = self.ec2.instances.filter(
+            Filters=[
+                {
+                    "Name": "tag:Name",
+                    "Values": [instanceName],
+                }
+            ]
+        )
+        if list(instances):
+            print("ZOMG IT ALREADY EXISTS!", list(instances))
+            return
+        subnet = list(self.myVpc.subnets.all())[0]
         self.ec2.create_instances(
             InstanceType="t2.micro",
             MinCount=1,
             MaxCount=1,
             ImageId=image.id,
             SecurityGroupIds=secGroups,
-            NetworkInterfaces=[
-                {
-                    "SubnetId": self.
-                },
-            ],
+            SubnetId=subnet.id,
             TagSpecifications=[
                 {
                     "ResourceType": "instance",
