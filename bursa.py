@@ -336,12 +336,31 @@ class Deployment:
     def make_instances(self):
         """Create EC2 Instances"""
         
+        # WebApp
         instanceName = "%s-WebApp" % self.basename
         self.log_item(instanceName)
         image = self.get_image(["CoreOS-stable-*-hvm", "ubuntu/images/hvm-ssd/ubuntu-xenial-*"])
         secGroups = [
-                self.secgroupIds["%s+Docker Registry-Clients" % self.basename],
-                self.secgroupIds["%s+Redis-Clients" % self.basename],
+            self.secgroupIds["%s+Docker Registry-Clients" % self.basename],
+            self.secgroupIds["%s+Redis-Clients" % self.basename],
+        ]
+        self.create_instance(image, secGroups, instanceName)
+        
+        # DockerRegistry
+        instanceName = "%s-DockerRegistry" % self.basename
+        self.log_item(instanceName)
+        image = image # reuse the last one
+        secGroups = [
+            self.secgroupIds["%s+Docker Registry-Server" % self.basename],
+        ]
+        self.create_instance(image, secGroups, instanceName)
+        
+        # LinuxWorker
+        instanceName = "%s-LinuxWorker" % self.basename
+        self.log_item(instanceName)
+        image = image # reuse again!
+        secGroups = [
+            self.secgroupIds["%s+Redis-Clients" % self.basename],
         ]
         self.create_instance(image, secGroups, instanceName)
 
