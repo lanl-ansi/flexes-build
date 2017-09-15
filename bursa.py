@@ -14,6 +14,7 @@ import socket
 import os
 import optparse
 import random
+import re
 import shelve
 import json
 import urllib.request
@@ -272,6 +273,69 @@ class Deployment:
                         pass
                     else:
                         raise e
+                        
+    def get_image(self, nameGlobs):
+        def numbers(img):
+            vals = re.findall(r"[0-9]+", img.name)
+            return [int(p) for p in vals]
+
+        image = None
+        for nameGlob in nameGlobs:
+            images = self.ec2.images.filter(
+                Filters=[
+                    {
+                        "Name": "name",
+                        "Values": [nameGlob],
+                    },
+                    {
+                        "Name": "virtualization-type",
+                        "Values": ["hvm"],
+                    }
+                ]
+            )
+            images = list(images)
+            images.sort(key=numbers)
+            if images:
+                return images[-1]
+                
+        raise KeyError("No images match")
+        
+    def create_instance(self, image, secGroups, instanceName):
+        self.ec2.create_instances(
+            InstanceType="t2.micro",
+            MinCount=1,
+            MaxCount=1,
+            ImageId=image.id,
+            SecurityGroupIds=secGroups,
+            NetworkInterfaces=[
+                {
+                    "SubnetId": self.
+                },
+            ],
+            TagSpecifications=[
+                {
+                    "ResourceType": "instance",
+                    "Tags": [
+                        {
+                            "Key": "Name",
+                            "Value": instanceName
+                        }
+                    ]
+                }
+            ]
+        )
+                        
+    def make_instances(self):
+        """Create EC2 Instances"""
+        
+        instanceName = "%s-WebApp" % self.basename
+        self.log_item(instanceName)
+        image = self.get_image(["CoreOS-stable-*-hvm", "ubuntu/images/hvm-ssd/ubuntu-xenial-*"])
+        secGroups = [
+                self.secgroupIds["%s+Docker Registry-Clients" % self.basename],
+                self.secgroupIds["%s+Redis-Clients" % self.basename],
+        ]
+        self.create_instance(image, secGroups, instanceName)
 
     def go_run(self, method, *args):
         name = method.__name__
@@ -289,6 +353,7 @@ class Deployment:
         self.go_run(self.make_roles)
         self.go_run(self.make_user)
         self.go_run(self.make_secgroups)
+        self.go_run(self.make_instances)
 
 
 def setup():
