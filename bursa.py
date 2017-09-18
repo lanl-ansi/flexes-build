@@ -300,6 +300,24 @@ class Deployment:
                 
         raise KeyError("No images match")
         
+    def make_keypair(self):
+        """Create SSH keypair"""
+        
+        self.keyname = self.basename
+        self.creds = self.shelf.get("KeyPair")
+        if self.creds:
+            keypairInfo = self.ec2.KeyPair(self.keyname)
+            try:
+                keypairInfo.load()
+            except:
+                self.creds = None
+                
+        if not self.creds:
+            keypair = self.ec2.create_key_pair(KeyName=self.keyname)
+            self.creds = keypair.key_material
+            self.shelf["KeyPair"] = self.creds
+        print(self.creds)
+
     def create_instance(self, image, secGroups, instanceName):
         instances = self.ec2.instances.filter(
             Filters=[
@@ -309,29 +327,35 @@ class Deployment:
                 }
             ]
         )
-        if list(instances):
-            print("ZOMG IT ALREADY EXISTS!", list(instances))
-            return
-        subnet = list(self.myVpc.subnets.all())[0]
-        self.ec2.create_instances(
-            InstanceType="t2.micro",
-            MinCount=1,
-            MaxCount=1,
-            ImageId=image.id,
-            SecurityGroupIds=secGroups,
-            SubnetId=subnet.id,
-            TagSpecifications=[
-                {
-                    "ResourceType": "instance",
-                    "Tags": [
-                        {
-                            "Key": "Name",
-                            "Value": instanceName
-                        }
-                    ]
-                }
-            ]
-        )
+        instances = list(instances)
+        if len(instances) > 1:
+            raise RuntimeError("Multiple instances match this name")
+        elif len(instances) == 1:
+            pass
+        else:
+            subnet = list(self.myVpc.subnets.all())[0]
+            instances = self.ec2.create_instances(
+                InstanceType="t2.micro",
+                MinCount=1,
+                MaxCount=1,
+                ImageId=image.id,
+                SecurityGroupIds=secGroups,
+                SubnetId=subnet.id,
+                KeyName=self.keyname,
+                TagSpecifications=[
+                    {
+                        "ResourceType": "instance",
+                        "Tags": [
+                            {
+                                "Key": "Name",
+                                "Value": instanceName
+                            }
+                        ]
+                    }
+                ]
+            )
+        instance = instances[0]
+        print("    %s" % instance.id)
                         
     def make_instances(self):
         """Create EC2 Instances"""
@@ -380,6 +404,7 @@ class Deployment:
         self.go_run(self.make_roles)
         self.go_run(self.make_user)
         self.go_run(self.make_secgroups)
+        self.go_run(self.make_keypair)
         self.go_run(self.make_instances)
 
 
