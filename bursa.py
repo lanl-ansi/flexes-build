@@ -209,6 +209,7 @@ class Deployment:
             keySecret = keyPair.secret_access_key
             key = (keyId, keySecret)
             self.shelf["DockerRegistryAccessKey"] = key
+        print(key)
 
     def create_secgroup(self, client, groupName, desc):
         filters = [
