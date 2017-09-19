@@ -1,5 +1,7 @@
 #! /bin/sh
 
+set -e
+
 cwd=$(realpath $(dirname $0))
 
 if [ "$1" == "--rebuild" ] || ! docker images | grep -q aws-python; then
@@ -18,6 +20,20 @@ if [ -n "$rebuild" ]; then
   echo "==="
 fi
 
+for cfg in default; do
+  yaml=$cfg.cfg.yaml
+  json=$cfg.cfg.json
+  if [ $yaml -nt $json ]; then
+    echo "=== Retranspiling $yaml"
+    docker run -i --rm johnt337/container-linux-config-transpiler:alpine-test <$yaml >$json
+    if ! grep -q . $json; then
+        rm $json
+        echo "ERROR: empty output"
+        exit 1
+    fi
+  fi
+done
+
 docker run \
   --rm \
   -t \
@@ -26,4 +42,4 @@ docker run \
   --volume $cwd:/project:ro \
   --volume $HOME:$HOME \
   aws-python \
-  bursa.py
+  bursa.py "@"

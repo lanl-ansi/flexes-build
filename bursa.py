@@ -7,6 +7,7 @@
 # or as I like to call them,
 # "knee sacs"
 
+import binascii
 import boto3
 import boto3.session
 import botocore.exceptions
@@ -46,13 +47,16 @@ class Deployment:
         print("  %-30s | %s" % (name, desc))
 
     def setup(self):
-        """Figure out where to deploy"""
+        """Figure out where to deploy, read user data"""
         try:
             iid = urllib.request.urlopen("http://169.254.169.254/latest/meta-data/instance-id").read().decode()
         except Exception as e:
             raise RuntimeError("Can't get instance ID: am I running on an EC2 instance?")
         self.myInstance = self.ec2.Instance(iid)
         self.myVpc = self.ec2.Vpc(self.myInstance.vpc_id)
+        
+        with open("default.cfg.json") as f:
+            self.userData = f.read()
 
     def make_bucket(self):
         """Create cloud storage buckets"""
@@ -216,6 +220,10 @@ class Deployment:
             {
                 "Name": "group-name",
                 "Values": [groupName],
+            },
+            {
+                "Name": "vpc-id",
+                "Values": [self.myInstance.vpc_id],
             }
         ]
         resp = client.describe_security_groups(Filters=filters)
@@ -238,13 +246,15 @@ class Deployment:
 
         basename = self.basename
         client = boto3.client("ec2")
+        self.secgroupIds = {}
+        
         services = (
-            ("Redis", [6379]),
-            ("Docker Registry", [80, 443]),
+            ("Management", [22], []),
+            ("Redis", [], [6379]),
+            ("Docker Registry", [], [80, 443]),
         )
         
-        self.secgroupIds = {}
-        for service, ports in services:
+        for service, cliports, srvports in services:
             for role in ("Server", "Clients"):
                 groupName = "%s+%s-%s" % (basename, service, role)
                 desc = "%s %s" % (service, role)
@@ -252,19 +262,19 @@ class Deployment:
                 groupId = self.create_secgroup(client, groupName, desc)
                 self.secgroupIds[groupName] = groupId
                 if role == "Server":
-                    serverGroup = groupId
+                    srvGroupId = groupId
                 else:
-                    clientGroup = groupId
-            for port in ports:
+                    cliGroupId = groupId
+            for port in srvports:
                 try:
                     client.authorize_security_group_ingress(
-                        GroupId=serverGroup,
+                        GroupId=srvGroupId,
                         IpPermissions=[
                             {
                                 "IpProtocol": "tcp",
                                 "FromPort": port,
                                 "ToPort": port,
-                                "UserIdGroupPairs": [{"GroupId": clientGroup}],
+                                "UserIdGroupPairs": [{"GroupId": cliGroupId}],
                             },
                         ],
                     )
@@ -274,7 +284,27 @@ class Deployment:
                         pass
                     else:
                         raise e
-                        
+
+            for port in cliports:
+                try:
+                    client.authorize_security_group_ingress(
+                        GroupId=cliGroupId,
+                        IpPermissions=[
+                            {
+                                "IpProtocol": "tcp",
+                                "FromPort": port,
+                                "ToPort": port,
+                                "UserIdGroupPairs": [{"GroupId": srvGroupId}],
+                            },
+                        ],
+                    )
+                except botocore.exceptions.ClientError as e:
+                    if e.response["Error"]["Code"] == "InvalidPermission.Duplicate":
+                        # The rule we're trying to create already exists. Splendid!
+                        pass
+                    else:
+                        raise e
+
     def get_image(self, nameGlobs):
         def numbers(img):
             vals = re.findall(r"[0-9]+", img.name)
@@ -343,6 +373,7 @@ class Deployment:
                 SecurityGroupIds=secGroups,
                 SubnetId=subnet.id,
                 KeyName=self.keyname,
+                UserData=self.userData,
                 TagSpecifications=[
                     {
                         "ResourceType": "instance",
@@ -366,6 +397,7 @@ class Deployment:
         self.log_item(instanceName)
         image = self.get_image(["CoreOS-stable-*-hvm", "ubuntu/images/hvm-ssd/ubuntu-xenial-*"])
         secGroups = [
+            self.secgroupIds["%s+Management-Clients" % self.basename],
             self.secgroupIds["%s+Docker Registry-Clients" % self.basename],
             self.secgroupIds["%s+Redis-Clients" % self.basename],
         ]
@@ -376,6 +408,7 @@ class Deployment:
         self.log_item(instanceName)
         image = image # reuse the last one
         secGroups = [
+            self.secgroupIds["%s+Management-Clients" % self.basename],
             self.secgroupIds["%s+Docker Registry-Server" % self.basename],
         ]
         self.create_instance(image, secGroups, instanceName)
@@ -385,6 +418,7 @@ class Deployment:
         self.log_item(instanceName)
         image = image # reuse again!
         secGroups = [
+            self.secgroupIds["%s+Management-Clients" % self.basename],
             self.secgroupIds["%s+Redis-Clients" % self.basename],
         ]
         self.create_instance(image, secGroups, instanceName)

@@ -1,0 +1,32 @@
+storage:
+  files:
+    - filesystem: "root"
+      path: "/etc/moo"
+      mode: 0644
+      contents:
+        inline: |+2 # YAML sucks https://stackoverflow.com/questions/3790454/in-yaml-how-do-i-break-a-string-over-multiple-lines
+           _____
+          < moo >
+           -----
+                  \   ^__^
+                   \  (oo)\_______
+                      (__)\       )\/\
+                          ||----w |
+                          ||     ||
+
+systemd:
+  units:
+    - name: "docker-cowsay.service"
+      enable: true
+      contents: |
+        [Unit]
+        Description=Cowsay Service
+        Author=Neale Pickett <neale@lanl.gov>
+        After=docker.service
+        
+        [Service]
+        Restart=always
+        ExecStart=/usr/bin/docker run --rm --name cowsay jtcressy/cowsay
+
+        [Install]
+        WantedBy=multi-user.target
