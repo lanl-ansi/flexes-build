@@ -1,9 +1,20 @@
-FROM python:3.5-alpine
+FROM python:3-alpine
 
 MAINTAINER James Arnold <arnold_j@lanl.gov>
 
-COPY talk.py /src/
+ENV HOME /home
 
-ENTRYPOINT ["python3", "/src/talk.py"]
+COPY message_schema.json launch.py requirements.txt settings.py utils.py worker.py /src/
+ADD test/ /src/test/
 
-CMD ["world"]
+WORKDIR /src
+
+RUN pip install -r requirements.txt && ls && py.test test/
+
+VOLUME /usr/bin/docker /usr/bin/docker
+VOLUME /var/run/docker.sock /var/run/docker.sock
+VOLUME /home $HOME
+
+ENTRYPOINT ["python3", "worker.py"]
+
+CMD ["-h"]
