@@ -17,16 +17,21 @@ import optparse
 import random
 import re
 import shelve
+import subprocess
 import json
 import urllib.request
 import warnings
 
 
 class Deployment:
-    def __init__(self, session, basename):
+    def __init__(self, session, basename, config_dir, images_dir, ct_path):
         self.session = session
         self.ec2 = self.session.resource("ec2")
         self.basename = basename
+        
+        self.config_dir = config_dir
+        self.images_dir = images_dir
+        self.ct_path = ct_path
         
         shelfdir = os.path.expanduser("~/.local/share/bursa")
         os.makedirs(shelfdir, exist_ok=True)
@@ -54,9 +59,17 @@ class Deployment:
             raise RuntimeError("Can't get instance ID: am I running on an EC2 instance?")
         self.myInstance = self.ec2.Instance(iid)
         self.myVpc = self.ec2.Vpc(self.myInstance.vpc_id)
+            
+    def transpile(self):
+        """Transpile CoreOS Container Linux configurations"""
         
-        with open("default.cfg.json") as f:
-            self.userData = f.read()
+        self.configs = {}
+        for cfg in ["default"]:
+            self.log_item(cfg)
+            yaml = open(os.path.join(self.config_dir, "%s.yaml" % cfg))
+            transpile = subprocess.check_output([self.ct_path], stdin=yaml)
+            self.configs[cfg] = transpile
+            print(transpile)
 
     def make_bucket(self):
         """Create cloud storage buckets"""
@@ -349,7 +362,7 @@ class Deployment:
             self.shelf["KeyPair"] = self.creds
         print(self.creds)
 
-    def create_instance(self, image, secGroups, instanceName):
+    def create_instance(self, image, secGroups, instanceName, publicIp=False):
         instances = self.ec2.instances.filter(
             Filters=[
                 {
@@ -374,6 +387,11 @@ class Deployment:
                 SubnetId=subnet.id,
                 KeyName=self.keyname,
                 UserData=self.userData,
+                NetworkInterfaces=[
+                    {
+                        "AssociatePublicIpAddress": publicIp,
+                    }
+                ],
                 TagSpecifications=[
                     {
                         "ResourceType": "instance",
@@ -433,7 +451,8 @@ class Deployment:
     def build(self):
         self.go_run(self.setup)
 
-        self.go_run(self.make_bucket)
+        self.go_run(self.transpile)
+        self.go_run(self.make_bucket) # do this early, since the name must be globally unique
         self.go_run(self.make_redis)
         self.go_run(self.make_table)
         self.go_run(self.make_roles)
@@ -469,6 +488,25 @@ def parse_options():
         default=None,
         help="AWS Region"
     )
+    parser.add_option(
+        "--basename",
+        default="bursa",
+        help="Base name for created resources in this ")
+    parser.add_option(
+        "--config",
+        default="config/",
+        help="Configuration directory"
+    )
+    parser.add_option(
+        "--images",
+        default="images/",
+        help="Images directory"
+    )
+    parser.add_option(
+        "--ct",
+        default="ct",
+        help="Path to ct executable"
+    )
     
     options, args = parser.parse_args()
     return (options, args)
@@ -484,7 +522,11 @@ def main():
         region_name=options.region
     )
     
-    dpl = Deployment(session, "nisac")
+    dpl = Deployment(session, options.basename,
+        config_dir=options.config,
+        images_dir=options.images,
+        ct_path=options.ct,
+    )
     dpl.build()
 
   
