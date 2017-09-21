@@ -33,12 +33,8 @@ class TestIO:
 
     @mock.patch('boto3.resource')
     def test_s3_file_not_found(self, mock_resource):
-        Obj = namedtuple('Obj', ['key'])
-        key = 'path/to/file.txt'
-        mock_resource.Bucket.return_value.objects.filter.return_value = [Obj(key=key)]
-        side_effect = ClientError({'Error': {'Code': 404}}, 'download')
-        mock_resource.Bucket.return_value.download_file.side_effect = side_effect
-        with pytest.raises(ClientError):
+        mock_resource.Bucket.return_value.objects.filter.return_value = []
+        with pytest.raises(ValueError):
             utils.get_s3_file(mock_resource, self.uri, self.local_file)
 
     @mock.patch('boto3.resource')
@@ -61,7 +57,10 @@ class TestIO:
 
     @mock.patch('boto3.resource')
     def test_get_s3_file_prefix(self, mock_resource):
+        Obj = namedtuple('Obj', ['key'])
         uri = os.path.splitext(self.uri)[0]
+        key = 'path/to/file.txt'
+        mock_resource.Bucket.return_value.objects.filter.return_value = [Obj(key=key)]
         local_file = os.path.splitext(self.local_file)[0]
         utils.get_s3_file(mock_resource, uri, local_file)
         mock_resource.Bucket.return_value.objects.filter.assert_called_with(Prefix='path/to/file')
