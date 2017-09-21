@@ -40,20 +40,6 @@ def put_file_s3(s3, local_file, uri):
 
 
 # Database
-def db_get_with_retry(db, job_id):
-    for i in range(5):
-        try:
-            return json.loads(db.get(job_id).decode())
-        except Exception:
-            wait_time = random.uniform(0.5, 5)
-            time.sleep(wait_time)
-            continue
-        else:
-            break
-    else:
-        return
-
-
 def receive_message(db, queue):
     message = db.rpop(queue)
     if message is not None:
@@ -63,9 +49,12 @@ def receive_message(db, queue):
 
 
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    val = db_get_with_retry(db, job_id)
-    if val is None:
+    job = db.get(job_id)
+
+    if job is None:
         return STATUS_FAIL, 'Job retrieval failed'
+
+    val = json.loads(job.decode())
 
     val.update({
         'status': status, 
