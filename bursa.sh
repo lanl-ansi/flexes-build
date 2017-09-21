@@ -2,7 +2,13 @@
 
 set -e
 
+if [ $? -eq 0 ]; then
+    echo "Usage: $0 BASENAME"
+fi
+
 cd $(dirname $0)
+basename=$1; shift
+
 
 echo "==="
 echo "=== Building images"
@@ -37,4 +43,4 @@ docker run \
   --volume $(pwd)/config:/bursa/config:ro \
   --volume $HOME:$HOME \
   bursa \
-  /bursa/bin/bursa.py --config /bursa/config --images /bursa/images "$@"
+  /bursa/bin/bursa.py --config /bursa/config --images /bursa/images --basename $basename "$@"

@@ -69,7 +69,6 @@ class Deployment:
             yaml = open(os.path.join(self.config_dir, "%s.yaml" % cfg))
             transpile = subprocess.check_output([self.ct_path], stdin=yaml)
             self.configs[cfg] = transpile
-            print(transpile)
 
     def make_bucket(self):
         """Create cloud storage buckets"""
@@ -78,14 +77,17 @@ class Deployment:
         client = boto3.client("s3")
         try:
             client.get_bucket_location(Bucket=bucket_name)
-        except: # XXX: is there no way to catch only the Not Owned By You exception?
-            client.create_bucket(
-                Bucket=bucket_name,
-                ACL="private",
-                CreateBucketConfiguration={
-                    "LocationConstraint": self.session.region_name
-                },
-            )
+            return
+        except Exception as e:
+            if e.response["Error"]["Code"] == 'AccessDenied':
+                raise RuntimeError("Access denied listing bucket. Perhaps '%s' is already taken?" % bucket_name)
+        client.create_bucket(
+            Bucket=bucket_name,
+            ACL="private",
+            CreateBucketConfiguration={
+                "LocationConstraint": self.session.region_name
+            },
+        )
 
     def make_redis(self):
         """Create data structure store"""
@@ -383,13 +385,14 @@ class Deployment:
                 MinCount=1,
                 MaxCount=1,
                 ImageId=image.id,
-                SecurityGroupIds=secGroups,
-                SubnetId=subnet.id,
                 KeyName=self.keyname,
-                UserData=self.userData,
+                UserData=self.configs["default"],
                 NetworkInterfaces=[
                     {
+                        "DeviceIndex": 0,
                         "AssociatePublicIpAddress": publicIp,
+                        "SubnetId": subnet.id,
+                        "Groups": secGroups,
                     }
                 ],
                 TagSpecifications=[
