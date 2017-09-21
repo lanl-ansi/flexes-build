@@ -11,8 +11,6 @@ import utils
 import io
 from settings import *
 
-boto3.setup_default_session(region_name=AWS_REGION)
-
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
     if 'HOMEPATH' in os.environ:
