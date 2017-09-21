@@ -93,8 +93,8 @@ the worker using Docker you can either pull the image from the Docker Registry o
 build it locally and run it. Once the image is on the host machine you can run it 
 with the following command:
 ```bash
-docker run -d -e AWS_DEFAULT_REGION=us-gov-west-1 --env HOME 
--v /<host-home-directory>:/<host-home-directory> 
--v /var/run/docker.sock:/var/run/docker.sock 
-hub.lanlytics.com/lanlytics-api-worker docker
+$ docker run -d -e AWS_DEFAULT_REGION=us-gov-west-1 --env HOME 
+    -v /<host-home-directory>:/<host-home-directory> 
+    -v /var/run/docker.sock:/var/run/docker.sock 
+    hub.lanlytics.com/lanlytics-api-worker docker
 ```
