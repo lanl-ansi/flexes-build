@@ -19,5 +19,7 @@ RUN chmod +x /usr/bin/ct
 COPY bursa.py /bursa/bin/bursa.py
 RUN chmod +x /bursa/bin/bursa.py
 
+RUN apk --no-cache add openssh-client
+
 WORKDIR /bursa
 CMD ["bin/bursa.py"]

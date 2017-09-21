@@ -21,7 +21,7 @@ alias docker-compose="docker run \
     --volume /var/run/docker.sock:/var/run/docker.sock \
     --volume $cwd:/rootfs/$cwd \
     --workdir /rootfs/$cwd \
-    docker/copmose:1.15.0 \
+    docker/compose:1.15.0 \
 "
 
 alias aws="docker run \

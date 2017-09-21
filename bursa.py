@@ -18,10 +18,10 @@ import random
 import re
 import shelve
 import subprocess
+import time
 import json
 import urllib.request
 import warnings
-
 
 class Deployment:
     def __init__(self, session, basename, config_dir, images_dir, ct_path):
@@ -33,11 +33,12 @@ class Deployment:
         self.images_dir = images_dir
         self.ct_path = ct_path
         
-        shelfdir = os.path.expanduser("~/.local/share/bursa")
-        os.makedirs(shelfdir, exist_ok=True)
-        shelffn = os.path.join(shelfdir, "%s.shelf" % basename)
-        self.shelf = shelve.open(shelffn)
-        os.chmod(shelffn, 0o700)
+    def bursa_filename(self, ext):
+        os.umask(0o77)
+        dn = os.path.expanduser("~/.local/share/bursa")
+        os.makedirs(dn, exist_ok=True)
+        filename = os.path.join(dn, "%s.%s" % (self.basename, ext))
+        return filename
 
     def log_item(self, name, desc=""):
         """Log that we're going to start working on something.
@@ -214,21 +215,13 @@ class Deployment:
             PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
         )
         
-        key = self.shelf.get("DockerRegistryAccessKey")
-        if key:
-            keyId, keySecret = key
-            # Make sure the one we recorded is still around
-            try:
-                keyObj = user.AccessKey(keyId)
-            except:
-                key = None
-        if not key:
+        accessKeyPath = self.bursa_filename("awskey")
+        if not os.path.exists(accessKeyPath):
+            self.log_item("DockerRegistryAccessKey")
             keyPair = user.create_access_key_pair()
-            keyId = keyPair.access_key_id
-            keySecret = keyPair.secret_access_key
-            key = (keyId, keySecret)
-            self.shelf["DockerRegistryAccessKey"] = key
-        print(key)
+
+            with open(accessKeyPath, "w") as f:
+                f.write("%s %s" % (keyPair.access_key_id, keyPair.secret_access_key))
 
     def create_secgroup(self, client, groupName, desc):
         filters = [
@@ -350,19 +343,21 @@ class Deployment:
         """Create SSH keypair"""
         
         self.keyname = self.basename
-        self.creds = self.shelf.get("KeyPair")
-        if self.creds:
+        create = True
+        self.pemFile = self.bursa_filename("pem")
+        if os.path.exists(self.pemFile):
             keypairInfo = self.ec2.KeyPair(self.keyname)
             try:
                 keypairInfo.load()
+                create = False
             except:
-                self.creds = None
-                
-        if not self.creds:
+                create = True
+
+        if create:
             keypair = self.ec2.create_key_pair(KeyName=self.keyname)
             self.creds = keypair.key_material
-            self.shelf["KeyPair"] = self.creds
-        print(self.creds)
+            self.pemFile = self.bursa_filename("pem")
+            open(self.pemFile, "w").write(self.creds)
 
     def create_instance(self, image, secGroups, instanceName, publicIp=False):
         instances = self.ec2.instances.filter(
@@ -408,15 +403,26 @@ class Deployment:
                 ]
             )
         instance = instances[0]
-        print("    %s" % instance.id)
-                        
+        return instance
+
     def make_instances(self):
         """Create EC2 Instances"""
+
+        # Everybody gets CoreOS.
+        image = self.get_image(["CoreOS-stable-*-hvm"])
+
+        # DockerRegistry
+        instanceName = "%s-DockerRegistry" % self.basename
+        self.log_item(instanceName, "Private Docker registry")
+        secGroups = [
+            self.secgroupIds["%s+Management-Clients" % self.basename],
+            self.secgroupIds["%s+Docker Registry-Server" % self.basename],
+        ]
+        self.dockerRegistry = self.create_instance(image, secGroups, instanceName)
         
         # WebApp
         instanceName = "%s-WebApp" % self.basename
-        self.log_item(instanceName)
-        image = self.get_image(["CoreOS-stable-*-hvm", "ubuntu/images/hvm-ssd/ubuntu-xenial-*"])
+        self.log_item(instanceName, "Main entry point to the engine")
         secGroups = [
             self.secgroupIds["%s+Management-Clients" % self.basename],
             self.secgroupIds["%s+Docker Registry-Clients" % self.basename],
@@ -424,25 +430,51 @@ class Deployment:
         ]
         self.create_instance(image, secGroups, instanceName)
         
-        # DockerRegistry
-        instanceName = "%s-DockerRegistry" % self.basename
-        self.log_item(instanceName)
-        image = image # reuse the last one
-        secGroups = [
-            self.secgroupIds["%s+Management-Clients" % self.basename],
-            self.secgroupIds["%s+Docker Registry-Server" % self.basename],
-        ]
-        self.create_instance(image, secGroups, instanceName)
-        
         # LinuxWorker
         instanceName = "%s-LinuxWorker" % self.basename
-        self.log_item(instanceName)
-        image = image # reuse again!
+        self.log_item(instanceName, "Linux Worker: we probably don't need this, actually.")
         secGroups = [
             self.secgroupIds["%s+Management-Clients" % self.basename],
             self.secgroupIds["%s+Redis-Clients" % self.basename],
         ]
         self.create_instance(image, secGroups, instanceName)
+
+        # Me!
+        self.log_item("Myself", "Add this machine to Management Servers group")
+        secGroups = set(g["GroupId"] for g in self.myInstance.security_groups)
+        secGroups.add(self.secgroupIds["%s+Management-Server" % self.basename])
+        self.myInstance.modify_attribute(
+            Groups=list(secGroups)
+        )
+
+    def ssh(self, instance, command):
+        return subprocess.check_output([
+            "/usr/bin/ssh",
+            "-i", self.pemFile,
+            "-o", "StrictHostKeyChecking=no",
+            instance.private_ip_address,
+            command,
+        ])
+    def scp_up(self, instance, filename):
+        return subprocess.check_output([
+            "/usr/bin/scp",
+            "-i", self.pemFile,
+            "-o", "StrictHostKeyChecking=no",
+            filename,
+            "%s:" % instance.private_ip_address,
+        ])
+        
+    def start_registry(self):
+        """Start Docker registry"""
+        
+        if self.dockerRegistry.state != 16:
+            self.log_item("wait_until_running", "Wait until the registry machine is up")
+            self.dockerRegistry.wait_until_running()
+            # Give it a little more time for sshd to generate keys and bind
+            time.sleep(4)
+        print(self.scp_up(self.dockerRegistry, "images/registry.tar"))
+        print(self.ssh(self.dockerRegistry, "docker load < registry.tar"))
+        print(self.ssh(self.dockerRegistry, "docker images"))
 
     def go_run(self, method, *args):
         name = method.__name__
@@ -463,6 +495,7 @@ class Deployment:
         self.go_run(self.make_secgroups)
         self.go_run(self.make_keypair)
         self.go_run(self.make_instances)
+        self.go_run(self.start_registry)
 
 
 def setup():
