@@ -11,8 +11,6 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_sche
     message_schema = json.load(f)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
-# AWS methods
-boto3.setup_default_session(region_name=AWS_REGION)
 
 def s3_get_uri(s3, uri):
     bucket_name, key = uri.split('/', 3)[2:]
@@ -79,7 +77,7 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
     if status in [STATUS_COMPLETE, STATUS_FAIL]:
         db.expire(job_id, 60)
         dyn = boto3.resource('dynamodb')
-        table = dyn.Table('jobs')
+        table = dyn.Table(JOBS_TABLE)
         table.update_item(Key={'job_id': job_id},
                           UpdateExpression='SET #stat = :val1, #r = :val2',
                           ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
