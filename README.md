@@ -67,7 +67,7 @@ Run it like this:
     export region=us-west-2 # or whatever region you want
     export aws_access_key_id=YOUR_ACCESS_KEY
     export aws_secret_access_key=YOUR_SECRET_KEY
-    sh setup.sh YOUR_INSTACE_BASENAME
+    sh setup.sh
 
 
 Running bursa
@@ -75,6 +75,6 @@ Running bursa
 
 After you have set up your account, you can run bursa:
 
-    sh bursa.sh
+    sh bursa.sh YOUR_INSTANCE_BASENAME
 
 Bursa stores important state information in `~/.local/share/bursa/`.
