@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from botocore.exceptions import ClientError
 from collections import namedtuple
 from docker.errors import ImageNotFound
+from settings import *
 
 class TestIO:
     def setup_method(self, _):
@@ -93,17 +94,19 @@ class TestUtils:
         mock_client.return_value.images.pull.side_effect = ImageNotFound('image not found')
         assert(utils.image_exists('test') is False)
 
-    # These tests take too long to run because of retry
-    def test_db_get_with_retry_fail(self):
-        db = mock.Mock()
-        val = utils.db_get_with_retry(db, 'job-1234')
-        assert(val is None)
+    @mock.patch('boto3.resource')
+    def test_update_job(self, mock_resource):
+        db = mock.MagicMock()
+        db.get.return_value = b'{"foo":"bar"}'
+        status, result = utils.update_job(db, 'test1234', 'testing')
+        assert(status == 'testing')
 
-    def test_db_get_with_retry(self):
-        db = mock.Mock()
-        db.get.side_effect = [None, None, b'{}']
-        val = utils.db_get_with_retry(db, 'job-1234')
-        assert(val == {})
+    def test_update_job_fail(self):
+        db = mock.MagicMock()
+        db.get.return_value = None
+        status, result = utils.update_job(db, 'test1234', 'testing')
+        assert(status == STATUS_FAIL)
+
 
 class TestCLI:
     def test_build_cli(self):
