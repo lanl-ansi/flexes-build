@@ -67,7 +67,7 @@ Run it like this:
     export region=us-west-2 # or whatever region you want
     export aws_access_key_id=YOUR_ACCESS_KEY
     export aws_secret_access_key=YOUR_SECRET_KEY
-    sh setup.sh
+    sh setup.sh YOUR_INSTACE_BASENAME
 
 
 Running bursa
