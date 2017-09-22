@@ -16,7 +16,7 @@ import os
 import optparse
 import random
 import re
-import shelve
+import shlex
 import subprocess
 import time
 import json
@@ -440,9 +440,11 @@ class Deployment:
         self.create_instance(image, secGroups, instanceName)
 
         # Me!
-        self.log_item("Myself", "Add this machine to Management Servers group")
+        self.log_item("Myself", "Add this machine to Management Servers and all client groups")
         secGroups = set(g["GroupId"] for g in self.myInstance.security_groups)
         secGroups.add(self.secgroupIds["%s+Management-Server" % self.basename])
+        secGroups.add(self.secgroupIds["%s+Redis-Clients" % self.basename])
+        secGroups.add(self.secgroupIds["%s+Docker Registry-Clients" % self.basename])
         self.myInstance.modify_attribute(
             Groups=list(secGroups)
         )
@@ -455,27 +457,83 @@ class Deployment:
             instance.private_ip_address,
             command,
         ])
-    def scp_up(self, instance, filename):
+        
+    def scp_up(self, instance, filename, dest=""):
         return subprocess.check_output([
             "/usr/bin/scp",
             "-i", self.pemFile,
             "-o", "StrictHostKeyChecking=no",
             filename,
-            "%s:" % instance.private_ip_address,
+            "%s:%s" % (instance.private_ip_address, dest),
         ])
         
     def start_registry(self):
         """Start Docker registry"""
         
-        if self.dockerRegistry.state != 16:
+        privateIp = self.dockerRegistry.private_ip_address
+        privateName = self.dockerRegistry.private_dns_name
+        
+        self.log_item("cert", "Create SSL certificate for HTTPS conversations")
+        keyfn = self.bursa_filename("domain.key")
+        certfn = self.bursa_filename("domain.crt")
+        if not os.path.exists(keyfn) or not os.path.exists(certfn):
+            subprocess.run([
+                "openssl",
+                "req",
+                "-x509",
+                "-subj", "/CN=%s" % (privateName),
+                "-newkey", "rsa:4096",
+                "-keyout", keyfn,
+                "-out", certfn,
+                "-days", "1000",
+                "-nodes",
+            ])
+        
+        if self.dockerRegistry.state["Code"] != 16:
             self.log_item("wait_until_running", "Wait until the registry machine is up")
             self.dockerRegistry.wait_until_running()
             # Give it a little more time for sshd to generate keys and bind
             time.sleep(4)
-        print(self.scp_up(self.dockerRegistry, "images/registry.tar"))
-        print(self.ssh(self.dockerRegistry, "docker load < registry.tar"))
-        print(self.ssh(self.dockerRegistry, "docker images"))
+        
+        self.log_item("load", "Copy over Docker image and load locally")
+        self.scp_up(self.dockerRegistry, "images/registry.tar")
+        self.ssh(self.dockerRegistry, "docker load < registry.tar")
+        
+        instanceId = self.ssh(self.dockerRegistry, "docker ps -aqf name=registry")
+        if instanceId:
+            # It's already set up.
+            self.log_item("destroy", "Stop and remove existing registry container")
+            self.ssh(self.dockerRegistry, "docker stop registry; docker rm registry")
 
+        self.log_item("install_cert", "Install SSL certificate")
+        self.ssh(self.dockerRegistry, "mkdir -p certs")
+        self.scp_up(self.dockerRegistry, keyfn, "certs/domain.key")
+        self.scp_up(self.dockerRegistry, certfn, "certs/domain.crt")
+        remote_cert_dir = "/etc/docker/certs.d/%s" % privateName
+        self.ssh(self.dockerRegistry, "sudo mkdir -p %s" % remote_cert_dir)
+        self.ssh(self.dockerRegistry, "sudo cp certs/domain.crt %s/ca.crt" % remote_cert_dir)
+
+        self.log_item("run", "Run registry container")
+        self.ssh(self.dockerRegistry,
+            (
+                "docker run"
+                " -d"
+                " --restart=always"
+                " -p 443:5000"
+                " -v $HOME/certs:/certs:ro"
+                " -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt"
+                " -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key"
+                " --name registry"
+                " registry"
+            )
+        )
+        
+        self.log_item("push", "Push images")
+        self.ssh(self.dockerRegistry, "docker tag registry %s/registry" % privateName)
+        self.ssh(self.dockerRegistry, "docker push %s/registry" % privateName)
+        
+        raise NotImplementedError("Need to push Linux Worker and other images to registry!")
+        
     def go_run(self, method, *args):
         name = method.__name__
         desc = method.__doc__

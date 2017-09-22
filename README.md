@@ -49,11 +49,17 @@ CoreOS Container Linux is a minimalistic self-upgrading Linux distribution,
 made specifically for hosting containers.
 
 Due to the constraints imposed by CoreOS Container Linux,
-bursa only needs `bash`, `docker`, and Internet access.
+bursa only needs a few commants installed,
+provided it has Internet access.
 
-Therefore,
-bursa should run fine in Ubuntu, Debian, Red Hat, Arch, Slackware,
-or anything else that has `bash` and `docker`.
+Required programs:
+
+* `/bin/sh`
+* `docker`
+* `openssl`
+
+Bursa should run fine in Ubuntu, Debian, Red Hat, Arch, Slackware,
+or anything else that has these installed.
 
 
 Setup Script
