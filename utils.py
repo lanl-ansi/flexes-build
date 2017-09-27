@@ -5,8 +5,6 @@ import sys
 from settings import *
 from uuid import uuid4
 
-boto3.Session(region_name=AWS_REGION)
-
 def submit_job(db, message):
     job_id = str(uuid4())
     message['job_id'] = job_id
