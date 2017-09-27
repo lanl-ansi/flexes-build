@@ -10,7 +10,7 @@ ENV AWS_DEFAULT_REGION us-gov-west-1
 ENV APP_DIR /home/flask/lanlytics-api
 WORKDIR $APP_DIR/
 
-COPY deploy.py app.py requirements.txt utils.py message_schema.json $APP_DIR/
+COPY app.py requirements.txt utils.py message_schema.json $APP_DIR/
 ADD static/ $APP_DIR/static/
 ADD templates/ $APP_DIR/templates/
 ADD test/ $APP_DIR/test/
