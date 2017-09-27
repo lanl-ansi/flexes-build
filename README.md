@@ -19,4 +19,5 @@ get logs for the containers
 docker-compose logs
 ```
 **Note: the server is configured to run on localhost so modifications may be needed for production** 
+
 **Note: if the application is running in an AWS region besides us-gov-west-1 the docker-compose.yml will need to be modified** 
