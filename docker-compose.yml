@@ -11,6 +11,8 @@ services:
     links:
       - flask:flask
   flask:
+    environment:
+      - AWS_DEFAULT_REGION=us-gov-west-1
     restart: always
     build:
       context: .

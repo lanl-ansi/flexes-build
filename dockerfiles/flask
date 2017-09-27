@@ -6,7 +6,6 @@ MAINTAINER James Arnold <arnold_j@lanl.gov>
 RUN addgroup -S flask && adduser -S -g flask flask
 
 # Copy files
-ENV AWS_DEFAULT_REGION us-gov-west-1
 ENV APP_DIR /home/flask/lanlytics-api
 WORKDIR $APP_DIR/
 
