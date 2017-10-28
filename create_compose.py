@@ -7,9 +7,8 @@ def create_compose():
     with open('docker-compose.yml') as f:
         compose = yaml.load(f)
 
-#    resp = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document')
-#    region = resp.json()['region']
-    region = 'us-gov-west-1'
+    resp = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document')
+    region = resp.json()['region']
 
     compose['services']['flask']['environment'] = ['AWS_DEFAULT_REGION={}'.format(region)]
 
