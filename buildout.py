@@ -63,12 +63,12 @@ def deploy_registry(registry_instance):
     # Launch docker-compose application
 
 
-def deploy_api_server(api_server_ip, pem_file):
-    api_server = Instance(api_server_ip, pem_file)
+def deploy_api_server(api_instance):
+    api_server = Instance(api_server_id)
     # 
 
 
-def deploy_worker(worker_ip, pem_file)
+def deploy_worker(worker_instance)
 
 
 def create_worker_ami():
@@ -76,14 +76,10 @@ def create_worker_ami():
 
 def buildout_api():
     outputs = create_stack()
-    api_server_ip = outputs[0]['OutputValue']
-    registry_ip = outputs[1]['OutputValue']
-    worker_ip = outputs[2]['OutputValue']
+    api_server = Instance(outputs[0]['OutputValue'])
+    registry = Instance(outputs[1]['OutputValue'])
+    worker = Instance(outputs[2]['OutputValue'])
     redis_endpoint = outputs[3]['OutputValue']
-
-    api_server = Instance(api_server_ip, pem_file)
-    registry = Instance(registry_ip, pem_file)
-    worker = Instance(worker_ip, pem_file)
 
     deploy_registry(regsitry)
     deploy_api_server(api_server)
