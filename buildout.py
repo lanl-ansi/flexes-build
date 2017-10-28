@@ -112,10 +112,15 @@ def deploy_worker(worker_instance):
             -e AWS_DEFAULT_REGION=$(curl --silent http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region) \
             -v /home/ec2-user:/home/ec2-user \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            --restart always \
             lanlytics-api-worker docker')
 
 
-def create_worker_ami():
+def create_worker_ami(instance_id):
+    ec2 = boto3.resource('ec2')
+    worker_instance = ec2.Instance(instance_id)
+    image = worker_instance.create_image(name='lanlytics-api-worker')
+    return image.image_id
 
 
 def buildout_api():
