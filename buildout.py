@@ -1,12 +1,15 @@
 import boto3
+import subprocess
 import time
+from argparse import ArgumentParser
 
 class Instance:
     def __init__(self, instance_id, user='ec2-user'):
         ec2 = boto3.resource('ec2')
         instance = ec2.Instance(instance_id)
         public_ip = instance.public_ip_address
-        self.address = '{}@{}'.format(user, public_ip)
+        ip = public_ip if public_ip is not None else instance.private_ip_address
+        self.address = '{}@{}'.format(user, ip)
         self.pem_file = '~/.ssh/{}.pem'.format(instance.key_name)
 
     def ssh(self, command):
@@ -28,25 +31,19 @@ class Instance:
         ])
 
 
-def create_stack(**kwargs):
+def create_stack(stack_name, **kwargs):
     cloudformation = boto3.resource('cloudformation')
 
     with open('lanlytics-api.template', 'r') as f:
         template_body = f.read()
 
+    parameters = [{'ParameterKey': key, 'Parameter': val, 'UsePrevious': False}
+                    for key, val in kwargs.items()]
+
     stack = cloudformation.create_stack(
         StackName=stack_name,
         TemplateBody=template_body,
-        Parameters=[
-            {'ParameterKey': 'VpcId', 'ParameterValue': vpc_id, 'UsePreviousValue': False},    
-            {'ParameterKey': 'SubnetGroupId', 'ParameterValue': subnet_id, 'UsePreviousValue': False},    
-            {'ParameterKey': 'BaseImageId', 'ParameterValue': base_image_id, 'UsePreviousValue': False},    
-            {'ParameterKey': 'KeyName', 'ParameterValue': key_name, 'UsePreviousValue': False},    
-            {'ParameterKey': 'SSHIP', 'ParameterValue': ssh_ip, 'UsePreviousValue': False},    
-            {'ParameterKey': 'DynamoDBJobsTableName', 'ParameterValue': jobs_table, 'UsePreviousValue': False},    
-            {'ParameterKey': 'S3WorkerBucketName', 'ParameterValue': worker_bucket, 'UsePreviousValue': False},    
-            {'ParameterKey': 'S3DockerImageBucketName', 'ParameterValue': registry_bucket, 'UsePreviousValue': False},    
-        ],
+        Parameters=parameters,
         ResourceTypes=['AWS::*']
     )
 
@@ -133,5 +130,6 @@ def buildout_api():
     deploy_registry(Instance(regsitry))
     deploy_api_server(Instance(api_server))
     deploy_worker(Instance(worker))
+    create_worker_ami(worker)
 
     print('All done; go home')
