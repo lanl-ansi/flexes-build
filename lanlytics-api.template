@@ -11,21 +11,21 @@
       "Description": "Id of VPC subnet group; must exist in the specified VPC",
       "Type": "AWS::EC2::Subnet::Id",
       "Default": ""
-    },g
-    "BaseImageId": {g
-      "Description": "Base AMI Id for instances",g
-      "Type": "AWS::EC2::Image::Id",g
-      "Default": ""g
+    },
+    "BaseImageId": {
+      "Description": "Base AMI Id for instances",
+      "Type": "AWS::EC2::Image::Id",
+      "Default": ""
     },
     "KeyName": {
       "Description": "Key pair name for launched instances",
       "Type": "AWS::EC2::KeyPair::KeyName",
       "Default": ""
-    },g
-    "SSHIP": {g
-      "Description": "IP to restrict SSH access",g
-      "Type": "String",g
-      "Default": "0.0.0.0/0"g
+    },
+    "SSHIP": {
+      "Description": "IP to restrict SSH access",
+      "Type": "String",
+      "Default": "0.0.0.0/0"
     },
     "DynamoDBJobsTableName": {
       "Description": "DynamoDB table name for job storage",
@@ -36,11 +36,11 @@
       "Description": "S3 bucket for API workers",
       "Type": "String",
       "Default": "lanlytics-api-worker"
-    },g
-    "S3DockerImageBucketName": {g
-      "Description": "S3 bucket for Docker Registry",g
-      "Type": "String",g
-      "Default": "lanlytics-registry-images"g
+    },
+    "S3DockerImageBucketName": {
+      "Description": "S3 bucket for Docker Registry",
+      "Type": "String",
+      "Default": "lanlytics-registry-images"
     }
   },
   "Resources": {
@@ -64,10 +64,10 @@
               }
             }
           ]
-        },g
-        "Roles": [g
-          {"Ref": "WorkerRole"},g
-          {"Ref": "APIServerRole"}g
+        },
+        "Roles": [
+          {"Ref": "WorkerRole"},
+          {"Ref": "APIServerRole"}
         ]
       },g
       "DependsOn": "JobsTable"
@@ -111,126 +111,126 @@
               }
             }
           ]
-        },g
+        },
         "Roles": [{"Ref":"WorkerRole"}]
-      },g
+      },
       "DependsOn": "WorkerBucket"
-    },g
-    "RegistryS3BucketReadWriteAccess": {g
-      "Type": "AWS::IAM::Policy",g
-      "Properties": {g
-        "PolicyName": "APIS3BucketReadWriteAccess",g
-        "PolicyDocument": {g
-          "Version": "2012-10-17",g
-          "Statement": [g
-            {g
-              "Effect": "Allow",g
-              "Action": "s3:ListBucket",g
-              "Resource": {g
-                "Fn::GetAtt": [g
-                  "RegistryBucket",g
-                  "Arn"g
-                ]g
-              }g
-            },g
-            {g
-              "Effect": "Allow",g
-              "Action": [g
-                "s3:PutObject",g
-                "s3:GetObject"g
-              ],g
-              "Resource": {g
-                "Fn::Join": [g
-                  "",g
-                  [g
-                    {g
-                      "Fn::GetAtt": [g
-                        "RegistryBucket",g
-                        "Arn"g
-                      ]g
-                    },g
-                    "/*"g
-                  ]g
-                ]g
-              }g
-            }g
-          ]g
-        },g
-        "Roles": [{"Ref":"RegistryRole"}]g
-      },g
-      "DependsOn": "RegistryBucket"g
+    },
+    "RegistryS3BucketReadWriteAccess": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "APIS3BucketReadWriteAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "s3:ListBucket",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RegistryBucket",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject"
+              ],
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "RegistryBucket",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ]
+        },
+        "Roles": [{"Ref":"RegistryRole"}]
+      },
+      "DependsOn": "RegistryBucket"
     },
     "WorkerRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": "APIWorker",
-        "AssumeRolePolicyDocument": {g
-          "Version": "2012-10-17",g
-          "Statement": [{g
-              "Effect": "Allow",g
-              "Principal": {g
-                "Service": ["ec2.amazonaws.com"]g
-              },g
-              "Action": ["sts:AssumeRole"]g
-          }]g
-        },g
-        "Path": "/"g
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["ec2.amazonaws.com"]
+              },
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/"
       }
-    },g
-    "WorkerInstanceProfile": {g
-      "Type": "AWS::IAM::InstanceProfile",g
-      "Properties": {g
-        "Path": "/",g
-        "Roles": [{"Ref": "WorkerRole"}]g
-      }g
+    },
+    "WorkerInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [{"Ref": "WorkerRole"}]
+      }
     },
     "APIServerRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": "APIServer",
-        "AssumeRolePolicyDocument": {g
-          "Version": "2012-10-17",g
-          "Statement": [{g
-              "Effect": "Allow",g
-              "Principal": {g
-                "Service": ["ec2.amazonaws.com"]g
-              },g
-              "Action": ["sts:AssumeRole"]g
-          }]g
-        },g
-        "Path": "/"g
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["ec2.amazonaws.com"]
+              },
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/"
       }
-    },g
-    "APIServerInstanceProfile": {g
-      "Type": "AWS::IAM::InstanceProfile",g
-      "Properties": {g
-        "Path": "/",g
-        "Roles": [{"Ref": "APIServerRole"}]g
-      }g
-    },g
-    "RegistryRole": {g
-      "Type": "AWS::IAM::Role",g
-      "Properties": {g
-        "RoleName": "DockerRegistry",g
-        "AssumeRolePolicyDocument": {g
-          "Version": "2012-10-17",g
-          "Statement": [{g
-              "Effect": "Allow",g
-              "Principal": {g
-                "Service": ["ec2.amazonaws.com"]g
-              },g
-              "Action": ["sts:AssumeRole"]g
-          }]g
-        },g
-        "Path": "/"g
-      }g
-    },g
-    "RegistryInstanceProfile": {g
-      "Type": "AWS::IAM::InstanceProfile",g
-      "Properties": {g
-        "Path": "/",g
-        "Roles": [{"Ref": "RegistryRole"}]g
-      }g
+    },
+    "APIServerInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [{"Ref": "APIServerRole"}]
+      }
+    },
+    "RegistryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "DockerRegistry",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["ec2.amazonaws.com"]
+              },
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/"
+      }
+    },
+    "RegistryInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [{"Ref": "RegistryRole"}]
+      }
     },
     "RedisUserSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
@@ -318,8 +318,8 @@
         ]
       }
     },
-    "SSHAccess": {g
-      "Type": "AWS::EC2::SecurityGroup",g
+    "SSHAccess": {
+      "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
         "GroupName": "SSHAccess",
         "GroupDescription": "Security group granting SSH access from anywhere",
@@ -333,13 +333,13 @@
             "ToPort": "22",
             "CidrIp": {"Ref": "SSHIP"}
           }
-        ]g
+        ]
       }
     },
     "APIServerInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": "t2.micro",g
+        "InstanceType": "t2.micro",
         "ImageId": {"Ref": "BaseImageId"},
         "IamInstanceProfile": {
           "Ref": "APIServerInstanceProfile"
@@ -350,9 +350,9 @@
         "SecurityGroupIds": [
           {
             "Ref": "WebAccess"
-          },g
-          {g
-            "Ref": "RedisUser"g
+          },
+          {
+            "Ref": "RedisUser"
           },
           {
             "Ref": "SSHAccess"
@@ -367,7 +367,7 @@
               "VolumeSize": "8"
             }
           }
-        ],g
+        ],
         "SubnetId": {"Ref": "SubnetGroupId"},
         "Tags": [
           {
@@ -375,13 +375,13 @@
             "Value": "API Server"
           }
         ]
-      },g
+      },
       "DependsOn": "APIDynamoDBTableAccess"
     },
     "APIWorkerInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": "t2.micro",g
+        "InstanceType": "t2.micro",
         "ImageId": {"Ref": "BaseImageId"},
         "IamInstanceProfile": {
           "Ref": "WorkerInstanceProfile"
@@ -409,7 +409,7 @@
               "VolumeSize": "8"
             }
           }
-        ],g
+        ],
         "SubnetId": {"Ref": "SubnetGroupId"},
         "Tags": [
           {
@@ -417,14 +417,14 @@
             "Value": "API Worker"
           }
         ]
-      },g
+      },
       "DependsOn": ["APIS3BucketReadWriteAccess", "APIDynamoDBTableAccess"]
     },
     "DockerRegistryInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": "t2.micro",g
-        "ImageId": {"Ref": "BaseImageId"},g
+        "InstanceType": "t2.micro",
+        "ImageId": {"Ref": "BaseImageId"},
         "IamInstanceProfile": {"Ref": "RegistryInstanceProfile"},
         "KeyName": {
           "Ref": "KeyName"
@@ -446,7 +446,7 @@
               "VolumeSize": "8"
             }
           }
-        ],g
+        ],
         "SubnetId": {"Ref": "SubnetGroupId"},
         "Tags": [
           {
@@ -454,16 +454,16 @@
             "Value": "Docker Registry"
           }
         ]
-      },g
+      },
       "DependsOn": "RegistryS3BucketReadWriteAccess"
-    },g
-    "RedisSubnetGroup": {g
-      "Type": "AWS::ElastiCache::SubnetGroup",g
-      "Properties": {g
-        "CacheSubnetGroupName": "APIQueueSubnet",g
-        "Description": "Subnet for API Redis queue and components",g
-        "SubnetIds": [{"Ref": "SubnetGroupId"}]g
-      }g
+    },
+    "RedisSubnetGroup": {
+      "Type": "AWS::ElastiCache::SubnetGroup",
+      "Properties": {
+        "CacheSubnetGroupName": "APIQueueSubnet",
+        "Description": "Subnet for API Redis queue and components",
+        "SubnetIds": [{"Ref": "SubnetGroupId"}]
+      }
     },
     "RedisQueue": {
       "Type": "AWS::ElastiCache::CacheCluster",
@@ -475,8 +475,8 @@
             "Ref": "RedisServerSecurityGroup"
           }
         ],
-        "Engine": "redis",g
-        "NumCacheNodes": 1,g
+        "Engine": "redis",
+        "NumCacheNodes": 1,
         "CacheSubnetGroupName": {"Ref": "RedisSubnetGroup"}
       }
     },
@@ -485,22 +485,22 @@
       "Properties": {
         "TableName": {
           "Ref": "DynamoDBJobsTableName"
-        },g
-        "AttributeDefinitions": [g
-          {g
-            "AttributeName": "job_id",g
-            "AttributeType": "S"g
-          }g
+        },
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "job_id",
+            "AttributeType": "S"
+          }
         ],
         "KeySchema": [
           {
             "AttributeName": "job_id",
             "KeyType": "HASH"
           }
-        ],g
-        "ProvisionedThroughput": {g
-          "ReadCapacityUnits": "5",g
-          "WriteCapacityUnits": "5"g
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
         }
       }
     },
@@ -511,14 +511,14 @@
           "Ref": "S3WorkerBucketName"
         }
       }
-    },g
-    "RegistryBucket": {g
-      "Type": "AWS::S3::Bucket",g
-      "Properties": {g
-        "BucketName": {g
-          "Ref": "S3DockerImageBucketName"g
-        }g
-      }g
+    },
+    "RegistryBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Ref": "S3DockerImageBucketName"
+        }
+      }
     }
   },
   "Outputs": {
@@ -559,4 +559,4 @@
       }
     }
   }
-}g
+}
