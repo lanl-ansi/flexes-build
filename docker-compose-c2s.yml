@@ -1,0 +1,21 @@
+version: "2"
+services:
+  nginx:
+    restart: always
+    image: nginx:stable-alpine
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:8080"
+    links:
+      - flask:flask
+  flask:
+    environment:
+      - AWS_DEFAULT_REGION=us-gov-west-1
+    restart: always
+    image: lanlytics-api
+    container_name: flask
+    ports:
+      - 127.0.0.1:8000:8000
+    command: gunicorn app:app -b :8000 -u flask --name lanlytics-api
