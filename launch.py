@@ -10,6 +10,7 @@ import time
 import utils
 import io
 from settings import *
+from uuid import uuid4
 
 HOME = os.path.abspath(os.sep)
 if os.name == 'nt':
@@ -19,7 +20,7 @@ else:
     if 'HOME' in os.environ:
         HOME = os.environ['HOME']
 
-LOCAL_FILES_DIR = os.path.join('lanlytics_worker_local', str(os.getpid()))
+LOCAL_FILES_DIR = os.path.join('lanlytics_worker_local', str(uuid4().hex))
 LOCAL_FILES_PATH = os.path.join(HOME, LOCAL_FILES_DIR)
 
 LOG_LINE_LIMIT = 10
