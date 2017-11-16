@@ -346,6 +346,8 @@ def launch_container(image_name, command):
     print('\nSetting up docker container')
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
     
+    environment = {'API_ENDPOINT': API_ENDPOINT}
+
     docker_volume = os.path.join('/', LOCAL_FILES_DIR)
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
     print(volumes)
@@ -354,7 +356,12 @@ def launch_container(image_name, command):
     stderr_data = None
     try:
         client.images.pull(image)
-        container = client.containers.run(image, volumes=volumes, command=docker_cmd, detach=True, stdin_open = (stdin_data != None))
+        container = client.containers.run(image, 
+                                          command=docker_cmd, 
+                                          detach=True, 
+                                          environment=environment,
+                                          volumes=volumes, 
+                                          stdin_open = (stdin_data != None))
 
         if stdin_data != None:
             socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
