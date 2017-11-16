@@ -8,5 +8,5 @@ DOCKER_REGISTRY = 'hub.lanlytics.com'
 
 JOBS_TABLE = 'jobs'
 
-REDIS_HOST = 'jobs.be6b1p.0001.usgw1.cache.amazonaws.com'
+REDIS_HOST = 'jobs.lanlytics.com'
 REDIS_PORT = 6379
