@@ -4,6 +4,7 @@ import json
 import os
 import random
 import time
+from botocore.exceptions import ClientError
 from jsonschema import validate, ValidationError
 from settings import *
 
@@ -19,11 +20,16 @@ def s3_get_uri(s3, uri):
 
 def get_s3_file(s3, uri, local_file):
     bucket, key = s3_get_uri(s3, uri)
-    for obj in bucket.objects.filter(Prefix=key):
+    files = [obj.key for obj in bucket.objects.filter(Prefix=key)
+                if not obj.key.endswith('/')]
+
+    if len(files) == 0:
+        raise ValueError('File {} not found'.format(uri))
+
+    for obj in files:
         local_file = os.path.join(os.path.dirname(local_file), 
-                                  os.path.basename(obj.key))
-        if not obj.key.endswith('/'):
-            bucket.download_file(obj.key, local_file)
+                                  os.path.basename(obj))
+        bucket.download_file(obj, local_file)
 
 
 def put_file_s3(s3, local_file, uri):
