@@ -9,6 +9,7 @@
       "properties": {
         "queue": {"type": "string"},
         "service": {"type": "string"},
+        "tag": {"type": "string"},
         "test": {"type": "boolean"}
       }
     },
@@ -18,7 +19,8 @@
       "properties": {
         "command": {"$ref": "#/definitions/command"},
         "queue": {"type": "string"},
-        "service": {"type": "string"}
+        "service": {"type": "string"},
+        "tag": {"type": "string"}
       }
     }
   ],

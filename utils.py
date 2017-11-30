@@ -103,9 +103,9 @@ def isvalid(obj, schema):
         return False
 
 
-def image_exists(image_name):
+def image_exists(image_name, tag='latest'):
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = '{}/{}:latest'.format(DOCKER_REGISTRY, image_name)
+    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
     try:
         image = client.images.get(image)
         return True

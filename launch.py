@@ -27,18 +27,19 @@ LOG_LINE_LIMIT = 10
 
 
 class Command:
-    def __init__(self, cmd_type, cmd_prefix, service, command):
+    def __init__(self, cmd_type, cmd_prefix, service, command, tag='latest'):
         if cmd_type not in ['docker', 'native']:
             raise TypeError('Invalid worker type: {}'.format(cmd_type))
 
         self.command = command
         self.prefix = cmd_prefix
         self.service = service
+        self.tag = tag
         self.type = cmd_type
 
     def execute(self):
         if self.type == 'docker':
-            return launch_container(self.service, self.command)
+            return launch_container(self.service, self.command, self.tag)
         elif self.type == 'native':
             return launch_native(self.prefix, self.command)
 
@@ -320,10 +321,10 @@ def launch_native(cmd_prefix, command):
     return worker_cleanup(command, process.returncode, worker_log, stdout_data, stderr_data)
 
 
-def launch_container(image_name, command):
+def launch_container(image_name, command, tag='latest'):
     print('\n\033[1mStarting Docker Job\033[0m')
 
-    image = '{}/{}:latest'.format(DOCKER_REGISTRY, image_name)
+    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
     print('\nDocker Image: {}'.format(image))
 
     local_command = build_localized_command(command)

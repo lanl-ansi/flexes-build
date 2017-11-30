@@ -19,10 +19,14 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
     try:
         validate(message, utils.message_schema)
+
+        if 'tag' not in message:
+            message['tag'] = 'latest'
+
         if 'test' in message and message['test']:
             utils.update_job(db, message['job_id'], STATUS_RUNNING, None)
             if cmd_type == 'docker':
-                if utils.image_exists(message['service']):
+                if utils.image_exists(message['service'], message['tag']):
                     print('Confirmed active status for {} worker of type {}'.format(cmd_type, message['service']))
                     return utils.update_job(db, message['job_id'], STATUS_ACTIVE, 'Service is active')
                 else:
@@ -38,7 +42,9 @@ def process_message(db, cmd_type, cmd_prefix, message):
 
     utils.update_job(db, message['job_id'], STATUS_RUNNING)
 
-    command = Command(cmd_type, cmd_prefix, message['service'], message['command'])
+    command = Command(cmd_type, cmd_prefix, 
+                      message['service'], message['command'], message['tag'])
+    
     try:
         status, result, stdout_data, stderr_data = command.execute()
         print('Result: {}'.format(result))
