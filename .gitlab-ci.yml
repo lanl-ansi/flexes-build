@@ -1,7 +1,28 @@
 image: python:3.6
 
+stages:
+  - test 
+  - deploy
+
 test:
   script:
     - pip install codecov
     - pip install -r requirements.txt
     - ./test.it
+
+deploy:
+  stage: deploy
+  image: docker:latest
+  variables:
+    DOCKER_DRIVER: overlay2
+  only:
+    - mcte
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+  script:
+    - docker build -t mcte-docker.ipjtl.net/lanlytics-api-worker:acc .
+    - docker push mcte-docker.ipjtl.net/lanlytics-api-worker:acc
+
+
