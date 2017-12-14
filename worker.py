@@ -74,6 +74,16 @@ def run_worker(args):
         return
     print('Command prefix: {}'.format(args.cmd_prefix))
 
+    if args.cmd_type == DOCKER_WORKER_TYPE:
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+        print('Docker service running')
+        if AUTHENTICATE is True:
+            if client_login(client) is True:
+                print('Registry login successful')
+            else:
+                print('Registry login failed')
+                return
+
     spinner = cycle(['/', '-', '\\', '|'])
     while True:
         message = utils.receive_message(db, args.queue)
