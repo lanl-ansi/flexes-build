@@ -18,9 +18,9 @@ deploy:
   services:
     - docker:dind
   before_script:
-    - docker info
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN mcte-docker.ipjtl.net
   script:
-    - docker build -t mcte-docker.ipjtl.net/lanlytics-api-worker:acc .
-    - docker push mcte-docker.ipjtl.net/lanlytics-api-worker:acc
+    - docker build -t $CI_REGISTRY_IMAGE:acceptance .
+    - docker push $CI_REGISTRY_IMAGE:acceptance
 
 
