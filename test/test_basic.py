@@ -100,12 +100,6 @@ class TestUtils:
         status, result = utils.update_job(db, 'test1234', 'testing')
         assert(status == 'testing')
 
-    def test_update_job_fail(self):
-        db = mock.MagicMock()
-        db.get.return_value = None
-        status, result = utils.update_job(db, 'test1234', 'testing')
-        assert(status == STATUS_FAIL)
-
 
 class TestCLI:
     def test_build_cli(self):
