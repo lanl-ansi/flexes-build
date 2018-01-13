@@ -12,6 +12,7 @@ from itertools import cycle
 from jsonschema import validate, ValidationError
 from launch import Command
 from settings import *
+from uuid import uuid4
 
 
 def process_message(db, cmd_type, cmd_prefix, message):
@@ -59,10 +60,29 @@ def handle_exception(db, msg_id, e):
     return utils.update_job(db, msg_id, STATUS_FAIL, str(e))
 
 
+def update_worker_status(db, instance_id, status):
+    name = 'worker:{}'.format(instance_id)
+    db.hset(name, 'status', status)
+
+
+def register_worker(db, queue, worker_type):
+    instance_id, instance_type, private_ip = get_instance_info()
+
+    worker_info = {'queue': queue, 
+                   'worker_type': worker_type, 
+                   'status': 'idle', 
+                   'instace_type': instance_type, 
+                   'private_ip': private_ip}
+
+    db.hmset('worker:{}'.format(instance_id), worker_info)
+    return instance_id
+
+
 def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
     db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+    instance_id = register_worker(db, args.queue, args.exec_type)
 
     try:
         args.cmd_prefix = json.loads(args.cmd_prefix)
@@ -78,7 +98,9 @@ def run_worker(args):
     while True:
         message = utils.receive_message(db, args.queue)
         if message is not None:
+            update_worker_status(db, instance_id, 'busy')
             process_message(db, args.exec_type, args.cmd_prefix, message)
+            update_worker_status(db, instance_id, 'idle')
         else:
             sys.stdout.write(next(spinner))
             sys.stdout.flush()
@@ -114,7 +136,14 @@ if __name__ == '__main__': # pragma: no cover
     parser = build_cli_parser()
     args = parser.parse_args()
     try:
+        worker_id = register_worker(args.queue, args.exec_type)
         run_worker(args)
     except KeyboardInterrupt:
-        print('Stopping worker')
+        print('\rStopping worker')
         sys.exit()
+    except Exception as e:
+        db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+        instance_id = get_instance_info()[0]
+        update_worker_status(db, instance_id, 'dead')
+        sys.exit()
+
