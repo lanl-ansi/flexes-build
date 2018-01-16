@@ -69,14 +69,19 @@ def receive_message(db, queue):
 
 
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    job = 'job:{}'.format('job_id')
+    job = 'job:{}'.format(job_id)
+    queue = db.hget(job, 'queue').decode()
     db.hmset(job, 
             {'status': status, 
              'result': result, 
              'stdout': stdout_data, 
              'stderr': stderr_data})
-    if status in [STATUS_COMPLETE, STATUS_FAIL]:
+    if status == STATUS_RUNNING:
+        db.sadd('{}:jobs:running'.format(queue), job_id)
+    elif status in [STATUS_COMPLETE, STATUS_FAIL]:
         db.expire(job, 60)
+        db.srem('{}:jobs'.format(queue), job_id)
+        db.srem('{}:jobs:running'.format(queue), job_id)
         dyn = boto3.resource('dynamodb')
         table = dyn.Table(JOBS_TABLE)
         table.update_item(Key={'job_id': job_id},
@@ -85,6 +90,8 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
                           ExpressionAttributeValues={':val1': status, ':val2': result})
     elif status == STATUS_ACTIVE:
         db.expire(job, 30)
+        db.srem('{}:jobs'.format(queue), job_id)
+        db.srem('{}:jobs:running'.format(queue), job_id)
     return status, result
 
 
