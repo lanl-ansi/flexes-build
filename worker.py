@@ -69,7 +69,7 @@ def update_worker_status(db, instance_id, queue, status):
         db.sadd(busy, instance_id)
     elif status == 'idle':
         db.srem(busy, instance_id)
-    elif status == 'dead'
+    elif status == 'dead':
         db.srem(busy, instance_id)
         db.smove('{}:workers'.format(queue), 'workers:dead', instance_id)
 
