@@ -60,9 +60,18 @@ def handle_exception(db, msg_id, e):
     return utils.update_job(db, msg_id, STATUS_FAIL, str(e))
 
 
-def update_worker_status(db, instance_id, status):
+def update_worker_status(db, instance_id, queue, status):
     name = 'worker:{}'.format(instance_id)
     db.hset(name, 'status', status)
+    
+    busy = '{}:workers:busy'.format(queue)
+    if status == 'busy':
+        db.sadd(busy, instance_id)
+    elif status == 'idle':
+        db.srem(busy, instance_id)
+    elif status == 'dead'
+        db.srem(busy, instance_id)
+        db.smove('{}:workers'.format(queue), 'workers:dead', instance_id)
 
 
 def register_worker(db, queue, worker_type):
@@ -75,6 +84,7 @@ def register_worker(db, queue, worker_type):
                    'private_ip': private_ip}
 
     db.hmset('worker:{}'.format(instance_id), worker_info)
+    db.sadd('{}:workers'.format(queue), instance_id)
     return instance_id
 
 
@@ -98,9 +108,9 @@ def run_worker(args):
     while True:
         message = utils.receive_message(db, args.queue)
         if message is not None:
-            update_worker_status(db, instance_id, 'busy')
+            update_worker_status(db, instance_id, args.queue, 'busy')
             process_message(db, args.exec_type, args.cmd_prefix, message)
-            update_worker_status(db, instance_id, 'idle')
+            update_worker_status(db, instance_id, args.queue, 'idle')
         else:
             sys.stdout.write(next(spinner))
             sys.stdout.flush()
