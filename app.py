@@ -73,6 +73,7 @@ def index():
 @app.route('/services', methods=['GET'])
 def services():
     tags = request.args.get('tags')
+    tags = tags.split(',') if tags is not None else tags
     services = list_services(tags=tags)
     return jsonify(**services)
 
