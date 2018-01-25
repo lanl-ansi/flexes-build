@@ -73,9 +73,20 @@ def index():
 
 @app.route('/services', methods=['GET'])
 def services():
-    resp = requests.get('https://hub.lanlytics.com/v2/_catalog')
+    resp = requests.get('{}/v2/_catalog'.format(DOCKER_REGISTRY))
     services = resp.json()['repositories']
-    return render_template('services.html', services=services)
+    return jsonify(**services)
+
+
+@app.route('/services/<service_name>', methods=['GET'])
+def service_info(service_name):
+    doc_path = os.path.join(APP_STATIC, 'docs', '{}.json'.format(service_name))
+    if os.path.isfile(doc_path):
+        with app.open_resource(doc_path) as f:
+            content = json.load(f)
+        return jsonify(**content)
+    else:
+        abort(404)
 
 
 @app.route('/dashboard', methods=['GET'])
@@ -91,18 +102,6 @@ def service(service_name):
             return render_template('{}.html'.format(service_name))
         except TemplateNotFound:
             abort(404)
-
-
-@app.route('/<service_name>/docs', methods=['GET'])
-def docs(service_name):
-    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service_name))
-    if os.path.isfile(doc_path):
-        with app.open_resource(doc_path) as f:
-            content = f.read()
-        content = Markup(markdown(content, extras=['fenced-code-blocks']))
-        return render_template('docs.html', **locals())
-    else:
-        abort(404)
 
 
 @app.route('/jobs/<job_id>', methods=['GET'])
