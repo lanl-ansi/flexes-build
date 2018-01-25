@@ -42,17 +42,6 @@ def service_response(message):
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
-#    elif attributes['service_type'] == 'docker':
-#        resp = requests.get('https://hub.lanlytics.com/v2/{}/tags/list'.format(attributes['service']))
-#        if 'errors' in resp.json():
-#            response = {'job_id': None,
-#                        'status': 'error',
-#                        'message': 'a docker image for {} does not exist'.format(attributes['service'])}
-#        else:
-#            job_id = submit_job(db, message, attributes)
-#            response = {'job_id': job_id,
-#                        'status': 'submitted',
-#                        'message': 'job submitted'}
     else:
         job_id = submit_job(db, message)
         response = {'job_id': job_id, 
