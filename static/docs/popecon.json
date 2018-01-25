@@ -1,0 +1,54 @@
+{
+"service": "popecon",
+"description": "Spatial aggregation of population and economic data",
+"arguments": [
+{
+"name": "aoi",
+"description": "Area of interest",
+"flag": null,
+"type": "input",
+"dateType": [
+"shapefile",
+"geojson"
+],
+"required": true,
+"default": null
+},
+{
+"name": "output",
+"description": "Output JSON table",
+"flag": null,
+"type": "output",
+"dataType": ["json"],
+"required": true,
+"default": null
+},
+{
+"name": "fields",
+"description": "Calculation fields formatted as a semicolon delimited string",
+"flag": "f",
+"type": "parameter",
+"dataType": ["string"],
+"required": false,
+"default": "'Total Population'"
+},
+{
+"name": "bin",
+"description": "Field in aoi used to bin results",
+"flag": "b",
+"type": "parameter",
+"dataType": "string",
+"required": false,
+"default": null
+},
+{
+"name": "disaggregation",
+"description": "Option to disaggregate by administrative boundaries. One of [county, state, fema]",
+"flag": "d",
+"type": "parameter",
+"dataType": "string",
+"required": false,
+"default": null
+}
+]
+}
