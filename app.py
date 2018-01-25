@@ -10,7 +10,7 @@ from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from markdown2 import markdown
 from settings import *
-from utils import query_job, submit_job, all_jobs
+from utils import query_job, submit_job, all_jobs, list_services
 
 app = Flask(__name__)
 
@@ -73,8 +73,8 @@ def index():
 
 @app.route('/services', methods=['GET'])
 def services():
-    resp = requests.get('{}/v2/_catalog'.format(DOCKER_REGISTRY))
-    services = {'services': resp.json()['repositories']}
+    tags = request.args.get('tags')
+    services = list_services(tags=tags)
     return jsonify(**services)
 
 
