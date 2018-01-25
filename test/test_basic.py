@@ -111,12 +111,12 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
-    def test_service_docs(self):
-        service_url = url_for('docs', service_name='popecon')
+    def test_service_info(self):
+        service_url = url_for('service_info', service_name='popecon')
         assert(self.client.get(service_url).status_code == 200)
 
-    def test_bad_service_docs(self):
-        service_url = url_for('docs', service_name='foo')
+    def test_bad_service_info(self):
+        service_url = url_for('service_info', service_name='foo')
         assert(self.client.get(service_url).status_code == 404)
 
     @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])

@@ -74,7 +74,7 @@ def index():
 @app.route('/services', methods=['GET'])
 def services():
     resp = requests.get('{}/v2/_catalog'.format(DOCKER_REGISTRY))
-    services = resp.json()['repositories']
+    services = {'services': resp.json()['repositories']}
     return jsonify(**services)
 
 
