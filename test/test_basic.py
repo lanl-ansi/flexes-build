@@ -7,6 +7,7 @@ import botocore
 import utils
 import json
 import mock
+from asynctest import CoroutineMock
 from flask import url_for, jsonify
 
 @pytest.mark.usefixtures('client_class')
@@ -124,9 +125,9 @@ class TestEndpoints:
         service_url = url_for('dashboard')
         assert(self.client.get(service_url).status_code == 200)
 
-    @mock.patch('requests.get')
-    def test_services(self, mock_request):
-        mock_request.return_value.json.return_value = {'repositories': ['a', 'b', 'c']}
+    @mock.patch('app.list_services')
+    def test_services(self, mock_list_services):
+        mock_list_services.return_value = {'services': ['a', 'b', 'c']}
         service_url = url_for('services')
         assert(self.client.get(service_url).status_code == 200)
 
@@ -161,6 +162,24 @@ class TestUtils:
         expected = [1, 2, 3]
         query_result = utils.all_jobs()
         assert(query_result == expected)
+
+    @mock.patch('utils.get_services', new_callable=CoroutineMock)
+    def test_list_services(self, mock_get_services):
+        mock_response_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/services.json')
+        with open(mock_response_file) as f:
+            mock_responses = json.load(f)
+        mock_get_services.return_value = mock_responses['raw']
+        services = utils.list_services()
+        assert(services == mock_responses['all'])
+
+    @mock.patch('utils.get_services', new_callable=CoroutineMock)
+    def test_list_services_tags(self, mock_get_services):
+        mock_response_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/services.json')
+        with open(mock_response_file) as f:
+            mock_responses = json.load(f)
+        mock_get_services.return_value = mock_responses['raw']
+        services = utils.list_services(tags=['lanl'])
+        assert(services == mock_responses['lanl'])
 
 
 class TestSchema:
