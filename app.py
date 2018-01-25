@@ -81,7 +81,7 @@ def services():
 def service_info(service_name):
     doc_path = os.path.join(APP_STATIC, 'docs', '{}.json'.format(service_name))
     if os.path.isfile(doc_path):
-        with app.open_resource(doc_path) as f:
+        with open(doc_path) as f:
             content = json.load(f)
         return jsonify(**content)
     else:
