@@ -8,7 +8,6 @@ from flask import Flask, Markup, abort, \
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from markdown2 import markdown
 from settings import *
 from utils import query_job, submit_job, all_jobs, list_services
 
