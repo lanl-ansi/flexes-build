@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import boto3
 import subprocess
 import time
@@ -127,9 +129,9 @@ def buildout_api():
     worker = Instance(outputs[2]['OutputValue'])
     redis_endpoint = outputs[3]['OutputValue']
 
-    deploy_registry(Instance(regsitry))
-    deploy_api_server(Instance(api_server))
-    deploy_worker(Instance(worker))
+    deploy_registry(registry)
+    deploy_api_server(api_server)
+    deploy_worker(worker)
     create_worker_ami(worker)
 
     print('All done; go home')
