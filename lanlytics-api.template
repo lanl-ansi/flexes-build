@@ -2,15 +2,23 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "lanlytics API Configuration",
   "Parameters": {
-    "VpcId": {
-      "Description": "Id of existing VPC, all components will be created here",
-      "Type": "AWS::EC2::VPC::Id",
-      "Default": ""
+    "IpBlock": {
+      "Description": "Set of IP addresses for the VPC",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "10.0.0.0/16",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
     },
-    "SubnetGroupId": {
-      "Description": "Id of VPC subnet group; must exist in the specified VPC",
-      "Type": "AWS::EC2::Subnet::Id",
-      "Default": ""
+    "SubnetIpBlock": {
+      "Description": "Set of IP addresses for the subnet",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "10.0.0.0/24",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
     },
     "BaseImageId": {
       "Description": "Base AMI Id for instances",
@@ -25,7 +33,11 @@
     "SSHIP": {
       "Description": "IP to restrict SSH access",
       "Type": "String",
-      "Default": "0.0.0.0/0"
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
     },
     "DynamoDBJobsTableName": {
       "Description": "DynamoDB table name for job storage",
@@ -44,6 +56,109 @@
     }
   },
   "Resources": {
+    "ApiVpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "IpBlock"
+        },
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true
+      }
+    },
+    "ApiSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ApiVpc"
+        },
+        "CidrBlock": {
+          "Ref": "SubnetIpBlock"
+        },
+        "MapPublicIpOnLaunch": true
+      }
+    },
+    "VpcInternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {}
+    },
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ApiVpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "VpcInternetGateway"
+        }
+      }
+    },
+    "RouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ApiVpc"
+        }
+      }
+    },
+    "Route": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "AttachGateway",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "VpcInternetGateway"
+        }
+      }
+    },
+    "SubnetRouteTableAssocation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "ApiSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        }
+      }
+    },
+    "NetworkAcl": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ApiVpc"
+        }
+      }
+    },
+    "Acl1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": true,
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "Acl2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
     "APIDynamoDBTableAccess": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
@@ -66,10 +181,14 @@
           ]
         },
         "Roles": [
-          {"Ref": "WorkerRole"},
-          {"Ref": "APIServerRole"}
+          {
+            "Ref": "WorkerRole"
+          },
+          {
+            "Ref": "APIServerRole"
+          }
         ]
-      },g
+      },
       "DependsOn": "JobsTable"
     },
     "APIS3BucketReadWriteAccess": {
@@ -112,7 +231,11 @@
             }
           ]
         },
-        "Roles": [{"Ref":"WorkerRole"}]
+        "Roles": [
+          {
+            "Ref": "WorkerRole"
+          }
+        ]
       },
       "DependsOn": "WorkerBucket"
     },
@@ -156,7 +279,11 @@
             }
           ]
         },
-        "Roles": [{"Ref":"RegistryRole"}]
+        "Roles": [
+          {
+            "Ref": "RegistryRole"
+          }
+        ]
       },
       "DependsOn": "RegistryBucket"
     },
@@ -166,13 +293,19 @@
         "RoleName": "APIWorker",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
-          "Statement": [{
+          "Statement": [
+            {
               "Effect": "Allow",
               "Principal": {
-                "Service": ["ec2.amazonaws.com"]
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
               },
-              "Action": ["sts:AssumeRole"]
-          }]
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
         },
         "Path": "/"
       }
@@ -181,7 +314,11 @@
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
-        "Roles": [{"Ref": "WorkerRole"}]
+        "Roles": [
+          {
+            "Ref": "WorkerRole"
+          }
+        ]
       }
     },
     "APIServerRole": {
@@ -190,13 +327,19 @@
         "RoleName": "APIServer",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
-          "Statement": [{
+          "Statement": [
+            {
               "Effect": "Allow",
               "Principal": {
-                "Service": ["ec2.amazonaws.com"]
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
               },
-              "Action": ["sts:AssumeRole"]
-          }]
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
         },
         "Path": "/"
       }
@@ -205,7 +348,11 @@
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
-        "Roles": [{"Ref": "APIServerRole"}]
+        "Roles": [
+          {
+            "Ref": "APIServerRole"
+          }
+        ]
       }
     },
     "RegistryRole": {
@@ -214,13 +361,19 @@
         "RoleName": "DockerRegistry",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
-          "Statement": [{
+          "Statement": [
+            {
               "Effect": "Allow",
               "Principal": {
-                "Service": ["ec2.amazonaws.com"]
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
               },
-              "Action": ["sts:AssumeRole"]
-          }]
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
         },
         "Path": "/"
       }
@@ -229,7 +382,11 @@
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
-        "Roles": [{"Ref": "RegistryRole"}]
+        "Roles": [
+          {
+            "Ref": "RegistryRole"
+          }
+        ]
       }
     },
     "RedisUserSecurityGroup": {
@@ -238,7 +395,7 @@
         "GroupName": "RedisUser",
         "GroupDescription": "Security group for access to Redis server",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         }
       }
     },
@@ -248,7 +405,7 @@
         "GroupName": "RedisServer",
         "GroupDescription": "Security group granting Redis port access to machines with RedisUser security group",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         },
         "SecurityGroupIngress": [
           {
@@ -268,7 +425,7 @@
         "GroupName": "RegistryUser",
         "GroupDescription": "Security group for access to Docker Registry server",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         }
       }
     },
@@ -278,7 +435,7 @@
         "GroupName": "RegistryServer",
         "GroupDescription": "Security group granting web access to machines with RegistryUser security group",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         },
         "SecurityGroupIngress": [
           {
@@ -306,7 +463,7 @@
         "GroupName": "WebAccess",
         "GroupDescription": "Security group granting web access from anywhere",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         },
         "SecurityGroupIngress": [
           {
@@ -324,14 +481,16 @@
         "GroupName": "SSHAccess",
         "GroupDescription": "Security group granting SSH access from anywhere",
         "VpcId": {
-          "Ref": "VpcId"
+          "Ref": "ApiVpc"
         },
         "SecurityGroupIngress": [
           {
             "IpProtocol": "tcp",
             "FromPort": "22",
             "ToPort": "22",
-            "CidrIp": {"Ref": "SSHIP"}
+            "CidrIp": {
+              "Ref": "SSHIP"
+            }
           }
         ]
       }
@@ -340,7 +499,9 @@
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "InstanceType": "t2.micro",
-        "ImageId": {"Ref": "BaseImageId"},
+        "ImageId": {
+          "Ref": "BaseImageId"
+        },
         "IamInstanceProfile": {
           "Ref": "APIServerInstanceProfile"
         },
@@ -352,7 +513,7 @@
             "Ref": "WebAccess"
           },
           {
-            "Ref": "RedisUser"
+            "Ref": "RedisUserSecurityGroup"
           },
           {
             "Ref": "SSHAccess"
@@ -368,7 +529,9 @@
             }
           }
         ],
-        "SubnetId": {"Ref": "SubnetGroupId"},
+        "SubnetId": {
+          "Ref": "ApiSubnet"
+        },
         "Tags": [
           {
             "Key": "Name",
@@ -382,7 +545,9 @@
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "InstanceType": "t2.micro",
-        "ImageId": {"Ref": "BaseImageId"},
+        "ImageId": {
+          "Ref": "BaseImageId"
+        },
         "IamInstanceProfile": {
           "Ref": "WorkerInstanceProfile"
         },
@@ -410,7 +575,9 @@
             }
           }
         ],
-        "SubnetId": {"Ref": "SubnetGroupId"},
+        "SubnetId": {
+          "Ref": "ApiSubnet"
+        },
         "Tags": [
           {
             "Key": "Name",
@@ -418,14 +585,21 @@
           }
         ]
       },
-      "DependsOn": ["APIS3BucketReadWriteAccess", "APIDynamoDBTableAccess"]
+      "DependsOn": [
+        "APIS3BucketReadWriteAccess",
+        "APIDynamoDBTableAccess"
+      ]
     },
     "DockerRegistryInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "InstanceType": "t2.micro",
-        "ImageId": {"Ref": "BaseImageId"},
-        "IamInstanceProfile": {"Ref": "RegistryInstanceProfile"},
+        "ImageId": {
+          "Ref": "BaseImageId"
+        },
+        "IamInstanceProfile": {
+          "Ref": "RegistryInstanceProfile"
+        },
         "KeyName": {
           "Ref": "KeyName"
         },
@@ -447,7 +621,9 @@
             }
           }
         ],
-        "SubnetId": {"Ref": "SubnetGroupId"},
+        "SubnetId": {
+          "Ref": "ApiSubnet"
+        },
         "Tags": [
           {
             "Key": "Name",
@@ -462,7 +638,11 @@
       "Properties": {
         "CacheSubnetGroupName": "APIQueueSubnet",
         "Description": "Subnet for API Redis queue and components",
-        "SubnetIds": [{"Ref": "SubnetGroupId"}]
+        "SubnetIds": [
+          {
+            "Ref": "ApiSubnet"
+          }
+        ]
       }
     },
     "RedisQueue": {
@@ -477,7 +657,9 @@
         ],
         "Engine": "redis",
         "NumCacheNodes": 1,
-        "CacheSubnetGroupName": {"Ref": "RedisSubnetGroup"}
+        "CacheSubnetGroupName": {
+          "Ref": "RedisSubnetGroup"
+        }
       }
     },
     "JobsTable": {
@@ -525,28 +707,19 @@
     "ApiServerIp": {
       "Description": "Public IP address of API web server",
       "Value": {
-        "Fn::GetAtt": [
-          "APIServerInstance",
-          "PublicIp"
-        ]
+        "Ref": "APIServerInstance"
       }
     },
     "RegistryIp": {
       "Description": "Public IP address of the private Docket Registry",
       "Value": {
-        "Fn::GetAtt": [
-          "DockerRegistryInstance",
-          "PublicIp"
-        ]
+        "Ref": "DockerRegistryInstance"
       }
     },
     "WorkerIp": {
       "Description": "Public IP address of API worker instance",
       "Value": {
-        "Fn::GetAtt": [
-          "APIWorkerInstance",
-          "PublicIp"
-        ]
+        "Ref": "APIWorkerInstance"
       }
     },
     "RedisEndpoint": {
