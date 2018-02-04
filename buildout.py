@@ -122,8 +122,10 @@ def create_worker_ami(instance_id):
     return image.image_id
 
 
-def buildout_api():
-    outputs = create_stack()
+def buildout_api(args):
+    stack_parameters = vars(args)
+    stack_name = stack_parameters.pop('name')
+    outputs = create_stack(stack_name, **stack_parameters)
     api_server = Instance(outputs[0]['OutputValue'])
     registry = Instance(outputs[1]['OutputValue'])
     worker = Instance(outputs[2]['OutputValue'])
@@ -135,3 +137,18 @@ def buildout_api():
     create_worker_ami(worker)
 
     print('All done; go home')
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('name', help='Name for the CloudFormation stack')
+    parser.add_argument('BaseImageId', help='Base AMI Id for instances')
+    parser.add_argument('KeyName', help='Key pair name for launched instances')
+    parser.add_argument('--vpc-ip-block', dest='IpBlock', default='10.0.0.0/16', help='Set of IP addresses for the VPC')
+    parser.add_argument('--subnet-ip-block', dest='SubnetIpBlock', default='10.0.0.0/24', help='Set of IP addresses for the subnet')
+    parser.add_argument('--ssh-ip', dest='SSHIP', default='0.0.0.0/0', help='IP to restrict SSH access')
+    parser.add_argument('--jobs-table', dest='DynamoDBJobsTableName', default='jobs', help='DynamoDB table name for job storage')
+    parser.add_argument('--worker-bucket', dest='S3WorkerBucketName', default='lanlytics-api-worker', help='S3 bucket for API workers')
+    parser.add_argument('--image-bucket', dest='S3DockerImageBucketName', default='lanlytics-registry-images', help='S3 bucket for Docker Registry')
+    args = parser.parse_args()
+    buildout_api(args)
