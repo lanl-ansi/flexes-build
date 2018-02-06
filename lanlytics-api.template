@@ -2,23 +2,15 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "lanlytics API Configuration",
   "Parameters": {
-    "IpBlock": {
-      "Description": "Set of IP addresses for the VPC",
-      "Type": "String",
-      "MinLength": "9",
-      "MaxLength": "18",
-      "Default": "10.0.0.0/16",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    "VpcId": {
+      "Description": "ID of the VPC where resources will be launched",
+      "Type": "AWS::EC2::VPC::Id",
+      "Default": ""
     },
-    "SubnetIpBlock": {
-      "Description": "Set of IP addresses for the subnet",
-      "Type": "String",
-      "MinLength": "9",
-      "MaxLength": "18",
-      "Default": "10.0.0.0/24",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    "SubnetId": {
+      "Description": "ID of the subnet where resources will be launched",
+      "Type": "AWS::EC2::Subnet::Id",
+      "Default": ""
     },
     "BaseImageId": {
       "Description": "Base AMI Id for instances",
@@ -56,109 +48,6 @@
     }
   },
   "Resources": {
-    "ApiVpc": {
-      "Type": "AWS::EC2::VPC",
-      "Properties": {
-        "CidrBlock": {
-          "Ref": "IpBlock"
-        },
-        "InstanceTenancy": "default",
-        "EnableDnsSupport": true,
-        "EnableDnsHostnames": true
-      }
-    },
-    "ApiSubnet": {
-      "Type": "AWS::EC2::Subnet",
-      "Properties": {
-        "VpcId": {
-          "Ref": "ApiVpc"
-        },
-        "CidrBlock": {
-          "Ref": "SubnetIpBlock"
-        },
-        "MapPublicIpOnLaunch": true
-      }
-    },
-    "VpcInternetGateway": {
-      "Type": "AWS::EC2::InternetGateway",
-      "Properties": {}
-    },
-    "AttachGateway": {
-      "Type": "AWS::EC2::VPCGatewayAttachment",
-      "Properties": {
-        "VpcId": {
-          "Ref": "ApiVpc"
-        },
-        "InternetGatewayId": {
-          "Ref": "VpcInternetGateway"
-        }
-      }
-    },
-    "RouteTable": {
-      "Type": "AWS::EC2::RouteTable",
-      "Properties": {
-        "VpcId": {
-          "Ref": "ApiVpc"
-        }
-      }
-    },
-    "Route": {
-      "Type": "AWS::EC2::Route",
-      "DependsOn": "AttachGateway",
-      "Properties": {
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        },
-        "DestinationCidrBlock": "0.0.0.0/0",
-        "GatewayId": {
-          "Ref": "VpcInternetGateway"
-        }
-      }
-    },
-    "SubnetRouteTableAssocation": {
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "ApiSubnet"
-        },
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        }
-      }
-    },
-    "NetworkAcl": {
-      "Type": "AWS::EC2::NetworkAcl",
-      "Properties": {
-        "VpcId": {
-          "Ref": "ApiVpc"
-        }
-      }
-    },
-    "Acl1": {
-      "Type": "AWS::EC2::NetworkAclEntry",
-      "Properties": {
-        "CidrBlock": "0.0.0.0/0",
-        "Egress": true,
-        "Protocol": "-1",
-        "RuleAction": "allow",
-        "RuleNumber": "100",
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
-      }
-    },
-    "Acl2": {
-      "Type": "AWS::EC2::NetworkAclEntry",
-      "Properties": {
-        "CidrBlock": "0.0.0.0/0",
-        "Protocol": "-1",
-        "RuleAction": "allow",
-        "RuleNumber": "100",
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
-      }
-    },
     "APIDynamoDBTableAccess": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
@@ -395,7 +284,7 @@
         "GroupName": "RedisUser",
         "GroupDescription": "Security group for access to Redis server",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         }
       }
     },
@@ -405,7 +294,7 @@
         "GroupName": "RedisServer",
         "GroupDescription": "Security group granting Redis port access to machines with RedisUser security group",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
@@ -425,7 +314,7 @@
         "GroupName": "RegistryUser",
         "GroupDescription": "Security group for access to Docker Registry server",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         }
       }
     },
@@ -435,7 +324,7 @@
         "GroupName": "RegistryServer",
         "GroupDescription": "Security group granting web access to machines with RegistryUser security group",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
@@ -463,7 +352,7 @@
         "GroupName": "WebAccess",
         "GroupDescription": "Security group granting web access from anywhere",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
@@ -481,7 +370,7 @@
         "GroupName": "SSHAccess",
         "GroupDescription": "Security group granting SSH access from anywhere",
         "VpcId": {
-          "Ref": "ApiVpc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
@@ -530,7 +419,7 @@
           }
         ],
         "SubnetId": {
-          "Ref": "ApiSubnet"
+          "Ref": "SubnetId"
         },
         "Tags": [
           {
@@ -576,7 +465,7 @@
           }
         ],
         "SubnetId": {
-          "Ref": "ApiSubnet"
+          "Ref": "SubnetId"
         },
         "Tags": [
           {
@@ -622,7 +511,7 @@
           }
         ],
         "SubnetId": {
-          "Ref": "ApiSubnet"
+          "Ref": "SubnetId"
         },
         "Tags": [
           {
@@ -640,7 +529,7 @@
         "Description": "Subnet for API Redis queue and components",
         "SubnetIds": [
           {
-            "Ref": "ApiSubnet"
+            "Ref": "SubnetId"
           }
         ]
       }
@@ -705,19 +594,19 @@
   },
   "Outputs": {
     "ApiServerIp": {
-      "Description": "Public IP address of API web server",
+      "Description": "Instance ID of API web server",
       "Value": {
         "Ref": "APIServerInstance"
       }
     },
     "RegistryIp": {
-      "Description": "Public IP address of the private Docket Registry",
+      "Description": "Instance ID of the private Docker Registry",
       "Value": {
         "Ref": "DockerRegistryInstance"
       }
     },
     "WorkerIp": {
-      "Description": "Public IP address of API worker instance",
+      "Description": "Instance ID of the API worker instance",
       "Value": {
         "Ref": "APIWorkerInstance"
       }
