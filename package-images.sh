@@ -34,11 +34,17 @@ cd ../lanlytics-api-worker \
   && git pull origin master \
   && docker build -t hub.lanlytics.com/lanlytics-api-worker:latest .
 docker save hub.lanlytics.com/lanlytics-api-worker:latest | gzip > ../bursa/dist/lanlytics-api-worker/lanlytics-api-worker.tgz
+echo "Packaging test image"
+cd ../echo-test \
+  && git checkout master \
+  && git pull origin master \
+  && docker build -t echo-test:latest . \
+  && docker save echo-test:latest | gzip > ../bursa/dist/echo-test.tgz
 cd ../bursa/dist/
 tar cf docker.tar docker/ && rm -r docker
 tar cf docker-registry.tar docker-registry/ && rm -r docker-registry
 tar cf lanlytics-api.tar lanlytics-api/ && rm -r lanlytics-api
 tar cf lanlytics-api-worker.tar lanlytics-api-worker/ && rm -r lanlytics-api-worker
-tar zcf ../lanlytics-api-dist.tgz docker.tar docker-registry.tar lanlytics-api.tar lanlytics-api-worker.tar
+tar zcf ../lanlytics-api-dist.tgz docker.tar docker-registry.tar lanlytics-api.tar lanlytics-api-worker.tar echo-test.tgz
 cd ../ && rm -r dist/
 echo "Packaging complete"
