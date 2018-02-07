@@ -22,15 +22,6 @@
       "Type": "AWS::EC2::KeyPair::KeyName",
       "Default": ""
     },
-    "SSHIP": {
-      "Description": "IP to restrict SSH access",
-      "Type": "String",
-      "MinLength": "9",
-      "MaxLength": "18",
-      "Default": "0.0.0.0/0",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
-    },
     "DynamoDBJobsTableName": {
       "Description": "DynamoDB table name for job storage",
       "Type": "String",
@@ -364,26 +355,6 @@
         ]
       }
     },
-    "SSHAccess": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupName": "SSHAccess",
-        "GroupDescription": "Security group granting SSH access from anywhere",
-        "VpcId": {
-          "Ref": "VpcId"
-        },
-        "SecurityGroupIngress": [
-          {
-            "IpProtocol": "tcp",
-            "FromPort": "22",
-            "ToPort": "22",
-            "CidrIp": {
-              "Ref": "SSHIP"
-            }
-          }
-        ]
-      }
-    },
     "APIServerInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
@@ -403,9 +374,6 @@
           },
           {
             "Ref": "RedisUserSecurityGroup"
-          },
-          {
-            "Ref": "SSHAccess"
           }
         ],
         "BlockDeviceMappings": [
@@ -449,9 +417,6 @@
           },
           {
             "Ref": "RegistryUserSecurityGroup"
-          },
-          {
-            "Ref": "SSHAccess"
           }
         ],
         "BlockDeviceMappings": [
@@ -495,9 +460,6 @@
         "SecurityGroupIds": [
           {
             "Ref": "RegistryServerSecurityGroup"
-          },
-          {
-            "Ref": "SSHAccess"
           }
         ],
         "BlockDeviceMappings": [
@@ -593,19 +555,19 @@
     }
   },
   "Outputs": {
-    "ApiServerIp": {
+    "ApiServerId": {
       "Description": "Instance ID of API web server",
       "Value": {
         "Ref": "APIServerInstance"
       }
     },
-    "RegistryIp": {
+    "RegistryId": {
       "Description": "Instance ID of the private Docker Registry",
       "Value": {
         "Ref": "DockerRegistryInstance"
       }
     },
-    "WorkerIp": {
+    "WorkerId": {
       "Description": "Instance ID of the API worker instance",
       "Value": {
         "Ref": "APIWorkerInstance"
