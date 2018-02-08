@@ -8,9 +8,8 @@ from flask import Flask, Markup, abort, \
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from markdown2 import markdown
 from settings import *
-from utils import query_job, submit_job, all_jobs
+from utils import query_job, submit_job, all_jobs, list_services
 
 app = Flask(__name__)
 
@@ -62,9 +61,21 @@ def index():
 
 @app.route('/services', methods=['GET'])
 def services():
-    resp = requests.get('https://hub.lanlytics.com/v2/_catalog')
-    services = resp.json()['repositories']
-    return render_template('services.html', services=services)
+    tags = request.args.get('tags')
+    tags = tags.split(',') if tags is not None else tags
+    services = list_services(tags=tags)
+    return jsonify(**services)
+
+
+@app.route('/services/<service_name>', methods=['GET'])
+def service_info(service_name):
+    doc_path = os.path.join(APP_STATIC, 'docs', '{}.json'.format(service_name))
+    if os.path.isfile(doc_path):
+        with open(doc_path) as f:
+            content = json.load(f)
+        return jsonify(**content)
+    else:
+        abort(404)
 
 
 @app.route('/dashboard', methods=['GET'])
@@ -80,18 +91,6 @@ def service(service_name):
             return render_template('{}.html'.format(service_name))
         except TemplateNotFound:
             abort(404)
-
-
-@app.route('/<service_name>/docs', methods=['GET'])
-def docs(service_name):
-    doc_path = os.path.join(APP_STATIC, 'docs', '{}.md'.format(service_name))
-    if os.path.isfile(doc_path):
-        with app.open_resource(doc_path) as f:
-            content = f.read()
-        content = Markup(markdown(content, extras=['fenced-code-blocks']))
-        return render_template('docs.html', **locals())
-    else:
-        abort(404)
 
 
 @app.route('/jobs/<job_id>', methods=['GET'])

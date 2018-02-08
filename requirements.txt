@@ -1,6 +1,10 @@
+aiohttp==2.3.9
 appdirs==1.4.0
+async-timeout==2.0.0
+asynctest==0.11.1
 boto3==1.4.4
 botocore==1.5.13
+chardet==3.0.4
 click==6.7
 codecov==2.0.5
 coverage==4.2
@@ -8,15 +12,15 @@ docutils==0.13.1
 Flask==0.12
 Flask-Redis==0.3.0
 gitdb2==2.0.0
-GitPython==2.1.1
 gunicorn==19.7.1
+idna==2.6
 itsdangerous==0.24
 Jinja2==2.9.5
 jmespath==0.9.1
 jsonschema==2.6.0
-markdown2==2.3.3
 MarkupSafe==0.23
 mock==2.0.0
+multidict==4.0.0
 packaging==16.8
 pbr==1.10.0
 py==1.4.32
@@ -31,3 +35,4 @@ s3transfer==0.1.10
 six==1.10.0
 smmap2==2.0.1
 Werkzeug==0.11.15
+yarl==1.1.0
