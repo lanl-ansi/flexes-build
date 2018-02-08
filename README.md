@@ -2,17 +2,15 @@ Bursa
 =====
 
 Bursa is a lanlytics provisioning script.
-After setting up AWS credentials,
-running bursa will give you a fully-deployed lanlytics setup.
-
+After packaging the components running `buildout.py` will give 
+you a fully-deployed lanlytics API setup running in its own VPC.
 
 Getting Ready
 -------------
 
 ### Access Key
 
-You will need an access key.
-We recommend creating an access key specifically for bursa.
+You will need an AWS IAM account with an access key.
 
 Create an access key through the AWS console, under "IAM".
 Navigate to the (admin) user to whom the key should be bound,
@@ -23,64 +21,45 @@ select the "Create access key" button.
 Download the `.csv` file to a safe location
 (you may need it again later).
 Open the `.csv` to obtain your "access key ID" and "secret access key".
-You will use these values when running the setup script.
 
-### Make a VPC
+The credentials should be stored in `~/.aws/credentials` along with the
+default region where the resources will be deployed. More information 
+can be found [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html).
 
-You can use the default VPC if you want,
-or you can make a new VPC for lanlytics.
-Bursa will put all the instances it creates
-in whichever VPC the management server is in.
+### Python Environment
 
-### Management Server
+We recommend installing the required Python libraries in a virtual environment.
 
-Create a management server in your VPC,
-from which to run bursa,
-and perform administrative tasks on your deployment.
+```bash
+$ python3 -m venv env
+$ source env/bin/activate
+(env)$ pip install -U pip boto3
+```
 
-We used CoreOS Container Linux on a `t2.nano` instance.
-
-
-Dependencies
-------------
-
-Bursa has been tested on CoreOS-stable.
-CoreOS Container Linux is a minimalistic self-upgrading Linux distribution,
-made specifically for hosting containers.
-
-Due to the constraints imposed by CoreOS Container Linux,
-bursa only needs a few commants installed,
-provided it has Internet access.
-
-Required programs:
-
-* `/bin/sh`
-* `docker`
-* `openssl`
-
-Bursa should run fine in Ubuntu, Debian, Red Hat, Arch, Slackware,
-or anything else that has these installed.
-
-
-Setup Script
+Packaging Script
 -------------
 
-`setup.sh` sets up some bash aliases for debugging,
-and creates the AWS credentials file.
+`package-images.sh` collects the necessary files and compresses them into a
+file called `lanlytics-api-dist.tgz`. The script assumes that the necessary
+repositories are cloned in the same directory as the bursa repository.
+
+* [docker-registry](https://github.lanlytics.com/SREs/docker-registry)
+* [lanlytics-api](https://github.lanlytics.com/nisac/lanlytics-api)
+* [lanlytics-api-worker](https://github.lanlytics.com/nisac/lanlytics-api-worker)
+* [echo-test](https://github.lanlytics.com/SREs/echo-test)
 
 Run it like this:
 
-    export region=us-west-2 # or whatever region you want
-    export aws_access_key_id=YOUR_ACCESS_KEY
-    export aws_secret_access_key=YOUR_SECRET_KEY
-    sh setup.sh
+```bash
+$ ./package-images.sh
+```
 
-
-Running bursa
+Running buildout
 -------------
 
-After you have set up your account, you can run bursa:
+After things are setup you are ready to run can run the buildout script:
 
-    sh bursa.sh YOUR_INSTANCE_BASENAME
-
-Bursa stores important state information in `~/.local/share/bursa/`.
+```bash
+$ source env/bin/activate
+(env)$ ./buildout.py -h
+```
