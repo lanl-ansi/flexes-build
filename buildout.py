@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import boto3
+import json
 import subprocess
 import time
 from argparse import ArgumentParser
@@ -8,50 +9,75 @@ from argparse import ArgumentParser
 class Instance:
     def __init__(self, instance_id, user='ec2-user'):
         ec2 = boto3.resource('ec2')
-        instance = ec2.Instance(instance_id)
-        public_ip = instance.public_ip_address
-        ip = public_ip if public_ip is not None else instance.private_ip_address
-        self.address = '{}@{}'.format(user, ip)
-        self.pem_file = '~/.ssh/{}.pem'.format(instance.key_name)
+        self.instance = ec2.Instance(instance_id)
+        self.instance.wait_until_running()
+        public_ip = self.instance.public_ip_address
+        private_ip = self.instance.private_ip_address
+        self.ip = public_ip if public_ip else private_ip_address
+        self.user = user
+        self.pem_file = '~/.ssh/{}.pem'.format(self.instance.key_name)
 
     def ssh(self, command):
         return subprocess.check_output([
             '/usr/bin/ssh',
             '-i', self.pem_file,
             '-o', 'StrictHostKeyChecking=no',
-            self.address,
+            '{}@{}'.format(self.user, self.ip),
             command
         ])
 
-    def scp(self, filename, dest=''):
-        return subprocess.check_output([
-            '/usr/bin/scp' ,
-            '-i', self.pem_file,
-            '-o', 'StrictHostKeyChecking=no',
-            filename,
-            '{}:{}'.format(self.address, dest)
-        ])
+    def scp(self, filename, dest='', to='remote'):
+        if to == 'remote':
+            return subprocess.check_output([
+                '/usr/bin/scp' ,
+                '-i', self.pem_file,
+                '-o', 'StrictHostKeyChecking=no',
+                filename,
+                '{}@{}:{}'.format(self.user, self.ip, dest)
+            ])
+        else:
+            return subprocess.check_output([
+                '/usr/bin/scp' ,
+                '-i', self.pem_file,
+                '-o', 'StrictHostKeyChecking=no',
+                '{}@{}:{}'.format(self.user, self.ip, filename),
+                dest
+            ])
+
+    def create_ami(self, name):
+        ec2 = boto3.resource('ec2')
+        image = self.instance.create_image(Name=name)
+        return image.image_id
+
+    def add_security_group(self, security_group_id):
+        all_sg = [sg['GroupId'] for sg in self.instance.security_groups]
+        all_sg.append(security_group_id)
+        self.instance.modify_attribute(Groups=all_sg)
 
 
-def create_stack(stack_name, **kwargs):
+def create_stack(stack_name, template, **kwargs):
     cloudformation = boto3.resource('cloudformation')
 
-    with open('lanlytics-api.template', 'r') as f:
+    with open(template, 'r') as f:
         template_body = f.read()
 
-    parameters = [{'ParameterKey': key, 'Parameter': val, 'UsePrevious': False}
-                    for key, val in kwargs.items()]
+    parameters = [{'ParameterKey': key, 'ParameterValue': val, 'UsePreviousValue': False}
+                    for key, val in kwargs.items() if val is not None]
 
     stack = cloudformation.create_stack(
         StackName=stack_name,
         TemplateBody=template_body,
         Parameters=parameters,
-        ResourceTypes=['AWS::*']
+        Capabilities=['CAPABILITY_NAMED_IAM']
     )
 
     # Wait for stack to be created
+    print('Building stack {}'.format(stack_name), end='', flush=True)
     while stack.stack_status not in ['CREATE_COMPLETE', 'CREATE_FAILED']:
         time.sleep(1)
+        stack.reload()
+        print('.', end='', flush='True')
+    print()
 
     if stack.stack_status == 'CREATE_FAILED':
         raise RuntimeError('Stack creation failed: {}'.format(stack.stack_status_reason))
@@ -59,84 +85,191 @@ def create_stack(stack_name, **kwargs):
     return stack.outputs
 
 
-def deploy_registry(registry_instance, registry_bucket):
+def create_api_settings(jobs_table, redis_endpoint):
+    with open('settings.py', 'w') as f:
+        f.write("REDIS_HOST = '{}'\n".format(redis_endpoint))
+        f.write("REDIS_PORT = 6379\n")
+        f.write("TABLE_NAME = '{}'\n".format(jobs_table))
+    subprocess.call('tar --append --file=lanlytics-api.tar settings.py && \
+                     rm settings.py', shell=True)
+
+
+def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint):
+    with open('settings.py', 'w') as f:
+        f.write("STATUS_COMPLETE = 'complete'\n")
+        f.write("STATUS_ACTIVE = 'active'\n")
+        f.write("STATUS_RUNNING = 'running'\n")
+        f.write("STATUS_FAIL = 'failed'\n")
+        f.write("DOCKER_WORKER_TYPE = 'docker'\n")
+        f.write("DOCKER_REGISTRY = '{}'\n".format(registry))
+        f.write("JOBS_TABLE = '{}'\n".format(jobs_table))
+        f.write("REDIS_HOST = '{}'\n".format(redis_endpoint))
+        f.write("REDIS_PORT = 6379\n")
+        f.write("API_ENDPOINT = 'https://{}'\n".format(api_endpoint))
+    subprocess.call('tar --append --file=lanlytics-api-worker.tar settings.py && \
+                     rm settings.py', shell=True)
+
+
+def deploy_base_instance(base_instance):
+    print('Build base AMI')
+    remote_dest = '~/'
+    files = ['docker.tar']
+    print('Copying files')
+    base_instance.scp(' '.join(files), '~/')
+    base_instance.ssh('tar -xf {}'.format(files[0]))
+    print('Moving binaries')
+    base_instance.ssh('cd docker && \
+                       chmod +x cgroupfs-mount && \
+                       sudo ./cgroupfs-mount && \
+                       tar xzvf docker.tgz && \
+                       sudo cp docker/* /usr/bin/ && \
+                       sudo cp docker.service /etc/init.d/docker')
+    base_instance.ssh('sudo dockerd &')
+    base_instance.ssh('sudo docker --version && \
+                       sudo groupadd docker && \
+                       sudo usermod -aG docker {}'.format(base_instance.user))
+    base_instance.ssh('sudo service docker start && sudo chkconfig docker on')
+    print(base_instance.ssh('docker --version'))
+    base_instance.ssh('chmod +x docker/docker-compose && sudo mv docker/docker-compose /usr/bin/')
+    print(base_instance.ssh('docker-compose --version'))
+    base_instance.ssh('rm -r docker && rm docker.tar')
+
+
+def deploy_registry(registry, registry_bucket):
+    region = registry.instance.placement['AvailabilityZone'][:-1]
     print('Building docker registry')
-    remote_dest = '~/docker-registry/'
-    files = ['docker-compose.yml', 
-             'config.yml', 
-             'requirements.txt', 
-             'create_config.py',
-             'nginx.conf']
+    files = ['docker-registry.tar']
     print('Copying files')
-    registry_instance.scp(' '.join(files), remote_dest)
+    registry.scp(' '.join(files), '~/')
+    registry.ssh('tar -xf {}'.format(files[0]))
     print('Installing Python packages')
-    registry_instance.ssh('pip install -r ~/docker-registry/requirements.txt')
+    registry.ssh('sudo pip install -r ~/docker-registry/requirements.txt')
     print('Creating configuration')
-    registry_instance.ssh('cd docker-registry && ./create_config.py {}'.format(registry_bucket))
+    registry.ssh('cd docker-registry && ./create_config.py {} --region {}'.format(registry_bucket, region))
     print('Launching application')
-    registry_instance.ssh('cd docker-registry && docker-compose up -d --force-recreate')
+    registry.ssh('gunzip -c ~/docker-registry/docker-registry.tgz | docker load')
+    registry.ssh('cd docker-registry && \
+                  openssl req -x509 -subj /CN={} -newkey rsa:4096 -keyout server.key -out cert.crt -days 1000 -nodes && \
+                  docker-compose -f docker-compose-ssl.yml up -d --force-recreate'.format(registry.instance.private_dns_name))
+    print('Copying SSL certificate')
+    registry.scp('~/docker-registry/cert.crt', '.', to='local')
+    return 'cert.crt'
 
 
-def deploy_api_server(api_instance):
+def deploy_api_server(api):
     print('Building API server')
-    remote_dest = '~/lanlytics-api/'
-    files = ['deploy-requirements.txt',
-             'create_compose.py',
-             'nginx.conf',
-             'lanlytics-api.tar']
+    files = ['lanlytics-api.tar']
     print('Copying files')
-    api_instance.ssh('mkdir lanlytics-api')
-    api_instance.scp(' '.join(files), remote_dest)
+    api.scp(' '.join(files), '~/')
+    api.ssh('tar -xf {}'.format(files[0]))
+    api.ssh('mv settings.py ~/lanlytics-api/')
     print('Loading Docker image')
-    api_instance.ssh('docker load -i ~/lanlytics-api/lanlytics-api.tar')
-    print('Installing Python packages')
-    api_instance.ssh('pip install -r ~/lanlytics-api/deploy-requirements.txt')
-    print('Creating configuration')
-    api_instance.ssh('cd lanlytics-api && ./create_compose.py')
+    api.ssh('gunzip -c ~/lanlytics-api/lanlytics-api-server.tgz | docker load')
     print('Launching application')
-    api_instance.ssh('cd lanlytics-api && docker-compose up -d --force-recreate')
+    api.ssh('cd lanlytics-api && \
+             openssl req -x509 -subj /CN={} -newkey rsa:4096 -keyout server.key -out cert.crt -days 1000 -nodes && \
+             docker-compose -f docker-compose-ssl.yml up -d --force-recreate'.format(api.instance.public_dns_name))
 
 
-def deploy_worker(worker_instance):
+def deploy_worker(worker, registry_name, registry_cert='cert.crt'):
+    region = worker.instance.placement['AvailabilityZone'][:-1]
     print('Building API worker')
-    api_instance.ssh('mkdir lanlytics-api-worker')
-    remote_dest = '~/lanlytics-api-worker/'
+    subprocess.call('tar --append --file=lanlytics-api-worker.tar {}'.format(registry_cert), shell=True)
+    files = ['lanlytics-api-worker.tar']
     print('Copying files')
-    worker_instance.scp('lanlytics-api-worker.tar', remote_dest)
+    worker.scp(' '.join(files), '~/')
+    worker.ssh('tar -xf {}'.format(files[0]))
+    worker.ssh('sudo mkdir -p /etc/docker/certs.d/{0} && \
+                sudo cp ~/{1} /etc/docker/certs.d/{0}/ca.crt && \
+                sudo cp ~/{1} /etc/pki/ca-trust/source/anchors/{0}.crt && \
+                sudo update-ca-trust'.format(registry_name, registry_cert))
+    worker.ssh('mv settings.py ~/lanlytics-api-worker/')
     print('Loading Docker image')
-    worker_instance.ssh('docker load -i ~/lanlytics-api-worker/lanlytics-api-worker.tar')
+    worker.ssh('gunzip -c ~/lanlytics-api-worker/lanlytics-api-worker.tgz | docker load')
     print('Launching worker')
-    worker_instance.ssh('sudo yum install jq -y')
-    worker_instance.ssh('docker run -d \
-            -e AWS_DEFAULT_REGION=$(curl --silent http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region) \
-            -v /home/ec2-user:/home/ec2-user \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            --restart always \
-            lanlytics-api-worker docker')
+    worker.ssh('docker run -d \
+        -e AWS_DEFAULT_REGION={0} \
+        -v /home/{1}:/home/{1}. \
+        -v /home/{1}/lanlytics-api-worker/settings.py:/src/settings.py \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        --restart always \
+        hub.lanlytics.com/lanlytics-api-worker:latest docker'.format(region, worker.user))
 
 
-def create_worker_ami(instance_id):
-    ec2 = boto3.resource('ec2')
-    worker_instance = ec2.Instance(instance_id)
-    image = worker_instance.create_image(name='lanlytics-api-worker')
-    return image.image_id
+def deploy_echo_test(worker, registry_name):
+    print('Uploading test image')
+    tag = '{}/echo-test:latest'.format(registry_name)
+    worker.scp('echo-test.tgz', '~/')
+    worker.ssh('gunzip -c ~/echo-test.tgz | docker load && \
+                docker tag echo-test:latest {0} && \
+                docker push {0} && \
+                docker rmi {0} echo-test:latest'.format(tag))
+
+
+def get_output(outputs, name):
+    for output in outputs:
+        if output['OutputKey'] == name:
+            return output['OutputValue']
+
+
+def vpc_parameters(args):
+    parameters = ['IpBlock', 'SubnetIpBlock', 'BaseImageId', 'KeyName', 'SshIp']
+    return {key: val for key, val in vars(args).items() if key in parameters}
+
+
+def stack_parameters(args, outputs):
+    parameters = ['KeyName', 'DynamoDBJobsTableName', 'S3WorkerBucketName', 'S3DockerImageBucketName']
+    params = {key: val for key, val in vars(args).items() if key in parameters}
+    params['VpcId'] = get_output(outputs, 'VpcId')
+    params['SubnetId'] = get_output(outputs, 'SubnetId')
+    return params
 
 
 def buildout_api(args):
-    stack_parameters = vars(args)
-    stack_name = stack_parameters.pop('name')
-    outputs = create_stack(stack_name, **stack_parameters)
-    api_server = Instance(outputs[0]['OutputValue'])
-    registry = Instance(outputs[1]['OutputValue'])
-    worker = Instance(outputs[2]['OutputValue'])
-    redis_endpoint = outputs[3]['OutputValue']
+    vpc_template = 'vpc.template'
+    api_template = 'lanlytics-api.template'
 
-    deploy_registry(registry)
+    print('Unpacking files')
+    subprocess.call('tar xvzf lanlytics-api-dist.tgz', shell=True)
+
+    #Deploy VPC stack
+    params = vpc_parameters(args)
+    vpc_outputs = create_stack('api-vpc', vpc_template, **params)
+    base_instance = Instance(get_output(vpc_outputs, 'InstanceId'))
+    time.sleep(60)
+    deploy_base_instance(base_instance)
+    base_image_id = base_instance.create_ami('docker-base')
+
+    # Deploy API stack
+    params = stack_parameters(args, vpc_outputs)
+    params['BaseImageId'] = base_image_id
+    outputs = create_stack(args.name, api_template, **params)
+    api_server = Instance(get_output(outputs, 'ApiServerId'))
+    registry = Instance(get_output(outputs, 'RegistryId'))
+    worker = Instance(get_output(outputs, 'WorkerId'))
+    redis_endpoint = get_output(outputs, 'RedisEndpoint')
+
+    ssh_access_id = get_output(vpc_outputs, 'SSHAccessId')
+    for instance in [api_server, registry, worker]:
+        instance.add_security_group(ssh_access_id)
+
+    time.sleep(60)
+    registry_cert = deploy_registry(registry, args.S3DockerImageBucketName)
+    create_api_settings(args.DynamoDBJobsTableName, redis_endpoint)
     deploy_api_server(api_server)
-    deploy_worker(worker)
-    create_worker_ami(worker)
+    create_worker_settings(registry.instance.private_dns_name, 
+                           args.DynamoDBJobsTableName, 
+                           redis_endpoint, 
+                           api_server.instance.public_dns_name)
+    deploy_worker(worker, registry.instance.private_dns_name, registry_cert)
+    deploy_echo_test(worker, registry.instance.private_dns_name)
+    worker.create_ami('lanlytics-api-worker')
+    base_instance.instance.terminate()
 
-    print('All done; go home')
+    test_message = json.dumps({'service': 'echo-test', 'test': True})
+    test_cmd = '''curl -k -H "Content-Type: application/json" -X POST -d \'{}\' https://{}'''.format(test_message, api_server.instance.public_dns_name)
+    print('Give it a try:')
+    print(test_cmd)
 
 
 if __name__ == '__main__':
@@ -146,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('KeyName', help='Key pair name for launched instances')
     parser.add_argument('--vpc-ip-block', dest='IpBlock', default='10.0.0.0/16', help='Set of IP addresses for the VPC')
     parser.add_argument('--subnet-ip-block', dest='SubnetIpBlock', default='10.0.0.0/24', help='Set of IP addresses for the subnet')
-    parser.add_argument('--ssh-ip', dest='SSHIP', default='0.0.0.0/0', help='IP to restrict SSH access')
+    parser.add_argument('--ssh-ip', dest='SshIp', default='0.0.0.0/0', help='IP to restrict SSH access')
     parser.add_argument('--jobs-table', dest='DynamoDBJobsTableName', default='jobs', help='DynamoDB table name for job storage')
     parser.add_argument('--worker-bucket', dest='S3WorkerBucketName', default='lanlytics-api-worker', help='S3 bucket for API workers')
     parser.add_argument('--image-bucket', dest='S3DockerImageBucketName', default='lanlytics-registry-images', help='S3 bucket for Docker Registry')
