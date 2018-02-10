@@ -142,10 +142,9 @@ def deploy_registry(registry, registry_bucket):
     print('Copying files')
     registry.scp(' '.join(files), '~/')
     registry.ssh('tar -xf {}'.format(files[0]))
-    print('Installing Python packages')
-    registry.ssh('sudo pip install -r ~/docker-registry/requirements.txt')
-    print('Creating configuration')
-    registry.ssh('cd docker-registry && ./create_config.py {} --region {}'.format(registry_bucket, region))
+    registry.ssh("cd docker-registry && \
+                  sed -i 's/<aws-region>/{}/g' config.yml && \
+                  sed -i 's/<s3-bucket>/{}/g' config.yml".format(region, registry_bucket))
     print('Launching application')
     registry.ssh('gunzip -c ~/docker-registry/docker-registry.tgz | docker load')
     registry.ssh('cd docker-registry && \

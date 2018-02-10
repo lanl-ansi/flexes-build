@@ -17,7 +17,7 @@ docker save nginx:stable-alpine registry:2 | gzip > dist/docker-registry/docker-
 cd ../docker-registry \
   && git checkout master \
   && git pull origin master \
-  && cp nginx-ssl.conf docker-compose-ssl.yml config.yml create_config.py requirements.txt ../bursa/dist/docker-registry/
+  && cp nginx-ssl.conf docker-compose-ssl.yml config.yml ../bursa/dist/docker-registry/
 echo "Packaging lanlytics API server"
 mkdir ../bursa/dist/lanlytics-api
 cd ../lanlytics-api \
