@@ -4,7 +4,7 @@ import boto3
 import json
 import subprocess
 import time
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 class Instance:
     def __init__(self, instance_id, user='ec2-user'):
@@ -233,7 +233,7 @@ def buildout_api(args):
 
     #Deploy VPC stack
     params = vpc_parameters(args)
-    vpc_outputs = create_stack('api-vpc', vpc_template, **params)
+    vpc_outputs = create_stack(args.vpc_stack_name, vpc_template, **params)
     base_instance = Instance(get_output(vpc_outputs, 'InstanceId'))
     time.sleep(60)
     deploy_base_instance(base_instance)
@@ -242,7 +242,7 @@ def buildout_api(args):
     # Deploy API stack
     params = stack_parameters(args, vpc_outputs)
     params['BaseImageId'] = base_image_id
-    outputs = create_stack(args.name, api_template, **params)
+    outputs = create_stack(args.api_stack_name, api_template, **params)
     api_server = Instance(get_output(outputs, 'ApiServerId'))
     registry = Instance(get_output(outputs, 'RegistryId'))
     worker = Instance(get_output(outputs, 'WorkerId'))
@@ -272,8 +272,7 @@ def buildout_api(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('name', help='Name for the CloudFormation stack')
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('BaseImageId', help='Base AMI Id for instances')
     parser.add_argument('KeyName', help='Key pair name for launched instances')
     parser.add_argument('--vpc-ip-block', dest='IpBlock', default='10.0.0.0/16', help='Set of IP addresses for the VPC')
@@ -282,5 +281,7 @@ if __name__ == '__main__':
     parser.add_argument('--jobs-table', dest='DynamoDBJobsTableName', default='jobs', help='DynamoDB table name for job storage')
     parser.add_argument('--worker-bucket', dest='S3WorkerBucketName', default='lanlytics-api-worker', help='S3 bucket for API workers')
     parser.add_argument('--image-bucket', dest='S3DockerImageBucketName', default='lanlytics-registry-images', help='S3 bucket for Docker Registry')
+    parser.add_argument('--vpc-stack-name', dest='vpc_stack_name', default='api-vpc', help='Name for VPC CloudFormation stack')
+    parser.add_argument('--api-stack-name', dest='api_stack_name', default='lanlytics-api', help='Name for the API CloudFormation stack')
     args = parser.parse_args()
     buildout_api(args)
