@@ -226,7 +226,16 @@ def stack_parameters(args, outputs):
     return params
 
 
+def write_logs(log_info):
+    with open('deploy.log', 'w') as f:
+        for key, val in log_info.items():
+            f.write('{}: {}'.format(key, val))
+
+
 def buildout_api(args):
+    log_info = {}
+    for key, val in vars(args):
+        log_info[key] = val
     vpc_template = 'vpc.template'
     api_template = 'lanlytics-api.template'
 
@@ -236,6 +245,8 @@ def buildout_api(args):
     #Deploy VPC stack
     params = vpc_parameters(args)
     vpc_outputs = create_stack(args.vpc_stack_name, vpc_template, **params)
+    for  output in vpc_outputs:
+        log_info[output['OutputKey']] = output['OutputValue']
     base_instance = Instance(get_output(vpc_outputs, 'InstanceId'))
     time.sleep(60)
     deploy_base_instance(base_instance)
@@ -249,29 +260,37 @@ def buildout_api(args):
     registry = Instance(get_output(outputs, 'RegistryId'))
     worker = Instance(get_output(outputs, 'WorkerId'))
     redis_endpoint = get_output(outputs, 'RedisEndpoint')
+    for  output in outputs:
+        log_info[output['OutputKey']] = output['OutputValue']
 
     ssh_access_id = get_output(vpc_outputs, 'SSHAccessId')
     for instance in [api_server, registry, worker]:
         instance.add_security_group(ssh_access_id)
 
     time.sleep(60)
-    registry_cert = deploy_registry(registry, args.S3DockerImageBucketName)
+    registry_self_signed_cert = deploy_registry(registry, args.S3DockerImageBucketName)
+    log_info['RegistryEndpoint'] = registry.instance.private_dns_name
     create_api_settings(args.DynamoDBJobsTableName, redis_endpoint)
     deploy_api_server(api_server)
     create_worker_settings(registry.instance.private_dns_name, 
                            args.DynamoDBJobsTableName, 
                            redis_endpoint, 
                            api_server.instance.public_dns_name)
-    deploy_worker(worker, registry.instance.private_dns_name, registry_cert)
+    deploy_worker(worker, registry.instance.private_dns_name, registry_self_signed_cert)
     deploy_echo_test(worker, registry.instance.private_dns_name)
     worker.create_ami('lanlytics-api-worker')
     base_instance.instance.terminate()
 
     test_message = json.dumps({'service': 'echo-test', 'test': True})
+    run_message = json.dumps({'service': 'echo-test', 'command': {'arguments': [{'tpye': 'parameter', 'value': 'DoesThisWork?'}], 'stdout': 'type': 'pipe', 'value': None}})
     test_cmd = '''curl -k -H "Content-Type: application/json" -X POST -d \'{}\' https://{}'''.format(test_message, api_server.instance.public_dns_name)
+    run_cmd = '''curl -k -H "Content-Type: application/json" -X POST -d \'{}\' https://{}'''.format(run_message, api_server.instance.public_dns_name)
+    log_info['TestCommand'] = test_cmd
+    log_info['RunCommand'] = run_cmd
     print('Give it a try:')
     print(test_cmd)
-
+    print(run_cmd)
+    write_logs(log_info)
 
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
