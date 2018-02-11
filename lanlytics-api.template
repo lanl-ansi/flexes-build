@@ -401,7 +401,7 @@
     "APIWorkerInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": "t2.micro",
+        "InstanceType": "t2.large",
         "ImageId": {
           "Ref": "BaseImageId"
         },
