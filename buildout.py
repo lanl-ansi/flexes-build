@@ -2,6 +2,7 @@
 
 import boto3
 import json
+import os
 import subprocess
 import time
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -16,7 +17,7 @@ class Instance:
         private_ip = self.instance.private_ip_address
         self.ip = public_ip if public_ip else private_ip_address
         self.user = user
-        self.pem_file = '~/.ssh/{}.pem'.format(self.instance.key_name)
+        self.pem_file = os.path.expanduser('~/.ssh/{}.pem'.format(self.instance.key_name))
 
     def ssh(self, command):
         return subprocess.check_output([
@@ -295,7 +296,7 @@ def buildout_api(args):
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('BaseImageId', help='Base AMI Id for instances')
-    parser.add_argument('KeyName', help='Key pair name for launched instances')
+    parser.add_argument('KeyName', help='Key pair name for launched instances; assumes file exists in ~/.ssh/')
     parser.add_argument('--vpc-ip-block', dest='IpBlock', default='10.0.0.0/16', help='Set of IP addresses for the VPC')
     parser.add_argument('--subnet-ip-block', dest='SubnetIpBlock', default='10.0.0.0/24', help='Set of IP addresses for the subnet')
     parser.add_argument('--ssh-ip', dest='SshIp', default='0.0.0.0/0', help='IP to restrict SSH access')
