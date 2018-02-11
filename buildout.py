@@ -5,6 +5,7 @@ import json
 import subprocess
 import time
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from __future__ import print_function
 
 class Instance:
     def __init__(self, instance_id, user='ec2-user'):
@@ -76,7 +77,8 @@ def create_stack(stack_name, template, **kwargs):
     while stack.stack_status not in ['CREATE_COMPLETE', 'CREATE_FAILED']:
         time.sleep(1)
         stack.reload()
-        print('.', end='', flush='True')
+        print('.', end='')
+        sys.stdout.flush()
     print()
 
     if stack.stack_status == 'CREATE_FAILED':
