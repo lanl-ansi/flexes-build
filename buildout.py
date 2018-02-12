@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import boto3
 import json
 import os
 import subprocess
+import sys
 import time
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from __future__ import print_function
 
 class Instance:
     def __init__(self, instance_id, user='ec2-user'):
@@ -230,12 +231,12 @@ def stack_parameters(args, outputs):
 def write_logs(log_info):
     with open('deploy.log', 'w') as f:
         for key, val in log_info.items():
-            f.write('{}: {}'.format(key, val))
+            f.write('{}: {}\n'.format(key, val))
 
 
 def buildout_api(args):
     log_info = {}
-    for key, val in vars(args):
+    for key, val in vars(args).items():
         log_info[key] = val
     vpc_template = 'vpc.template'
     api_template = 'lanlytics-api.template'
@@ -283,7 +284,7 @@ def buildout_api(args):
     base_instance.instance.terminate()
 
     test_message = json.dumps({'service': 'echo-test', 'test': True})
-    run_message = json.dumps({'service': 'echo-test', 'command': {'arguments': [{'tpye': 'parameter', 'value': 'DoesThisWork?'}], 'stdout': 'type': 'pipe', 'value': None}})
+    run_message = json.dumps({'service': 'echo-test', 'command': {'arguments': [{'type': 'parameter', 'value': 'DoesThisWork?'}], 'stdout': {'type': 'pipe', 'value': None}}})
     test_cmd = '''curl -k -H "Content-Type: application/json" -X POST -d \'{}\' https://{}'''.format(test_message, api_server.instance.public_dns_name)
     run_cmd = '''curl -k -H "Content-Type: application/json" -X POST -d \'{}\' https://{}'''.format(run_message, api_server.instance.public_dns_name)
     log_info['TestCommand'] = test_cmd
