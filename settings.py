@@ -12,3 +12,4 @@ REDIS_HOST = 'redis.lanlytics.com'
 REDIS_PORT = 6379
 
 API_ENDPOINT = 'https://api.lanlytics.com'
+WORKER_BUCKET = 'lanlytics'

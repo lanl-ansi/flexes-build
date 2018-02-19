@@ -347,7 +347,7 @@ def launch_container(image_name, command, tag='latest'):
     print('\nSetting up docker container')
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
     
-    environment = {'API_ENDPOINT': API_ENDPOINT}
+    environment = {'API_ENDPOINT': API_ENDPOINT, 'WORKER_BUCKET': WORKER_BUCKET}
 
     docker_volume = os.path.join('/', LOCAL_FILES_DIR)
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
