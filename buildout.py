@@ -98,7 +98,7 @@ def create_api_settings(jobs_table, redis_endpoint):
                      rm settings.py', shell=True)
 
 
-def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint):
+def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint, worker_bucket):
     with open('settings.py', 'w') as f:
         f.write("STATUS_COMPLETE = 'complete'\n")
         f.write("STATUS_ACTIVE = 'active'\n")
@@ -110,6 +110,7 @@ def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint):
         f.write("REDIS_HOST = '{}'\n".format(redis_endpoint))
         f.write("REDIS_PORT = 6379\n")
         f.write("API_ENDPOINT = 'https://{}'\n".format(api_endpoint))
+        f.write("WORKER_BUCKET = '{}'".format(worker_bucket))
     subprocess.call('tar --append --file=lanlytics-api-worker.tar settings.py && \
                      rm settings.py', shell=True)
 
@@ -191,8 +192,8 @@ def deploy_worker(worker, registry_name, registry_cert='cert.crt'):
     worker.ssh('gunzip -c ~/lanlytics-api-worker/lanlytics-api-worker.tgz | docker load')
     print('Launching worker')
     worker.ssh('docker run -d \
-        -e AWS_DEFAULT_REGION={0} \
-        -v /home/{1}:/home/{1}. \
+        -e AWS_DEFAULT_REGION={0} -e HOME \
+        -v /home/{1}:/home/{1} \
         -v /home/{1}/lanlytics-api-worker/settings.py:/src/settings.py \
         -v /var/run/docker.sock:/var/run/docker.sock \
         --restart always \
@@ -277,7 +278,8 @@ def buildout_api(args):
     create_worker_settings(registry.instance.private_dns_name, 
                            args.DynamoDBJobsTableName, 
                            redis_endpoint, 
-                           api_server.instance.public_dns_name)
+                           api_server.instance.public_dns_name,
+                           args.S3WorkerBucketName)
     deploy_worker(worker, registry.instance.private_dns_name, registry_self_signed_cert)
     deploy_echo_test(worker, registry.instance.private_dns_name)
     worker.create_ami('lanlytics-api-worker')
