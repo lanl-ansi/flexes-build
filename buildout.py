@@ -191,7 +191,7 @@ def deploy_worker(worker, registry_name, ca_bundle, registry_cert='cert.crt'):
         -e AWS_CA_BUNDLE={2} \
         -e AWS_DEFAULT_REGION={0} \
         -e HOME \
-        -v {2}:{2}
+        -v {2}:{2} \
         -v /home/{1}:/home/{1} \
         -v /home/{1}/lanlytics-api-worker/settings.py:/src/settings.py \
         -v /var/run/docker.sock:/var/run/docker.sock \
