@@ -14,13 +14,15 @@ services:
       - flask:flask
   flask:
     environment:
-      - AWS_DEFAULT_REGION=us-gov-west-1
+      - AWS_CA_BUNDLE=</path/to/ca/bundle>
+      - AWS_DEFAULT_REGION=<aws-region-name>
     restart: always
     build:
       context: .
       dockerfile: ./dockerfiles/flask
     container_name: lanlytics-api-server
     volumes:
+      - </path/to/ca/bundle>:</path/to/ca/bundle>:ro
       - ./settings.py:/home/flask/lanlytics-api/settings.py:ro
     ports:
       - 127.0.0.1:8000:8000
