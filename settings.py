@@ -6,6 +6,8 @@ STATUS_FAIL = 'failed'
 DOCKER_WORKER_TYPE = 'docker'
 DOCKER_REGISTRY = 'hub.lanlytics.com'
 
+DYNAMODB_ENDPOINT = None
+S3_ENDPOINT = None
 JOBS_TABLE = 'jobs'
 
 REDIS_HOST = 'redis.lanlytics.com'

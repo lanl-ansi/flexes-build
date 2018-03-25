@@ -71,7 +71,7 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
     db.set(job_id, json.dumps(val))
     if status in [STATUS_COMPLETE, STATUS_FAIL]:
         db.expire(job_id, 60)
-        dyn = boto3.resource('dynamodb')
+        dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
         table = dyn.Table(JOBS_TABLE)
         table.update_item(Key={'job_id': job_id},
                           UpdateExpression='SET #stat = :val1, #r = :val2',

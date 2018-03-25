@@ -73,7 +73,7 @@ def get_docker_path(uri):
 
 def localize_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT)
         local_file_name = get_local_path(uri)
         make_local_dirs(local_file_name)
 
@@ -95,7 +95,7 @@ def localize_output(uri):
 
 def persist_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT)
         local_file_name = get_local_path(uri)
 
         print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
