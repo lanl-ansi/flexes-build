@@ -89,16 +89,17 @@ def create_stack(stack_name, template, **kwargs):
     return stack.outputs
 
 
-def create_api_settings(jobs_table, redis_endpoint):
+def create_api_settings(jobs_table, redis_endpoint, dynamodb_endpoint):
     with open('settings.py', 'w') as f:
         f.write("REDIS_HOST = '{}'\n".format(redis_endpoint))
         f.write("REDIS_PORT = 6379\n")
         f.write("TABLE_NAME = '{}'\n".format(jobs_table))
+        f.write("DYNAMODB_ENDPOINT = '{}'\n".format(dynamodb_endpoint))
     subprocess.call('tar --append --file=lanlytics-api.tar settings.py && \
                      rm settings.py', shell=True)
 
 
-def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint, worker_bucket):
+def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint, worker_bucket, dynamodb_endpoint, s3_endpoint):
     with open('settings.py', 'w') as f:
         f.write("STATUS_COMPLETE = 'complete'\n")
         f.write("STATUS_ACTIVE = 'active'\n")
@@ -111,6 +112,8 @@ def create_worker_settings(registry, jobs_table, redis_endpoint, api_endpoint, w
         f.write("REDIS_PORT = 6379\n")
         f.write("API_ENDPOINT = 'https://{}'\n".format(api_endpoint))
         f.write("WORKER_BUCKET = '{}'".format(worker_bucket))
+        f.write("DYNAMODB_ENDPOINT = '{}'".format(dynamodb_endpoint))
+        f.write("S3_ENDPOINT = '{}'".format(s3_endpoint))
     subprocess.call('tar --append --file=lanlytics-api-worker.tar settings.py && \
                      rm settings.py', shell=True)
 
@@ -123,15 +126,8 @@ def deploy_base_instance(base_instance):
     base_instance.scp(' '.join(files), '~/')
     base_instance.ssh('tar -xf {}'.format(files[0]))
     print('Moving binaries')
-    base_instance.ssh('cd docker && \
-                       chmod +x cgroupfs-mount && \
-                       sudo ./cgroupfs-mount && \
-                       tar xzvf docker.tgz && \
-                       sudo cp docker/* /usr/bin/ && \
-                       sudo cp docker.service /etc/init.d/docker')
-    base_instance.ssh('sudo dockerd &')
-    base_instance.ssh('sudo docker --version && \
-                       sudo groupadd docker && \
+    base_instance.ssh('sudo yum update -y && \
+                       sudo yum install -y docker && \
                        sudo usermod -aG docker {}'.format(base_instance.user))
     base_instance.ssh('sudo service docker start && sudo chkconfig docker on')
     print(base_instance.ssh('docker --version'))
@@ -175,7 +171,7 @@ def deploy_api_server(api):
              docker-compose -f docker-compose-ssl.yml up -d --force-recreate'.format(api.instance.public_dns_name))
 
 
-def deploy_worker(worker, registry_name, registry_cert='cert.crt'):
+def deploy_worker(worker, registry_name, ca_bundle, registry_cert='cert.crt'):
     region = worker.instance.placement['AvailabilityZone'][:-1]
     print('Building API worker')
     subprocess.call('tar --append --file=lanlytics-api-worker.tar {}'.format(registry_cert), shell=True)
@@ -192,12 +188,15 @@ def deploy_worker(worker, registry_name, registry_cert='cert.crt'):
     worker.ssh('gunzip -c ~/lanlytics-api-worker/lanlytics-api-worker.tgz | docker load')
     print('Launching worker')
     worker.ssh('docker run -d \
-        -e AWS_DEFAULT_REGION={0} -e HOME \
+        -e AWS_CA_BUNDLE={2} \
+        -e AWS_DEFAULT_REGION={0} \
+        -e HOME \
+        -v {2}:{2}
         -v /home/{1}:/home/{1} \
         -v /home/{1}/lanlytics-api-worker/settings.py:/src/settings.py \
         -v /var/run/docker.sock:/var/run/docker.sock \
         --restart always \
-        hub.lanlytics.com/lanlytics-api-worker:latest docker'.format(region, worker.user))
+        hub.lanlytics.com/lanlytics-api-worker:latest docker'.format(region, worker.user, ca_bundle))
 
 
 def deploy_echo_test(worker, registry_name):
