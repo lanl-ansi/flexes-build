@@ -1,9 +1,9 @@
-aiohttp==2.3.9
+aiohttp==3.1.1
 appdirs==1.4.0
 async-timeout==2.0.0
 asynctest==0.11.1
-boto3==1.4.4
-botocore==1.5.13
+boto3==1.6.23
+botocore==1.10.0
 chardet==3.0.4
 click==6.7
 codecov==2.0.5
