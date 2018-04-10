@@ -45,6 +45,20 @@ def put_file_s3(s3, local_file, uri):
             bucket.upload_file(local_file + ext, key + ext)
 
 
+def get_instance_info():
+    try:
+        response = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document')
+        resp_json = response.json()
+        instance_id = resp_json['instanceId']
+        instance_type = resp_json['instanceType']
+        private_ip = resp_json['privateIp']
+    except requests.exceptions.ConnectionError:
+        instance_id = str(uuid4())
+        instance_type = 'local_machine'
+        private_ip = None
+    return instance_id, instance_type, private_ip
+
+
 # Database
 def receive_message(db, queue):
     message = db.rpop(queue)
@@ -55,22 +69,19 @@ def receive_message(db, queue):
 
 
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    job = db.get(job_id)
-
-    if job is None:
-        return STATUS_FAIL, 'Job retrieval failed'
-
-    val = json.loads(job.decode())
-
-    val.update({
-        'status': status, 
-        'result': result,
-        'stdout': stdout_data,
-        'stderr': stderr_data
-    })
-    db.set(job_id, json.dumps(val))
-    if status in [STATUS_COMPLETE, STATUS_FAIL]:
-        db.expire(job_id, 60)
+    job = 'job:{}'.format(job_id)
+    queue = db.hget(job, 'queue').decode()
+    db.hmset(job, 
+            {'status': status, 
+             'result': result, 
+             'stdout': stdout_data, 
+             'stderr': stderr_data})
+    if status == STATUS_RUNNING:
+        db.sadd('{}:jobs:running'.format(queue), job_id)
+    elif status in [STATUS_COMPLETE, STATUS_FAIL]:
+        db.expire(job, 60)
+        db.srem('{}:jobs'.format(queue), job_id)
+        db.srem('{}:jobs:running'.format(queue), job_id)
         dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
         table = dyn.Table(JOBS_TABLE)
         table.update_item(Key={'job_id': job_id},
@@ -78,7 +89,9 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
                           ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                           ExpressionAttributeValues={':val1': status, ':val2': result})
     elif status == STATUS_ACTIVE:
-        db.expire(job_id, 30)
+        db.expire(job, 30)
+        db.srem('{}:jobs'.format(queue), job_id)
+        db.srem('{}:jobs:running'.format(queue), job_id)
     return status, result
 
 
