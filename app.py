@@ -9,7 +9,7 @@ from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from settings import *
-from utils import query_job, submit_job, all_jobs, list_services
+from utils import query_job_status, get_job_result, submit_job, all_jobs, list_services
 
 app = Flask(__name__)
 
@@ -94,7 +94,12 @@ def service(service_name):
 
 
 @app.route('/jobs/<job_id>', methods=['GET'])
-def query_status(job_id):
+def query_job_status(job_id):
+    return jsonify(**query_job(db, job_id))
+
+
+@app.route('/jobs/<job_id>/result', methods=['GET'])
+def get_job_result(job_id):
     return jsonify(**query_job(db, job_id))
 
 
