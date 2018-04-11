@@ -77,16 +77,16 @@ class TestLaunch:
     @mock.patch('shutil.rmtree')
     @mock.patch('docker.DockerClient', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('launch.localize_resource', 
-                return_value='/path/to/resource.txt')
-    @mock.patch('docker.models.containers.Container.wait', return_value=0)
-    def test_launch_container(self, mock_localize_resource, 
+    @mock.patch('launch.localize_resource', return_value='/path/to/resource.txt')
+    @mock.patch('launch.persist_command')
+    def test_launch_container(self, mock_persist_command, mock_localize_resource, 
                               mock_makedirs, mock_client,
-                              mock_rmtree, mock_resource, mock_wait):
+                              mock_rmtree, mock_resource):
+        mock_client.return_value.containers.run.return_value.wait.return_value = 0
+        type(mock_client.return_value.containers.run.return_value).status = mock.PropertyMock(side_effect=['running', 'running', 'exited'])
         message = test_commands['basic_command']
         status, feedback, stdout_data, stderr_data = l.launch_container(message['service'], message['command'])
-        assert(status == 'failed')
-        #assert(feedback == TBD)
+        assert(status == 'complete')
         assert(stdout_data == None)
         assert(stderr_data == None)
         assert(mock_rmtree.called)
@@ -95,28 +95,30 @@ class TestLaunch:
     @mock.patch('shutil.rmtree')
     @mock.patch('docker.DockerClient', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('launch.localize_resource', 
-                return_value='/path/to/resource.txt')
-    @mock.patch('docker.models.containers.Container.wait', return_value=0)
+    @mock.patch('launch.localize_resource', return_value='/path/to/resource.txt')
+    @mock.patch('launch.persist_command')
     @mock.patch('builtins.open', new_callable=mock.mock_open())
-    def test_launch_container_pipe(self, mock_localize_resource, 
+    def test_launch_container_pipe(self, mock_open, 
+                              mock_persist_command, mock_localize_resource, 
                               mock_makedirs, mock_client,
-                              mock_rmtree, mock_resource, mock_wait, mock_open):
+                              mock_rmtree, mock_resource):
+        mock_client.return_value.containers.run.return_value.wait.return_value = 0
+        type(mock_client.return_value.containers.run.return_value).status = mock.PropertyMock(side_effect=['running', 'running', 'exited'])
         message = test_commands['pipe_command']
         status, feedback, stdout_data, stderr_data = l.launch_container(message['service'], message['command'])
-        assert(status == 'failed')
-        assert(stdout_data == None)
+        assert(status == 'complete')
+        assert(stdout_data == [])
         assert(stderr_data == None)
 
     @mock.patch('boto3.resource')
     @mock.patch('shutil.rmtree')
     @mock.patch('os.makedirs', return_value=None)
     @mock.patch('os.listdir', return_value=[])
-    @mock.patch('launch.localize_resource', 
-                return_value='test/data/test.txt')
+    @mock.patch('launch.localize_resource', return_value='test/data/test.txt')
     @mock.patch('subprocess.Popen', autospec=True)
     def test_launch_native(self, mock_subprocess, mock_localize_resource, 
-                           mock_listdir, mock_makedirs, mock_rmtree, mock_resource):
+                           mock_listdir, mock_makedirs, 
+                           mock_rmtree, mock_resource):
         mock_subprocess.return_value.communicate.return_value = (b'test', b'test')
         mock_subprocess.return_value.returncode = 0
         command = test_commands['basic_command']['command']
@@ -128,8 +130,7 @@ class TestLaunch:
     @mock.patch('shutil.rmtree')
     @mock.patch('docker.DockerClient', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('launch.localize_resource', 
-                return_value='/path/to/resource.txt')
+    @mock.patch('launch.localize_resource', return_value='/path/to/resource.txt')
     def test_launch_container_fail(self, mock_localize_resource, 
                                    mock_makedirs, mock_client,
                                    mock_rmtree, mock_resource):
@@ -144,8 +145,7 @@ class TestLaunch:
     @mock.patch('shutil.rmtree')
     @mock.patch('docker.DockerClient', autospec=True)
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('launch.localize_resource', 
-                return_value='/path/to/resource.txt')
+    @mock.patch('launch.localize_resource', return_value='/path/to/resource.txt')
     def test_launch_container_notfound(self, mock_localize_resource, 
                                    mock_makedirs, mock_client,
                                    mock_rmtree, mock_resource):

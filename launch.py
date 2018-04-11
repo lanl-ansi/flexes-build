@@ -353,6 +353,7 @@ def launch_container(image_name, command, tag='latest'):
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
     print(volumes)
 
+    container = None
     try:
         client.images.pull(image)
         container = client.containers.run(image, 
@@ -370,7 +371,7 @@ def launch_container(image_name, command, tag='latest'):
 
         container_status = container.status
         while container_status != 'exited':
-            messages = [line.strip() for line in container.logs(stream=True stdout=True, stderr=True, tail=5)]
+            messages = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=True, tail=5)]
             stats = container.stats(decode=True)
             time.sleep(0.1)
             container_status = container.status
@@ -391,12 +392,15 @@ def launch_container(image_name, command, tag='latest'):
         print('Container error: {}'.format(e))
         logs = e.stderr.decode()
         exit_code = e.exit_status
+        stdout_data = stderr_data = None
     except docker.errors.ImageNotFound as e:
         print('{} not found'.format(image))
         logs = 'Image not found'
         exit_code = -1
+        stdout_data = stderr_data = None
     finally:
-        container.remove()
+        if container:
+            container.remove()
     return worker_cleanup(command, exit_code, logs, stdout_data, stderr_data)
 
 
