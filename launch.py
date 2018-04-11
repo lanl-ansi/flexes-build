@@ -370,8 +370,13 @@ def launch_container(image_name, command, tag='latest'):
             print('input socket closed')
 
         container_status = container.status
+        messages = []
         while container_status != 'exited':
-            messages = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=True, tail=5)]
+            tail = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=True, tail=5)]
+            if tail != messages and len(tail) > 0:
+                messages = tail
+                update_job_messages(db, job_id, messages)
+            # Report container stats???
             stats = container.stats(decode=True)
             time.sleep(0.1)
             container_status = container.status

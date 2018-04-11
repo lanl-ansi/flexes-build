@@ -95,6 +95,11 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
     return status, result
 
 
+def update_job_messages(db, job_id, messages):
+    job = 'job:{}'.format(job_id)
+    db.hmset(job, {'messages': messages})
+
+
 # Validation
 def is_str_list(x):
     return (isinstance(x, list) and all(isinstance(s, str) for s in x))
