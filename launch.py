@@ -334,7 +334,7 @@ def launch_container(image_name, command, tag='latest'):
     docker_cmd, *docker_other = build_command_parts(docker_command)
 
     stdin_data = None
-    if stdin_file != None:
+    if stdin_file is not None:
         if stdin_pipe:
             stdin_data = stdin_file
         else:
@@ -353,8 +353,6 @@ def launch_container(image_name, command, tag='latest'):
     volumes = {LOCAL_FILES_PATH: {'bind': docker_volume, 'mode': 'rw'}}
     print(volumes)
 
-    stdout_data = None
-    stderr_data = None
     try:
         client.images.pull(image)
         container = client.containers.run(image, 
@@ -378,31 +376,27 @@ def launch_container(image_name, command, tag='latest'):
             container_status = container.status
         exit_code = container.wait()
 
+        logs = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=True)]
+        stdout_lines = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=False)]
+        stderr_lines = [line.strip() for line in container.logs(stream=True, stdout=False, stderr=True)]
         if stdout_file != None:
             with open(stdout_file, 'w') as stdout:
-                stdout.write(container.logs(stdout=True, stderr=False).decode('utf-8'))
-        else:
-            if stdout_pipe:
-                stdout_data = container.logs(stdout=True, stderr=False).decode('utf-8')
-
+                stdout.writelines(stdout_lines)
         if stderr_file != None:
             with open(stderr_file, 'w') as stderr:
-                stderr.write(container.logs(stdout=False, stderr=True).decode('utf-8'))
-        else:
-            if stderr_pipe:
-                stderr_data = container.logs(stdout=False, stderr=True).decode('utf-8')
-
-        container.remove()
-
+                stderr.writelines(stderr_lines)
+        stdout_data = stdout_lines if stdout_pipe else None
+        stderr_data = stderr_lines if stderr_pipe else None 
     except docker.errors.ContainerError as e:
         print('Container error: {}'.format(e))
-        logs = e.stderr.decode('utf-8')
+        logs = e.stderr.decode()
         exit_code = e.exit_status
     except docker.errors.ImageNotFound as e:
         print('{} not found'.format(image))
         logs = 'Image not found'
         exit_code = -1
-
+    finally:
+        container.remove()
     return worker_cleanup(command, exit_code, logs, stdout_data, stderr_data)
 
 
