@@ -107,7 +107,7 @@ class TestLaunch:
         message = test_commands['pipe_command']
         status, feedback, stdout_data, stderr_data = l.launch_container(message['service'], message['command'])
         assert(status == 'complete')
-        assert(stdout_data == [])
+        assert(stdout_data == '')
         assert(stderr_data == None)
 
     @mock.patch('boto3.resource')

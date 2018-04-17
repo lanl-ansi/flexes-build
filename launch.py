@@ -372,7 +372,7 @@ def launch_container(image_name, command, tag='latest'):
         container_status = container.status
         messages = []
         while container_status != 'exited':
-            tail = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=True, tail=5)]
+            tail = [line.strip() for line in container.logs(stream=True, stdout=False, stderr=True, tail=5)]
             if tail != messages and len(tail) > 0:
                 messages = tail
                 update_job_messages(db, job_id, messages)
@@ -391,8 +391,8 @@ def launch_container(image_name, command, tag='latest'):
         if stderr_file != None:
             with open(stderr_file, 'w') as stderr:
                 stderr.writelines(stderr_lines)
-        stdout_data = stdout_lines if stdout_pipe else None
-        stderr_data = stderr_lines if stderr_pipe else None 
+        stdout_data = '\n'.join(stdout_lines) if stdout_pipe else None
+        stderr_data = '\n'.join(stderr_lines) if stderr_pipe else None 
     except docker.errors.ContainerError as e:
         print('Container error: {}'.format(e))
         logs = e.stderr.decode()
