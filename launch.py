@@ -373,7 +373,7 @@ def launch_container(image_name, command, tag='latest'):
             socket.close()
             print('input socket closed')
 
-        exit_code = container.wait()
+        exit_code = container.wait()['StatusCode']
         logs = container.logs(stdout=True, stderr=True).decode('utf-8')
 
         if stdout_file != None:
