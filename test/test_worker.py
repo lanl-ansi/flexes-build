@@ -20,7 +20,7 @@ class TestWorker:
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.mock_docker_client = mock.Mock()
         self.mock_db = mock.Mock()
-        self.mock_db.get.return_value = b'{}'
+        self.mock_db.get.return_value = {}
 
     def mock_execute(self):
         return (STATUS_COMPLETE, docker_success, None, None)
@@ -57,7 +57,7 @@ class TestWorker:
         assert('Failed validating' in result)
 
     def test_receive_message(self):
-        self.mock_db.rpop.return_value = b'{"job_id": "test_id"}' 
+        self.mock_db.rpop.return_value = '{"job_id": "test_id"}'
         message = utils.receive_message(self.mock_db, 'test')
         assert(message['job_id'] == 'test_id')
 

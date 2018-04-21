@@ -96,7 +96,7 @@ class TestUtils:
     @mock.patch('boto3.resource')
     def test_update_job(self, mock_resource):
         db = mock.MagicMock()
-        db.get.return_value = b'{"foo":"bar"}'
+        db.get.return_value = {"foo":"bar"}
         status, result = utils.update_job(db, 'test1234', 'testing')
         assert(status == 'testing')
 
