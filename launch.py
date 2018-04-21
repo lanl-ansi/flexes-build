@@ -9,6 +9,7 @@ import sys
 import time
 import utils
 import io
+from botocore.client import Config
 from settings import *
 from uuid import uuid4
 
@@ -73,7 +74,8 @@ def get_docker_path(uri):
 
 def localize_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT)
+        config = Config(signature_version='s3v4')
+        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT, config=config)
         local_file_name = get_local_path(uri)
         make_local_dirs(local_file_name)
 
@@ -95,7 +97,8 @@ def localize_output(uri):
 
 def persist_resource(uri):
     if utils.is_s3_uri(uri):
-        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT)
+        config = Config(signature_version='s3v4')
+        s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT, config=config)
         local_file_name = get_local_path(uri)
 
         print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
