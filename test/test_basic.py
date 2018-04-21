@@ -75,26 +75,6 @@ class TestEndpoints:
         assert(resp.json == expected)
         mock_submit.assert_called_with(mock_db, message)
 
-#    @mock.patch('requests.get')
-#    def test_service_post_image_not_found(self, mock_request):
-#        mock_request.return_value.json.return_value = {'errors': []}
-#        expected = {'job_id': None, 
-#                    'status': 'error',
-#                    'message': 'a docker image for test does not exist'}
-#        service_url = url_for('post_job', service='test')
-#        command = {
-#            'stderr': {'type': 'uri', 'value': 's3://path/to/data.json'},
-#            'command': [
-#                {'type': 'input', 'name': 'my_input', 'value': 'foo'},
-#                {'type': 'parameter', 'name': 'param1', 'value': 'bar'},
-#                {'type': 'parameter', 'name': 'param2', 'value': 3},
-#                {'type': 'output', 'name': 'out', 'value': 's3://path/out/out.tif'}
-#            ]    
-#        }
-#        data = json.dumps(command)
-#        resp = self.client.post(service_url, data=data, content_type='application/json')
-#        assert(resp.json == expected)
-
     def test_service_post_empty(self):
         expected = {'job_id': None, 
                     'status': 'error',
@@ -120,8 +100,10 @@ class TestEndpoints:
         service_url = url_for('service_info', service_name='foo')
         assert(self.client.get(service_url).status_code == 404)
 
-    @mock.patch('app.all_jobs', return_value=[{'status':'running'} for i in range(4)])
-    def test_dashboard(self, mock_all_jobs):
+    @mock.patch('app.all_running_jobs', return_value=[{'job_id':i,'status':'running'} for i in range(4)])
+    @mock.patch('app.all_queues', return_value=[{'queue':i,'jobs':i} for i in range(4)])
+    @mock.patch('app.all_workers', return_value=[{'id':i,'queue':'foo'} for i in range(4)])
+    def test_dashboard(self, mock_all_workers, mock_all_queues, mock_all_running_jobs):
         service_url = url_for('dashboard')
         assert(self.client.get(service_url).status_code == 200)
 
@@ -130,6 +112,8 @@ class TestEndpoints:
         mock_list_services.return_value = {'services': ['a', 'b', 'c']}
         service_url = url_for('services')
         assert(self.client.get(service_url).status_code == 200)
+
+
 
 
 class TestUtils:
@@ -157,12 +141,36 @@ class TestUtils:
         query_result = utils.query_job_status(self.db, 'job_id')
         assert(query_result == expected)
 
-    @mock.patch('boto3.resource')
-    def test_all_jobs(self, mock_resource):
-        mock_resource.return_value.Table.return_value.scan.return_value = {'Items': [1, 2, 3]}
-        expected = [1, 2, 3]
-        query_result = utils.all_jobs()
-        assert(query_result == expected)
+    def test_job_messages(self):
+        self.db.get.return_value = '[1,2,3,4]'
+        messages = utils.job_messages(self.db, 'test')
+        assert(len(messages) == 4)
+        self.db.get.assert_called_with('messages:test')
+
+    def test_all_running_jobs(self):
+        return_keys = ['job_id', 'status', 'queue']
+        self.db.hmget.return_value = {key: 'test' for key in return_keys}
+        self.db.keys.return_value = ['foo', 'bar', 'baz']
+        jobs = utils.all_running_jobs(self.db)
+        assert(len(jobs) == 3)
+        self.db.hmget.assert_called_with('baz', return_keys)
+        assert(self.db.hmget.call_count == 3)
+
+    def test_all_queues(self):
+        queue_names = ['foo', 'bar', 'baz']
+        self.db.keys.return_value = queue_names
+        queues = utils.all_queues(self.db)
+        assert(len(queues) == 3)
+
+    def test_all_workers(self):
+        return_keys = ['id', 'status', 'queue']
+        self.db.hmget.return_value = {key: 'test' for key in return_keys}
+        self.db.keys.return_value = ['foo', 'bar', 'baz']
+        workers = utils.all_workers(self.db)
+        assert(len(workers) == 3)
+        self.db.hmget.assert_called_with('baz', return_keys)
+        assert(self.db.hmget.call_count == 3)
+
 
     @mock.patch('utils.get_services', new_callable=CoroutineMock)
     def test_list_services(self, mock_get_services):
