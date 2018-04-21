@@ -91,7 +91,7 @@ def register_worker(db, queue, worker_type):
 def run_worker(args):
     print('Starting worker on process {}'.format(os.getpid()))
 
-    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+    db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
     instance_id = register_worker(db, args.queue, args.exec_type)
 
     try:

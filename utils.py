@@ -47,7 +47,7 @@ def put_file_s3(s3, local_file, uri):
 
 def get_instance_info():
     try:
-        response = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document')
+        response = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=5)
         resp_json = response.json()
         instance_id = resp_json['instanceId']
         instance_type = resp_json['instanceType']
@@ -63,14 +63,14 @@ def get_instance_info():
 def receive_message(db, queue):
     message = db.rpop(queue)
     if message is not None:
-        message = json.loads(message.decode())
+        message = json.loads(message)
         update_job(db, message['job_id'], STATUS_RUNNING)
     return message
 
 
 def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
     job = 'job:{}'.format(job_id)
-    queue = db.hget(job, 'queue').decode()
+    queue = db.hget(job, 'queue')
     db.hmset(job, 
             {'status': status, 
              'result': result, 

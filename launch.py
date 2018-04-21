@@ -297,9 +297,9 @@ def launch_native(cmd_prefix, command):
     stdout_log, stderr_log = process.communicate()
 
     if stdout_log != None:
-        stdout_log = lines_tail(stdout_log.decode('utf-8'), LOG_LINE_LIMIT)
+        stdout_log = lines_tail(stdout_log.decode(), LOG_LINE_LIMIT)
     if stderr_log != None:
-        stderr_log = lines_tail(stderr_log.decode('utf-8'), LOG_LINE_LIMIT)
+        stderr_log = lines_tail(stderr_log.decode(), LOG_LINE_LIMIT)
 
     worker_log = 'stdout:\n{}\n\nstderr:\n{}'.format(stdout_log, stderr_log)
 
