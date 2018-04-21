@@ -51,7 +51,7 @@ def get_job_result(db, job_id):
 
 def parse_hashmap(db, name, keys):
     try:
-        return json.loads(db.hmget(name, keys))
+        return dict(zip(keys, db.hmget(name, keys)))
     except Exception as e:
         return None
 
@@ -65,11 +65,12 @@ def job_messages(db, job_id):
 def all_running_jobs(db):
     jobs = [parse_hashmap(db, job, ['job_id', 'status', 'queue']) 
             for job in db.keys(pattern='{}*'.format(JOB_PREFIX))]
+    print(jobs)
     return jobs
 
 
 def all_queues(db):
-    queues = [{'name': queue, 'jobs': db.scard(queue)} 
+    queues = [{'name': queue.replace(QUEUE_PREFIX, ''), 'jobs': db.scard(queue)} 
               for queue in db.keys(pattern='{}*'.format(QUEUE_PREFIX))] 
     return queues
 
