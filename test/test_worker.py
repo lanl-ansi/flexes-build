@@ -56,6 +56,7 @@ class TestWorker:
         assert(status == STATUS_FAIL)
         assert('Failed validating' in result)
 
+# Add to test_utils
     def test_receive_message(self):
         self.mock_db.rpop.return_value = b'{"job_id": "test_id"}' 
         message = utils.receive_message(self.mock_db, 'test')
@@ -69,6 +70,7 @@ class TestWorker:
         assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
 
+# docker worker test
     @mock.patch('boto3.resource')
     @mock.patch('utils.image_exists', return_value=True)
     def test_active_check_docker_message(self, mock_image_exists, mock_resource):
@@ -78,6 +80,7 @@ class TestWorker:
         assert(status == STATUS_ACTIVE)
         assert('Service is active' in result)
 
+# docker worker test
     @mock.patch('boto3.resource')
     @mock.patch('utils.image_exists', return_value=False)
     def test_active_check_fail_docker_message(self, mock_image_exists, mock_resource):

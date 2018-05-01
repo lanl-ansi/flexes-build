@@ -6,9 +6,10 @@ import random
 import time
 from botocore.exceptions import ClientError
 from jsonschema import validate, ValidationError
+from pathlib import Path
 from settings import *
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as f:
+with Path(__file__).with_name('message_schema.json').open('r') as f:
     message_schema = json.load(f)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
@@ -27,8 +28,7 @@ def get_s3_file(s3, uri, local_file):
         raise ValueError('File {} not found'.format(uri))
 
     for obj in files:
-        local_file = os.path.join(os.path.dirname(local_file), 
-                                  os.path.basename(obj))
+        local_file = str(Path(local_file).with_name(Path(obj).name))
         bucket.download_file(obj, local_file)
 
 
@@ -47,7 +47,8 @@ def put_file_s3(s3, local_file, uri):
 
 def get_instance_info():
     try:
-        response = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document')
+        metadata_url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
+        response = requests.get(metadata_url, timeout=1)
         resp_json = response.json()
         instance_id = resp_json['instanceId']
         instance_type = resp_json['instanceType']
@@ -57,47 +58,6 @@ def get_instance_info():
         instance_type = 'local_machine'
         private_ip = None
     return instance_id, instance_type, private_ip
-
-
-# Database
-def receive_message(db, queue):
-    message = db.rpop(queue)
-    if message is not None:
-        message = json.loads(message.decode())
-        update_job(db, message['job_id'], STATUS_RUNNING)
-    return message
-
-
-def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    job = 'job:{}'.format(job_id)
-    queue = db.hget(job, 'queue').decode()
-    db.hmset(job, 
-            {'status': status, 
-             'result': result, 
-             'stdout': stdout_data, 
-             'stderr': stderr_data})
-    if status == STATUS_RUNNING:
-        db.sadd('{}:jobs:running'.format(queue), job_id)
-    elif status in [STATUS_COMPLETE, STATUS_FAIL]:
-        db.expire(job, 60)
-        db.srem('{}:jobs'.format(queue), job_id)
-        db.srem('{}:jobs:running'.format(queue), job_id)
-        dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
-        table = dyn.Table(JOBS_TABLE)
-        table.update_item(Key={'job_id': job_id},
-                          UpdateExpression='SET #stat = :val1, #r = :val2',
-                          ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
-                          ExpressionAttributeValues={':val1': status, ':val2': result})
-    elif status == STATUS_ACTIVE:
-        db.expire(job, 30)
-        db.srem('{}:jobs'.format(queue), job_id)
-        db.srem('{}:jobs:running'.format(queue), job_id)
-    return status, result
-
-
-def update_job_messages(db, job_id, messages):
-    job = 'job:{}'.format(job_id)
-    db.hmset(job, {'messages': messages})
 
 
 # Validation
