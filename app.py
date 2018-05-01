@@ -3,22 +3,24 @@
 import json
 import os
 import requests
+from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from settings import *
 from utils import query_job_status, get_job_result, submit_job, all_jobs, list_services
 
 app = Flask(__name__)
 
+config = load_config()
+
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
+REDIS_URL = 'redis://{}:{}/0'.format(config['REDIS_HOST'], config['REDIS_PORT'])
 app.config['REDIS_URL'] = REDIS_URL
-db = FlaskRedis(app)
+db = FlaskRedis(app, decode_responses=True)
 
 with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
     message_schema = json.load(f)
