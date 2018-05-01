@@ -5,9 +5,11 @@ import os
 import random
 import time
 from botocore.exceptions import ClientError
+from config import load_config
 from jsonschema import validate, ValidationError
 from pathlib import Path
-from settings import *
+
+config = load_config()
 
 with Path(__file__).with_name('message_schema.json').open('r') as f:
     message_schema = json.load(f)
@@ -83,7 +85,7 @@ def isvalid(obj, schema):
 
 def image_exists(image_name, tag='latest'):
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
+    image = '{}/{}:{}'.format(config['DOCKER_REGISTRY'], image_name, tag)
     try:
         image = client.images.get(image)
         return True

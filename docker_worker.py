@@ -18,10 +18,10 @@ class DockerWorker(APIWorker):
         message['tag'] = message.get('tag', 'latest')
         if utils.image_exists(message['service'], message['tag']):
             print('Confirmed active status for {}'.format(message['service']))
-            return self.update_job(message['job_id'], STATUS_ACTIVE, 'Service is active')
+            return self.update_job(message['job_id'], self.config['STATUS_ACTIVE'], 'Service is active')
         else:
             print('Image {} not found'.format(message['service']))
-            return self.update_job(message['job_id'], STATUS_FAIL, 
+            return self.update_job(message['job_id'], self.config['STATUS_FAIL'], 
                                    'Image {} not found'.format(message['service']))
 
     def get_docker_path(self, uri):
@@ -50,7 +50,7 @@ class DockerWorker(APIWorker):
         print('\n\033[1mStarting Docker Job\033[0m')
 
         tag = message.get('tag', 'latest')
-        image = '{}/{}:{}'.format(DOCKER_REGISTRY, message['service'], tag)
+        image = '{}/{}:{}'.format(self.config['DOCKER_REGISTRY'], message['service'], tag)
         print('\nDocker Image: {}'.format(image))
 
         local_command = self.build_localized_command(message['command'])
@@ -72,7 +72,8 @@ class DockerWorker(APIWorker):
 
         print('\nSetting up docker container')
         
-        environment = {'API_ENDPOINT': API_ENDPOINT, 'WORKER_BUCKET': WORKER_BUCKET}
+        environment = {'API_ENDPOINT': self.config['API_ENDPOINT'], 
+                       'WORKER_BUCKET': self.config['WORKER_BUCKET']}
 
         docker_volume = self.local_files_dir
         volumes = {self.local_files_path: {'bind': docker_volume, 'mode': 'rw'}}

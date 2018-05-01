@@ -10,43 +10,41 @@ import shutil
 import time
 import traceback
 import utils
+from config import load_config
 from itertools import cycle
 from jsonschema import validate, ValidationError
 from pathlib import Path
 from redis import StrictRedis
-from settings import *
 from uuid import uuid4
 
-JOB_PREFIX = 'job:'
-MESSAGE_PREFIX = 'message:'
-WORKER_PREFIX = 'worker:'
 
 class APIWorker(object):
     def __init__(self, *args, **kwargs):
+        self.config = load_config()
         self.local_files_path = str(Path.home().joinpath('lanlytics_worker_local', str(uuid4().hex)).resolve())
         self.log_line_limit = 10
         self.queue = kwargs.get('queue', 'docker')
         self.poll_frequency = kwargs.get('poll_frequency', 1)
-        self.db = StrictRedis(REDIS_HOST, REDIS_PORT, decode_responses=True)
-        self.s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT)
-        self.dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
+        self.db = StrictRedis(self.config['REDIS_HOST'], self.config['REDIS_PORT'], decode_responses=True)
+        self.s3 = boto3.resource('s3', endpoint_url=self.config['S3_ENDPOINT'])
+        self.dyn = boto3.resource('dynamodb', endpoint_url=self.config['DYNAMODB_ENDPOINT'])
 
     def test_service(self, message):
         print('Confirmed active status for {}'.format(message['service']))
-        return self.update_job(message['job_id'], STATUS_ACTIVE, 'Service is active')
+        return self.update_job(message['job_id'], self.config['STATUS_ACTIVE'], 'Service is active')
 
     def process_message(self, message):
         print('Received message: {}'.format(message['job_id']))
         try:
             validate(message, utils.message_schema)
             if 'test' in message and message['test']:
-                self.update_job(message['job_id'], STATUS_RUNNING, None)
+                self.update_job(message['job_id'], self.config['STATUS_RUNNING'], None)
                 return self.test_service(message)
         except ValidationError as e:
             print('Message JSON failed validation')
             return self.handle_exception(message['job_id'], e)
 
-        self.update_job(message['job_id'], STATUS_RUNNING)
+        self.update_job(message['job_id'], self.config['STATUS_RUNNING'])
         try:
             status, result, stdout_data, stderr_data = self.launch(message)
             print('Result: {}'.format(result))
@@ -57,37 +55,37 @@ class APIWorker(object):
     def receive_message(self):
         message = self.db.rpop(self.queue)
         if message is not None:
-            message = json.loads(message.decode())
-            self.update_job(message['job_id'], STATUS_RUNNING)
+            message = json.loads(message)
+            self.update_job(message['job_id'], self.config['STATUS_RUNNING'])
         return message
 
     def update_job(self, job_id, status, result=None, stdout_data=None, stderr_data=None):
-        job = JOB_PREFIX + job_id
-        queue = self.db.hget(job, 'queue').decode()
+        job = self.config['JOB_PREFIX'] + job_id
+        queue = self.db.hget(job, 'queue')
         self.db.hmset(job, 
                       {'status': status, 
                        'result': result, 
                        'stdout': stdout_data, 
                        'stderr': stderr_data})
-        if status == STATUS_RUNNING:
+        if status == self.config['STATUS_RUNNING']:
             self.db.sadd('{}:jobs:running'.format(queue), job_id)
-        elif status in [STATUS_COMPLETE, STATUS_FAIL]:
+        elif status in [self.config['STATUS_COMPLETE'], self.config['STATUS_FAIL']]:
             self.db.expire(job, 60)
             self.db.srem('{}:jobs'.format(queue), job_id)
             self.db.srem('{}:jobs:running'.format(queue), job_id)
-            table = self.dyn.Table(JOBS_TABLE)
+            table = self.dyn.Table(self.config['JOBS_TABLE'])
             table.update_item(Key={'job_id': job_id},
                               UpdateExpression='SET #stat = :val1, #r = :val2',
                               ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                               ExpressionAttributeValues={':val1': status, ':val2': result})
-        elif status == STATUS_ACTIVE:
+        elif status == self.config['STATUS_ACTIVE']:
             self.db.expire(job, 30)
             self.db.srem('{}:jobs'.format(queue), job_id)
             self.db.srem('{}:jobs:running'.format(queue), job_id)
         return status, result
 
     def update_job_messages(self, job_id, messages):
-        job = JOB_PREFIX + job_id
+        job = self.config['JOB_PREFIX'] + job_id
         self.db.hmset(job, {'messages': messages})
 
     def get_local_path(self, uri):
@@ -219,11 +217,11 @@ class APIWorker(object):
         if exit_code != 0:
             print('\nWorker log:')
             print(worker_log)
-            status = STATUS_FAIL
+            status = self.config['STATUS_FAIL']
             feedback = feedback + '\n' + worker_log
         else:
             print('\nPersisting output:')
-            status = STATUS_COMPLETE
+            status = self.config['STATUS_COMPLETE']
             self.persist_command(command)
         print('\nCleaning local cache: {}'.format(self.local_files_path))
         try:
@@ -235,13 +233,13 @@ class APIWorker(object):
 
     def handle_exception(self, msg_id, e):
         traceback.print_exc()
-        return self.update_job(msg_id, STATUS_FAIL, str(e))
+        return self.update_job(msg_id, self.config['STATUS_FAIL'], str(e))
 
     def launch(self, message):
         raise NotImplementedError('launch method is not implemented')
 
     def update_worker_status(self, status):
-        name = WORKER_PREFIX + self.instance_id
+        name = self.config['WORKER_PREFIX'] + self.instance_id
         self.db.hset(name, 'status', status)
         
         busy = '{}:workers:busy'.format(self.queue)
@@ -263,7 +261,7 @@ class APIWorker(object):
                        'instace_type': instance_type, 
                        'private_ip': private_ip}
 
-        self.db.hmset(WORKER_PREFIX + self.instance_id, worker_info)
+        self.db.hmset(self.config['WORKER_PREFIX'] + self.instance_id, worker_info)
         self.db.sadd('{}:workers'.format(self.queue), self.instance_id)
         return instance_id
 
