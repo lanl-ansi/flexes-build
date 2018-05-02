@@ -4,13 +4,13 @@ STATUS_RUNNING = 'running'
 STATUS_FAIL = 'failed'
 
 DOCKER_WORKER_TYPE = 'docker'
-DOCKER_REGISTRY = 'hub.lanlytics.com'
+DOCKER_REGISTRY = 'mcte-docker.ipjtl.net'
 
 DYNAMODB_ENDPOINT = None
 S3_ENDPOINT = None
 JOBS_TABLE = 'jobs'
 
-REDIS_HOST = 'redis.lanlytics.com'
+REDIS_HOST = 'lay-re-4ulrwwc77jyv.1qhgzq.0001.usgw1.cache.amazonaws.com'
 REDIS_PORT = 6379
 
 API_ENDPOINT = 'https://api.lanlytics.com'
