@@ -1,26 +1,96 @@
-image: python:3.6
-
 stages:
-  - test 
+  - unit_test
+  - build
+  - integration
+  - acceptance
+  - production
   - deploy
 
-test:
+unit_test:
+  image: python:3.6
   script:
     - pip install codecov
     - pip install -r requirements.txt
     - ./test.it
 
-deploy:
-  stage: deploy
+build:
+  stage: build
   image: docker:latest
+  dependencies:
+    - unit_test
   variables:
     DOCKER_DRIVER: overlay2
-  services:
-    - docker:dind
   before_script:
-    - docker info
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
-    - docker build -t mcte-docker.ipjtl.net/lanlytics-api-worker:acc .
-    - docker push mcte-docker.ipjtl.net/lanlytics-api-worker:acc
+    - docker build -t $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID -f dockerfiles/mcte .
+    - docker push $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
+    - docker push $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
+    
+integration:
+  stage: integration
+  only: 
+    - develop
+  dependencies:
+    - build
+    - unit_test
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:integration
+    - docker push $CI_REGISTRY_IMAGE:integration
+    - echo IntegrationTests!
+    
+acceptance:
+  stage: acceptance
+  only: 
+    - /^release_/
+  dependencies:
+    - build
+    - unit_test
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:acceptance
+    - docker push $CI_REGISTRY_IMAGE:acceptance
+    - echo AcceptanceTests!
+    
+production:
+  stage: production
+  only: 
+    - master
+  dependencies:
+    - build
+    - unit_test
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:production
+    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:latest
+    - docker push $CI_REGISTRY_IMAGE:production
+    - docker push $CI_REGISTRY_IMAGE:latest
 
-
+deploy:
+  stage: deploy
+  only:
+    - master
+  dependencies:
+    - production
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - echo DeployToEnv!
