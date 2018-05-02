@@ -346,6 +346,13 @@ def launch_container(image_name, command, tag='latest'):
 
     print('\nSetting up docker container')
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+
+    if AUTHENTICATE is True: 
+        if utils.client_login(client) is True:
+            print('Registry login successful')
+        else:
+            print('Registry login failed')
+            return
     
     environment = {'API_ENDPOINT': API_ENDPOINT, 'WORKER_BUCKET': WORKER_BUCKET}
 

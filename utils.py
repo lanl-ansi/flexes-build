@@ -110,9 +110,26 @@ def image_exists(image_name, tag='latest'):
         image = client.images.get(image)
         return True
     except docker.errors.ImageNotFound:
+        if AUTHENTICATE is True:
+            if client_login(client) is True:
+                print('Registry login successful')
+            else:
+                print('Registry login failed')
+                return False
         try:
             print('Image {} not found locally'.format(image))
             client.images.pull(image)
             return True
         except docker.errors.ImageNotFound:
             return False
+
+
+def client_login(client):
+    try:
+        client.login(username=REGISTRY_USERNAME,
+                     password=REGISTRY_PASSWORD,
+                     registry=DOCKER_REGISTRY)
+        return True
+    except docker.errors.APIError as e:
+        print('Authenication failed: {}'.format(e))
+        return False

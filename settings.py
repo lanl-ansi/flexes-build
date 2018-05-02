@@ -15,3 +15,5 @@ REDIS_PORT = 6379
 
 API_ENDPOINT = 'https://api.lanlytics.com'
 WORKER_BUCKET = 'lanlytics'
+
+AUTHENTICATE = False
