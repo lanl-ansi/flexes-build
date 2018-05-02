@@ -24,7 +24,7 @@ build:
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
-    - docker build -t $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID -f dockerfiles/mcte .
+    - docker build -t $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID .
     - docker push $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
     - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
