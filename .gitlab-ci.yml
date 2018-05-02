@@ -7,6 +7,7 @@ stages:
   - deploy
 
 unit_test:
+  stage: unit_test
   image: python:3.6
   script:
     - pip install codecov
