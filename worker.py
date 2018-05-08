@@ -74,7 +74,7 @@ def run_worker(args):
         return
     print('Command prefix: {}'.format(args.cmd_prefix))
 
-    if args.cmd_type == DOCKER_WORKER_TYPE:
+    if args.exec_type == DOCKER_WORKER_TYPE:
         client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
         print('Docker service running')
         if AUTHENTICATE is True:
