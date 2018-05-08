@@ -67,7 +67,7 @@ def receive_message(db, queue):
     message = db.rpop(queue)
     if message is not None:
         message = json.loads(message)
-        update_job(db, message['job_id'], STATUS_RUNNING)
+        update_job(db, message['job_id'], config['STATUS_RUNNING'])
     return message
 
 
@@ -79,19 +79,19 @@ def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=No
              'result': result, 
              'stdout': stdout_data, 
              'stderr': stderr_data})
-    if status == STATUS_RUNNING:
+    if status == config['STATUS_RUNNING']:
         db.sadd('{}:jobs:running'.format(queue), job_id)
-    elif status in [STATUS_COMPLETE, STATUS_FAIL]:
+    elif status in [config['STATUS_COMPLETE'], config['STATUS_FAIL']]:
         db.expire(job, 60)
         db.srem('{}:jobs'.format(queue), job_id)
         db.srem('{}:jobs:running'.format(queue), job_id)
-        dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
-        table = dyn.Table(JOBS_TABLE)
+        dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
+        table = dyn.Table(config['JOBS_TABLE'])
         table.update_item(Key={'job_id': job_id},
                           UpdateExpression='SET #stat = :val1, #r = :val2',
                           ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
                           ExpressionAttributeValues={':val1': status, ':val2': result})
-    elif status == STATUS_ACTIVE:
+    elif status == config['STATUS_ACTIVE']:
         db.expire(job, 30)
         db.srem('{}:jobs'.format(queue), job_id)
         db.srem('{}:jobs:running'.format(queue), job_id)

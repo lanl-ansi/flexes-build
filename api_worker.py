@@ -21,7 +21,7 @@ from uuid import uuid4
 class APIWorker(object):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
-        self.local_files_path = str(Path.home().joinpath('lanlytics_worker_local', str(uuid4().hex)).resolve())
+        self.local_files_path = str(Path.home().joinpath('lanlytics_worker_local', str(uuid4().hex)))
         self.log_line_limit = 10
         self.queue = kwargs.get('queue', 'docker')
         self.poll_frequency = kwargs.get('poll_frequency', 1)
@@ -91,7 +91,7 @@ class APIWorker(object):
     def get_local_path(self, uri):
         if utils.is_s3_uri(uri):
             local_filename = Path(self.local_files_path).joinpath(Path(uri).relative_to('s3://'))
-            return str(local_filename.resolve())
+            return str(local_filename)
         return uri
 
     def make_local_dirs(self, local_file):
