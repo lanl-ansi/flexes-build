@@ -79,7 +79,7 @@ def run_worker(args):
         client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
         print('Docker service running')
         if AUTHENTICATE is True:
-            if client_login(client) is True:
+            if utils.client_login(client) is True:
                 print('Registry login successful')
             else:
                 print('Registry login failed')
