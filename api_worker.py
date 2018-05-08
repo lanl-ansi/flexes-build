@@ -5,8 +5,9 @@ import boto3
 import copy
 import json
 import os
-import sys
 import shutil
+import signal
+import sys
 import time
 import traceback
 import utils
@@ -235,6 +236,10 @@ class APIWorker(object):
         traceback.print_exc()
         return self.update_job(msg_id, self.config['STATUS_FAIL'], str(e))
 
+    def gracefully_exit(self, signo, stack_frame):
+        print('SIGTERM received: {} {}'.format(signo, stack_frame))
+        sys.exit(0)
+
     def launch(self, message):
         raise NotImplementedError('launch method is not implemented')
 
@@ -251,12 +256,12 @@ class APIWorker(object):
             self.db.srem(busy, self.instance_id)
             self.db.smove('{}:workers'.format(self.queue), 'workers:dead', self.instance_id)
 
-    def register_worker():
+    def register_worker(self):
         instance_id, instance_type, private_ip = utils.get_instance_info()
         self.instance_id = instance_id
 
         worker_info = {'queue': self.queue, 
-                       'worker_type': self.__clas__.__name__, 
+                       'worker_type': self.__class__.__name__, 
                        'status': 'idle', 
                        'instace_type': instance_type, 
                        'private_ip': private_ip}
@@ -266,18 +271,27 @@ class APIWorker(object):
         return instance_id
 
     def run(self):
+        signal.signal(signal.SIGTERM, self.gracefully_exit)
         print('Starting worker on process {}'.format(os.getpid()))
         self.register_worker()
 
         spinner = cycle(['/', '-', '\\', '|'])
-        while True:
-            message = self.receive_message()
-            if message is not None:
-                self.update_worker_status('busy')
-                self.process_message(message)
-                self.update_worker_status('idle')
-            else:
-                sys.stdout.write(next(spinner))
-                sys.stdout.flush()
-                time.sleep(self.poll_frequency)
-                sys.stdout.write('\b')
+        try:
+            while True:
+                message = self.receive_message()
+                if message is not None:
+                    self.update_worker_status('busy')
+                    self.process_message(message)
+                    self.update_worker_status('idle')
+                else:
+                    sys.stdout.write(next(spinner))
+                    sys.stdout.flush()
+                    time.sleep(self.poll_frequency)
+                    sys.stdout.write('\b')
+        except KeyboardInterrupt:
+            print('\rStopping worker')
+            self.update_worker_status('dead')
+        except Exception as e:
+            print(e)
+            self.update_worker_status('dead')
+                

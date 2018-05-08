@@ -8,11 +8,12 @@ from api_worker import APIWorker
 from argparse import ArgumentParser
 from botocore.exceptions import ClientError
 from collections import namedtuple
+from config import load_config
 from docker.errors import ImageNotFound
-from settings import *
 from test_common import test_commands
 
 SUCCESS = 'It worked!'
+config = load_config()
 
 class TestMessage:
     @mock.patch('api_worker.StrictRedis')
@@ -20,43 +21,43 @@ class TestMessage:
     def setup_method(self, _, mock_redis, mock_resource):
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.worker = APIWorker(queue='test', poll_frequency=1)
-        self.worker.launch = mock.MagicMock(return_value=(STATUS_COMPLETE, SUCCESS, None, None))
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
 
     def test_valid_message(self):
         self.message['command'] = {'arguments': []}
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_COMPLETE)
+        assert(status == config['STATUS_COMPLETE'])
         assert(result == SUCCESS)
 
     def test_valid_message_s3_stdin(self):
         self.message['command'] = test_commands['std_command']['command']
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_COMPLETE)
+        assert(status == config['STATUS_COMPLETE'])
         assert(result == SUCCESS)
 
     def test_valid_message_s3_cmd(self):
         self.message['command'] = test_commands['full_command']['command']
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_COMPLETE)
+        assert(status == config['STATUS_COMPLETE'])
         assert(result == SUCCESS)
 
     def test_invalid_schema_message(self):
         self.message['command'] = test_commands['bad_command']
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_FAIL)
+        assert(status == config['STATUS_FAIL'])
         assert('Failed validating' in result)
 
     def test_active_check_message(self):
         self.message['test'] = True
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_ACTIVE)
+        assert(status == config['STATUS_ACTIVE'])
         assert('Service is active' in result)
 
     def test_s3_file_not_found(self):
         self.worker.launch.side_effect = ClientError({'Error': {'Code': 404}}, 'download')
         self.message['command'] = test_commands['basic_command']['command']
         status, result = self.worker.process_message(self.message)
-        assert(status == STATUS_FAIL)
+        assert(status == config['STATUS_FAIL'])
         assert('error occurred (404)' in result)
 
 class TestLocalize:
@@ -65,7 +66,7 @@ class TestLocalize:
     def setup_method(self, _, mock_redis, mock_resource):
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.worker = APIWorker(queue='test', poll_frequency=1)
-        self.worker.launch = mock.MagicMock(return_value=(STATUS_COMPLETE, SUCCESS, None, None))
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
         self.uri = 's3://lanlytics/path/to/input/test.txt'
 
     def test_get_local_path(self):
@@ -83,7 +84,7 @@ class TestCommands:
     def setup_method(self, _, mock_redis, mock_resource):
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.worker = APIWorker(queue='test', poll_frequency=1)
-        self.worker.launch = mock.MagicMock(return_value=(STATUS_COMPLETE, SUCCESS, None, None))
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
 
     @mock.patch('utils.get_s3_file')
     @mock.patch('os.makedirs', return_value=None)
@@ -122,7 +123,7 @@ class TestIO:
         self.local_file = '/bucket/path/to/file.txt'
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.worker = APIWorker(queue='test', poll_frequency=1)
-        self.worker.launch = mock.MagicMock(return_value=(STATUS_COMPLETE, SUCCESS, None, None))
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
 
     def test_get_local_path_s3(self):
         expected = self.worker.local_files_path + self.local_file
@@ -187,7 +188,7 @@ class TestModifyJob:
         self.local_file = '/bucket/path/to/file.txt'
         self.message = {'job_id': '1234', 'service': 'worker'}
         self.worker = APIWorker(queue='test', poll_frequency=1)
-        self.worker.launch = mock.MagicMock(return_value=(STATUS_COMPLETE, SUCCESS, None, None))
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
 
     def test_update_job(self):
         self.worker.db.get.return_value = b'{"foo":"bar"}'

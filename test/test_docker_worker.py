@@ -8,11 +8,12 @@ from docker_worker import DockerWorker
 from argparse import ArgumentParser
 from botocore.exceptions import ClientError
 from collections import namedtuple
+from config import load_config
 from docker.errors import ContainerError, ImageNotFound
-from settings import *
 from test_common import test_commands
 
 SUCCESS = 'It worked!'
+config = load_config()
 
 class TestDockerWorker:
     @mock.patch('docker.DockerClient', autospec=True)
@@ -31,7 +32,7 @@ class TestDockerWorker:
         type(self.worker.client.containers.run.return_value).status = mock.PropertyMock(side_effect=['running', 'running', 'exited'])
         message = test_commands['basic_command']
         status, feedback, stdout_data, stderr_data = self.worker.launch(message)
-        assert(status == 'complete')
+        assert(status == config['STATUS_COMPLETE'])
         assert(stdout_data == None)
         assert(stderr_data == None)
         assert(mock_rmtree.called)
@@ -46,7 +47,7 @@ class TestDockerWorker:
         type(self.worker.client.containers.run.return_value).status = mock.PropertyMock(side_effect=['running', 'running', 'exited'])
         message = test_commands['pipe_command']
         status, feedback, stdout_data, stderr_data = self.worker.launch(message)
-        assert(status == 'complete')
+        assert(status == config['STATUS_COMPLETE'])
         assert(stdout_data == '')
         assert(stderr_data == None)
 
@@ -58,7 +59,7 @@ class TestDockerWorker:
         self.worker.client.containers.run.side_effect = ContainerError('error', -1, 'test', 'test', b'Container execution failed')
         message = test_commands['basic_command']
         status, result, stdout_data, stderr_data = self.worker.launch(message)
-        assert(status == 'failed')
+        assert(status == config['STATUS_FAIL'])
         assert(result == expected) 
 
     @mock.patch('shutil.rmtree')
@@ -77,7 +78,7 @@ class TestDockerWorker:
         message = test_commands['test_command']
         message['job_id'] = '1234'
         status, result = self.worker.process_message(message)
-        assert(status == STATUS_ACTIVE)
+        assert(status == config['STATUS_ACTIVE'])
         assert('Service is active' in result)
 
     @mock.patch('utils.image_exists', return_value=False)
@@ -85,6 +86,6 @@ class TestDockerWorker:
         message = test_commands['test_command']
         message['job_id'] = '1234'
         status, result = self.worker.process_message(message)
-        assert(status == STATUS_FAIL)
+        assert(status == config['STATUS_FAIL'])
         assert('Image test not found' in result)
 

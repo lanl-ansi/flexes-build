@@ -2,12 +2,13 @@ import boto3
 import docker
 import json
 import os
-import random
+import requests
 import time
 from botocore.exceptions import ClientError
 from config import load_config
 from jsonschema import validate, ValidationError
 from pathlib import Path
+from uuid import uuid4
 
 config = load_config()
 

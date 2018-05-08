@@ -1,12 +1,12 @@
 import copy
 import docker
 import os
+import sys
 import time
 import utils
 from api_worker import APIWorker
 from argparse import ArgumentParser
 from pathlib import Path
-from settings import *
 
 class DockerWorker(APIWorker):
     def __init__(self, *args, **kwargs):
@@ -137,7 +137,7 @@ class DockerWorker(APIWorker):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-q', '--queue', required=True, 
+    parser.add_argument('-q', '--queue', default='docker', 
                         help='queue for the worker to pull work from')
     parser.add_argument('-pf', '--poll_frequency', default=1, type=int, 
                         help='time to wait between polling the work queue (seconds)')
