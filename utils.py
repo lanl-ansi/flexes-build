@@ -5,10 +5,13 @@ import os
 import random
 import time
 from botocore.exceptions import ClientError
+from config import load_config
 from jsonschema import validate, ValidationError
-from settings import *
+from pathlib import Path
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as f:
+config = load_config()
+
+with Path(__file__).with_name('message_schema.json').open('r') as f:
     message_schema = json.load(f)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
@@ -27,8 +30,7 @@ def get_s3_file(s3, uri, local_file):
         raise ValueError('File {} not found'.format(uri))
 
     for obj in files:
-        local_file = os.path.join(os.path.dirname(local_file), 
-                                  os.path.basename(obj))
+        local_file = str(Path(local_file).with_name(Path(obj).name))
         bucket.download_file(obj, local_file)
 
 
@@ -47,7 +49,8 @@ def put_file_s3(s3, local_file, uri):
 
 def get_instance_info():
     try:
-        response = requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=5)
+        metadata_url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
+        response = requests.get(metadata_url, timeout=1)
         resp_json = response.json()
         instance_id = resp_json['instanceId']
         instance_type = resp_json['instanceType']
@@ -123,7 +126,7 @@ def isvalid(obj, schema):
 
 def image_exists(image_name, tag='latest'):
     client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
+    image = '{}/{}:{}'.format(config['DOCKER_REGISTRY'], image_name, tag)
     try:
         image = client.images.get(image)
         return True
