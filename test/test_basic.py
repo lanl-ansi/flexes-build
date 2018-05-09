@@ -127,7 +127,7 @@ class TestUtils:
         assert(job_id == 'test_job')
 
     def test_query_job(self):
-        self.db.hget.return_value = b'test'
+        self.db.hget.return_value = 'test'
         expected = {'status': 'test', 'job_id': 'job_id'}
         query_result = utils.query_job_status(self.db, 'job_id')
         assert(query_result == expected)
@@ -135,7 +135,7 @@ class TestUtils:
     @mock.patch('boto3.resource')
     def test_query_job_old(self, mock_resource):
         self.db.hget.return_value = None
-        self.db.hgetall.return_value = None
+        self.db.hgetall.return_value = {}
         mock_resource.return_value.Table.return_value.get_item.return_value = {'Item': {'foo': 'bar'}}
         expected = {'foo': 'bar'}
         query_result = utils.query_job_status(self.db, 'job_id')

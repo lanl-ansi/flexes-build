@@ -32,7 +32,7 @@ def query_job_status(db, job_id):
     job = JOB_PREFIX + job_id
     status = db.hget(job, 'status')
     if status is not None:
-        return {'job_id': job_id, 'status': status.decode()}
+        return {'job_id': job_id, 'status': status}
     else:
         return get_job_result(db, job_id)
 
@@ -40,7 +40,7 @@ def query_job_status(db, job_id):
 def get_job_result(db, job_id):
     job = JOB_PREFIX + job_id
     result = db.hgetall(job)
-    if result is not None:
+    if result != {}:
         return result
     else:
         dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
@@ -65,7 +65,6 @@ def job_messages(db, job_id):
 def all_running_jobs(db):
     jobs = [parse_hashmap(db, job, ['job_id', 'status', 'queue']) 
             for job in db.keys(pattern='{}*'.format(JOB_PREFIX))]
-    print(jobs)
     return jobs
 
 

@@ -97,13 +97,13 @@ def service(service_name):
 
 
 @app.route('/jobs/<job_id>', methods=['GET'])
-def query_job_status(job_id):
-    return jsonify(**query_job(db, job_id))
+def query_job(job_id):
+    return jsonify(**query_job_status(db, job_id))
 
 
 @app.route('/jobs/<job_id>/result', methods=['GET'])
-def get_job_result(job_id):
-    return jsonify(**query_job(db, job_id))
+def job_result(job_id):
+    return jsonify(**get_job_result(db, job_id))
 
 
 @app.route('/jobs/<job_id>/messages', methods=['GET'])
