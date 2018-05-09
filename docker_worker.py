@@ -95,23 +95,21 @@ class DockerWorker(APIWorker):
                 socket.close()
                 print('input socket closed')
 
-            container_status = container.status
             messages = []
-            i = 0
-            while container_status != 'exited':
-                tail = [line.strip() for line in container.logs(stream=True, stdout=False, stderr=True, tail=5)]
+            while container.status != 'exited':
+                tail = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True, tail=5)]
                 if tail != messages and len(tail) > 0:
                     messages = tail
-                    update_job_messages(db, job_id, messages)
+                    utils.update_job_messages(self.db, message['job_id'], messages)
                 # Report container stats???
                 stats = container.stats(decode=True)
                 time.sleep(0.1)
-                container_status = container.status
+                container.reload()
             exit_code = container.wait()['StatusCode']
 
             logs = container.logs(stdout=True, stderr=True).decode()
-            stdout_lines = [line.strip() for line in container.logs(stream=True, stdout=True, stderr=False)]
-            stderr_lines = [line.strip() for line in container.logs(stream=True, stdout=False, stderr=True)]
+            stdout_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=True, stderr=False)]
+            stderr_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True)]
             if stdout_file != None:
                 with open(stdout_file, 'w') as stdout:
                     stdout.writelines(stdout_lines)
