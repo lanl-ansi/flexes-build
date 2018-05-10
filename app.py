@@ -9,7 +9,9 @@ from flask import Flask, Markup, abort, \
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from utils import query_job_status, get_job_result, submit_job, all_jobs, list_services
+from settings import *
+from utils import query_job_status, get_job_result, submit_job, \
+        all_running_jobs, all_queues, all_workers, list_services
 
 app = Flask(__name__)
 
@@ -82,8 +84,10 @@ def service_info(service_name):
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    jobs = [job for job in all_jobs() if job['status'] != 'complete']
-    return render_template('dashboard.html', jobs=jobs)
+    jobs = all_running_jobs(db)
+    queues = all_queues(db)
+    workers = all_workers(db)
+    return render_template('dashboard.html', jobs=jobs, queues=queues, workers=workers)
 
 
 @app.route('/<service_name>', methods=['GET'])
@@ -95,14 +99,19 @@ def service(service_name):
             abort(404)
 
 
+@app.route('/jobs/<job_id>/status', methods=['GET'])
+def query_job(job_id):
+    return jsonify(**get_job_status(db, job_id))
+
+
 @app.route('/jobs/<job_id>', methods=['GET'])
-def query_job_status(job_id):
-    return jsonify(**query_job(db, job_id))
+def job_result(job_id):
+    return jsonify(**get_job_result(db, job_id))
 
 
-@app.route('/jobs/<job_id>/result', methods=['GET'])
-def get_job_result(job_id):
-    return jsonify(**query_job(db, job_id))
+@app.route('/jobs/<job_id>/messages', methods=['GET'])
+def get_job_messages(job_id):
+    return jsonify(**job_messages(db, job_id))
 
 
 @app.route('/deploy', methods=['GET'])

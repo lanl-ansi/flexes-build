@@ -36,7 +36,7 @@ def query_job_status(db, job_id):
 def get_job_result(db, job_id):
     job = config['JOB_PREFIX'] + job_id
     result = db.hgetall(job)
-    if result is not None:
+    if result != {}:
         return result
     else:
         dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
@@ -47,7 +47,7 @@ def get_job_result(db, job_id):
 
 def parse_hashmap(db, name, keys):
     try:
-        return json.loads(db.hmget(name, keys))
+        return dict(zip(keys, db.hmget(name, keys)))
     except Exception as e:
         return None
 
@@ -60,23 +60,19 @@ def job_messages(db, job_id):
 
 def all_running_jobs(db):
     jobs = [parse_hashmap(db, job, ['job_id', 'status', 'queue']) 
-            for job in db.keys(pattern=config['JOB_PREFIX'])]
-    dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
-    table = dyn.Table(config['TABLE_NAME'])
-    response = table.scan(Select='ALL_ATTRIBUTES')
-    return response['Items']
+            for job in db.keys(pattern='{}*'.format(JOB_PREFIX))]
+    return jobs
 
 
 def all_queues(db):
-    queue_names = [queue for queue in db.keys(pattern=config['QUEUE_PREFIX'])]
-    queues = [{'name': queue, 'jobs': db.slen(queue)} for queue in queue_names] 
+    queues = [{'name': queue.replace(QUEUE_PREFIX, ''), 'jobs': db.scard(queue)} 
+              for queue in db.keys(pattern='{}*'.format(QUEUE_PREFIX))] 
     return queues
 
 
 def all_workers(db):
-    worker_ids = [worker for worker in db.keys(pattern=config['WORKER_PREFIX'])]
-    workers = [parse_worker(db, worker) for worker in worker_ids]
-    workers = [json.loads(worker) for worker in db.get(match=config['WORKER_PREFIX'])]
+    workers = [parse_hashmap(db, worker, ['id', 'status', 'queue']) 
+               for worker in db.keys(pattern='{}*'.format(WORKER_PREFIX))]
     return workers
 
 
