@@ -15,7 +15,7 @@ def submit_job(db, message):
     message['status'] = 'submitted'
     queue = message['queue'] if 'queue' in message.keys() else 'docker'
 
-    job = JOB_PREFIX + job_id
+    job = config['JOB_PREFIX'] + job_id
     # Create job db entry
     db.hmset(job, message)
     # Push to queue
@@ -40,7 +40,7 @@ def get_job_result(db, job_id):
         return result
     else:
         dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
-        table = dyn.Table(config['TABLE_NAME'])
+        table = dyn.Table(config['JOBS_TABLE'])
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
 
@@ -60,19 +60,19 @@ def job_messages(db, job_id):
 
 def all_running_jobs(db):
     jobs = [parse_hashmap(db, job, ['job_id', 'status', 'queue']) 
-            for job in db.keys(pattern='{}*'.format(JOB_PREFIX))]
+            for job in db.keys(pattern='{}*'.format(config['JOB_PREFIX']))]
     return jobs
 
 
 def all_queues(db):
-    queues = [{'name': queue.replace(QUEUE_PREFIX, ''), 'jobs': db.scard(queue)} 
-              for queue in db.keys(pattern='{}*'.format(QUEUE_PREFIX))] 
+    queues = [{'name': queue.replace(config['QUEUE_PREFIX'], ''), 'jobs': db.scard(queue)} 
+              for queue in db.keys(pattern='{}*'.format(config['QUEUE_PREFIX']))] 
     return queues
 
 
 def all_workers(db):
     workers = [parse_hashmap(db, worker, ['id', 'status', 'queue']) 
-               for worker in db.keys(pattern='{}*'.format(WORKER_PREFIX))]
+               for worker in db.keys(pattern='{}*'.format(config['WORKER_PREFIX']))]
     return workers
 
 

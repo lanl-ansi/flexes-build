@@ -9,7 +9,6 @@ from flask import Flask, Markup, abort, \
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from settings import *
 from utils import query_job_status, get_job_result, submit_job, \
         all_running_jobs, all_queues, all_workers, list_services
 

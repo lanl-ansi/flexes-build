@@ -4,7 +4,7 @@
   "STATUS_RUNNING": "running",
   "STATUS_FAIL": "failed",
   "JOB_PREFIX": "job:",
-  "MESSAGE_PREFIX": "message:",
+  "MESSAGE_PREFIX": "messages:",
   "QUEUE_PREFIX": "queue:",
   "WORKER_PREFIX": "worker:",
   "DOCKER_REGISTRY": "hub.lanlytics.com",
