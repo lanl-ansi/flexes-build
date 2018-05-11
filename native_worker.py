@@ -1,12 +1,20 @@
+import os
+import subprocess
 from api_worker import APIWorker
 from argparse import ArgumentParser
 
 class NativeWorker(APIWorker):
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
-        self.cmd_prefix = cmd_prefix
+        self.cmd_prefix = kwargs['cmd_prefix']
 
-    def launch(self, command)
+    @staticmethod
+    def lines_tail(string, tail_length):
+        parts = string.split('\n')
+        parts = parts[-tail_length:]
+        return '\n'.join(parts)
+
+    def launch(self, command):
         print('\n\033[1mStarting Native Job\033[0m')
 
         local_command = self.build_localized_command(command, self.cmd_prefix)
@@ -15,11 +23,9 @@ class NativeWorker(APIWorker):
         stdout = subprocess.PIPE
         stderr = subprocess.PIPE
 
-        native_cmd, stdin_file, stdin_pipe, 
-        stdout_file, stdout_pipe, 
-        stderr_file, stderr_pipe = self.build_command_parts(local_command)
+        native_cmd, stdin_file, stdin_pipe, stdout_file, stdout_pipe, stderr_file, stderr_pipe = self.build_command_parts(local_command)
 
-        native_cmd = cmd_prefix + native_cmd
+        native_cmd = self.cmd_prefix + native_cmd
 
         if stdin_file is not None:
             stdin = io.StringIO(stdin_file) if stdin_pipe else open(stdin_file, 'r')
@@ -64,13 +70,12 @@ class NativeWorker(APIWorker):
         for f in [stdin_file, stdout_file, stderr_file]:
             if f is not None:
                 f.close()
-        return worker_cleanup(command, process.returncode, worker_log, stdout_data, stderr_data)
+        return self.worker_cleanup(command, process.returncode, worker_log, stdout_data, stderr_data)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser_native.add_argument('cmd_prefix',
-                                nargs='+'
+    parser.add_argument('cmd_prefix', nargs='+',
                         help='the command prefix of a native worker as a list of \
                               strings, takes the place of the \
                               "ENTRYPOINT" in a docker container')
