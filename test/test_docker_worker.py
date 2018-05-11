@@ -73,16 +73,16 @@ class TestDockerWorker:
         assert(status == 'failed')
         assert(result == expected) 
 
-    @mock.patch('utils.image_exists', return_value=True)
-    def test_active_check_docker_message(self, mock_image_exists):
+    def test_active_check_docker_message(self):
+        self.worker.image_exists = mock.MagicMock(return_value=True)
         message = test_commands['test_command']
         message['job_id'] = '1234'
         status, result = self.worker.process_message(message)
         assert(status == config['STATUS_ACTIVE'])
         assert('Service is active' in result)
 
-    @mock.patch('utils.image_exists', return_value=False)
-    def test_active_check_fail_docker_message(self, mock_image_exists):
+    def test_active_check_fail_docker_message(self):
+        self.worker.image_exists = mock.MagicMock(return_value=False)
         message = test_commands['test_command']
         message['job_id'] = '1234'
         status, result = self.worker.process_message(message)

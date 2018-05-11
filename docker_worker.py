@@ -16,13 +16,26 @@ class DockerWorker(APIWorker):
 
     def test_service(self, message):
         message['tag'] = message.get('tag', 'latest')
-        if utils.image_exists(message['service'], message['tag']):
+        if self.image_exists(message['service'], message['tag']):
             print('Confirmed active status for {}'.format(message['service']))
             return self.update_job(message['job_id'], self.config['STATUS_ACTIVE'], 'Service is active')
         else:
             print('Image {} not found'.format(message['service']))
             return self.update_job(message['job_id'], self.config['STATUS_FAIL'], 
                                    'Image {} not found'.format(message['service']))
+
+    def image_exists(self, image_name, tag='latest'):
+        image = '{}/{}:{}'.format(self.config['DOCKER_REGISTRY'], image_name, tag)
+        try:
+            image = self.client.images.get(image)
+            return True
+        except docker.errors.ImageNotFound:
+            try:
+                print('Image {} not found locally'.format(image))
+                self.client.images.pull(image)
+                return True
+            except docker.errors.ImageNotFound:
+                return False
 
     def get_docker_path(self, uri):
         path = self.get_local_path(uri)
@@ -100,7 +113,7 @@ class DockerWorker(APIWorker):
                 tail = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True, tail=5)]
                 if tail != messages and len(tail) > 0:
                     messages = tail
-                    utils.update_job_messages(self.db, message['job_id'], messages)
+                    self.update_job_messages(self.db, message['job_id'], messages)
                 # Report container stats???
                 stats = container.stats(decode=True)
                 time.sleep(0.1)

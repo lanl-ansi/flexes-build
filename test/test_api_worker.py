@@ -3,6 +3,7 @@ import os, pytest, sys
 sys.path.append('.')
 import json
 import mock
+import requests
 import utils
 from api_worker import APIWorker
 from argparse import ArgumentParser
@@ -194,4 +195,36 @@ class TestModifyJob:
         self.worker.db.get.return_value = b'{"foo":"bar"}'
         status, result = self.worker.update_job('test1234', 'testing')
         assert(status == 'testing')
+
+class TestWorker:
+    @mock.patch('api_worker.StrictRedis')
+    @mock.patch('boto3.resource')
+    def setup_method(self, _, mock_redis, mock_resource):
+        self.uri = 's3://bucket/path/to/file.txt'
+        self.local_file = '/bucket/path/to/file.txt'
+        self.message = {'job_id': '1234', 'service': 'worker'}
+        self.worker = APIWorker(queue='test', poll_frequency=1)
+        self.worker.launch = mock.MagicMock(return_value=(config['STATUS_COMPLETE'], SUCCESS, None, None))
+
+    def test_update_worker_status(self):
+        self.worker.instance_id = 'test'
+        self.worker.update_worker_status('busy')
+        self.worker.update_worker_status('idle')
+        self.worker.update_worker_status('dead')
+        assert(self.worker.db.hset.call_count == 3)
+        assert(self.worker.db.srem.call_count == 2)
+        self.worker.db.sadd.assert_called_once()
+        self.worker.db.smove.assert_called_once()
+
+    @mock.patch('requests.get')
+    def test_register_worker(self, mock_get):
+        mock_get.return_value.json.return_value = {'instanceId': 'test', 'instanceType': 't2.micro', 'privateIp': '10.0.0.1'}
+        instance_id = self.worker.register_worker()
+        assert(instance_id == 'test')
+
+    @mock.patch('requests.get', side_effect=requests.exceptions.ConnectionError)
+    def test_register_worker_local(self, mock_get):
+        instance_id = self.worker.register_worker()
+        assert(isinstance(instance_id, str))
+
 
