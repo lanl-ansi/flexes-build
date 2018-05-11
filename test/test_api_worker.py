@@ -227,4 +227,19 @@ class TestWorker:
         instance_id = self.worker.register_worker()
         assert(isinstance(instance_id, str))
 
+    @mock.patch('requests.get')
+    def test_worker_run(self, mock_get):
+        mock_get.return_value.json.return_value = {
+                'instanceId': 'test', 
+                'instanceType': 't2.micro', 
+                'privateIp': '10.0.0.1'
+        }
+        self.worker.db.rpop.side_effect = [
+                    None, None, None,
+                    '{"job_id":"test","test":true}',
+                    None, None, None, KeyboardInterrupt
+                ]
+        self.worker.run()
+
+
 

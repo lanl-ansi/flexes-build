@@ -1,13 +1,8 @@
 import os, pytest, sys
 
 sys.path.append('.')
-import json
 import mock
-import utils
 from docker_worker import DockerWorker
-from argparse import ArgumentParser
-from botocore.exceptions import ClientError
-from collections import namedtuple
 from config import load_config
 from docker.errors import ContainerError, ImageNotFound
 from test_common import test_commands
@@ -88,4 +83,17 @@ class TestDockerWorker:
         status, result = self.worker.process_message(message)
         assert(status == config['STATUS_FAIL'])
         assert('Image test not found' in result)
+
+    def test_image_exists(self):
+        assert(self.worker.image_exists('test'))
+
+    def test_image_exists_remote(self):
+        self.worker.client.images.get.side_effect = ImageNotFound('image not found')
+        assert(self.worker.image_exists('test'))
+
+    def test_image_exists_fail(self):
+        self.worker.client.images.get.side_effect = ImageNotFound('image not found')
+        self.worker.client.images.pull.side_effect = ImageNotFound('image not found')
+        assert(self.worker.image_exists('test') is False)
+
 
