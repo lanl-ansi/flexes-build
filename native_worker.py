@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import os
 import subprocess
 from api_worker import APIWorker
@@ -73,7 +75,7 @@ class NativeWorker(APIWorker):
         return self.worker_cleanup(command, process.returncode, worker_log, stdout_data, stderr_data)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('cmd_prefix', nargs='+',
                         help='the command prefix of a native worker as a list of \

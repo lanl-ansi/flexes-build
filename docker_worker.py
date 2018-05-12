@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import copy
 import docker
 import os
@@ -146,7 +148,7 @@ class DockerWorker(APIWorker):
                 container.remove()
         return self.worker_cleanup(message['command'], exit_code, logs, stdout_data, stderr_data)
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('-q', '--queue', default='docker', 
                         help='queue for the worker to pull work from')
