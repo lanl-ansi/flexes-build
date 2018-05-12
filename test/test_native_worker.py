@@ -14,10 +14,8 @@ class TestNativeWorker:
 
     @mock.patch('shutil.rmtree')
     @mock.patch('os.makedirs', return_value=None)
-    @mock.patch('launch.localize_resource', return_value='test/data/test.txt')
     @mock.patch('subprocess.Popen', autospec=True)
-    def test_launch_native(self, mock_subprocess, mock_localize_resource, 
-                           mock_makedirs, mock_rmtree):
+    def test_launch_native(self, mock_subprocess, mock_makedirs, mock_rmtree):
         self.worker.localize_resource = mock.MagicMock(return_value='/path/to/resource.txt')
         self.worker.persist_command = mock.MagicMock()
         mock_subprocess.return_value.communicate.return_value = (b'test', b'test')
