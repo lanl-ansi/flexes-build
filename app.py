@@ -58,8 +58,11 @@ def index():
         return render_template('index.html')
     elif request.method == 'POST':
         message = request.get_json()
-        response = service_response(message)
-        return jsonify(**response)
+        response_json = service_response(message)
+        response = jsonify(**response_json)
+        response.status_code = 202
+        response.headers['location'] = '/jobs/{}'.format(response_json['job_id'])
+        return response
 
 
 @app.route('/services', methods=['GET'])
