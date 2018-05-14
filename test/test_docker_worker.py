@@ -96,4 +96,8 @@ class TestDockerWorker:
         self.worker.client.images.pull.side_effect = ImageNotFound('image not found')
         assert(self.worker.image_exists('test') is False)
 
+    def test_registry_auth(self):
+        self.worker.config['AUTHENTICATE'] = {'REGISTRY_USERNAME': 'user', 'REGISTRY_PASSWORD': 'password'}
+        self.worker.registry_login()
+
 

@@ -15,6 +15,8 @@ class DockerWorker(APIWorker):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
         self.local_files_dir = Path(self.local_files_path).anchor + str(Path(self.local_files_path).relative_to(Path.home()))
+        if self.config['AUTHENTICATE'] is not None:
+            self.registry_login()
 
     def test_service(self, message):
         message['tag'] = message.get('tag', 'latest')
@@ -26,6 +28,18 @@ class DockerWorker(APIWorker):
             return self.update_job(message['job_id'], self.config['STATUS_FAIL'], 
                                    'Image {} not found'.format(message['service']))
 
+    def registry_login(self):
+        username = self.config['AUTHENTICATE'].get('REGISTRY_USERNAME')
+        password = self.config['AUTHENTICATE'].get('REGISTRY_PASSWORD')
+        if username is None:
+            raise ValueError('REGISTRY_USERNAME not provided')
+        if password is None:
+            raise ValueError('REGISTRY_PASSWORD not provided')
+        else:
+            self.client.login(username=username, 
+                              password=password, 
+                              registry=self.config['DOCKER_REGISTRY'])
+
     def image_exists(self, image_name, tag='latest'):
         image = '{}/{}:{}'.format(self.config['DOCKER_REGISTRY'], image_name, tag)
         try:
@@ -34,6 +48,8 @@ class DockerWorker(APIWorker):
         except docker.errors.ImageNotFound:
             try:
                 print('Image {} not found locally'.format(image))
+                if self.config['AUTHENTICATE'] is not None:
+                    self.client.login(reauth=True)
                 self.client.images.pull(image)
                 return True
             except docker.errors.ImageNotFound:
@@ -96,6 +112,8 @@ class DockerWorker(APIWorker):
 
         container = None
         try:
+            if self.config['AUTHENTICATE'] is not None:
+                self.client.login(reauth=True)
             self.client.images.pull(image)
             container = self.client.containers.run(image, 
                                               command=docker_cmd, 
