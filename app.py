@@ -40,15 +40,22 @@ def service_response(message):
         response = {'job_id': None, 
                     'status': 'error', 
                     'message': 'no message found in request'}
+        response = jsonify(**response)
+        response.status_code = 400
     elif isvalid(message, message_schema) is False:
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
+        response = jsonify(**response)
+        response.status_code = 400
     else:
         job_id = submit_job(db, message)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
+        response = jsonify(**response)
+        response.status_code = 202
+        response.headers['location'] = '/jobs/{}'.format(job_id)
     return response
 
 
@@ -58,10 +65,7 @@ def index():
         return render_template('index.html')
     elif request.method == 'POST':
         message = request.get_json()
-        response_json = service_response(message)
-        response = jsonify(**response_json)
-        response.status_code = 202
-        response.headers['location'] = '/jobs/{}'.format(response_json['job_id'])
+        response = service_response(message)
         return response
 
 
