@@ -55,7 +55,9 @@ def service_response(message):
                     'message': 'job submitted'}
         response = jsonify(**response)
         response.status_code = 202
+        response.scheme = 'https'
         response.headers['location'] = '/jobs/{}'.format(job_id)
+        response.autocorrect_location_header = False
     return response
 
 
