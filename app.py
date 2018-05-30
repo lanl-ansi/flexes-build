@@ -3,21 +3,23 @@
 import json
 import os
 import requests
+from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from settings import *
 from utils import query_job_status, get_job_result, submit_job, \
         all_running_jobs, all_queues, all_workers, list_services
 
 app = Flask(__name__)
 
+config = load_config()
+
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
+REDIS_URL = 'redis://{}:{}/0'.format(config['REDIS_HOST'], config['REDIS_PORT'])
 app.config['REDIS_URL'] = REDIS_URL
 db = FlaskRedis(app, decode_responses=True)
 
@@ -56,8 +58,11 @@ def index():
         return render_template('index.html')
     elif request.method == 'POST':
         message = request.get_json()
-        response = service_response(message)
-        return jsonify(**response)
+        response_json = service_response(message)
+        response = jsonify(**response_json)
+        response.status_code = 202
+        response.headers['location'] = '/jobs/{}'.format(response_json['job_id'])
+        return response
 
 
 @app.route('/services', methods=['GET'])
@@ -96,12 +101,12 @@ def service(service_name):
             abort(404)
 
 
-@app.route('/jobs/<job_id>', methods=['GET'])
+@app.route('/jobs/<job_id>/status', methods=['GET'])
 def query_job(job_id):
-    return jsonify(**query_job_status(db, job_id))
+    return jsonify(**get_job_status(db, job_id))
 
 
-@app.route('/jobs/<job_id>/result', methods=['GET'])
+@app.route('/jobs/<job_id>', methods=['GET'])
 def job_result(job_id):
     return jsonify(**get_job_result(db, job_id))
 

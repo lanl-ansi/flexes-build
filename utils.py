@@ -3,15 +3,11 @@ import boto3
 import botocore
 import json
 import sys
+from config import load_config
 from aiohttp import ClientSession
-from settings import *
 from uuid import uuid4
 
-JOB_PREFIX = 'job:'
-MESSAGE_PREFIX = 'messages:'
-QUEUE_PREFIX = 'queue:'
-WORKER_PREFIX = 'worker:'
-
+config = load_config()
 
 def submit_job(db, message):
     job_id = str(uuid4())
@@ -19,7 +15,7 @@ def submit_job(db, message):
     message['status'] = 'submitted'
     queue = message['queue'] if 'queue' in message.keys() else 'docker'
 
-    job = JOB_PREFIX + job_id
+    job = config['JOB_PREFIX'] + job_id
     # Create job db entry
     db.hmset(job, message)
     # Push to queue
@@ -29,7 +25,7 @@ def submit_job(db, message):
 
 
 def query_job_status(db, job_id):
-    job = JOB_PREFIX + job_id
+    job = config['JOB_PREFIX'] + job_id
     status = db.hget(job, 'status')
     if status is not None:
         return {'job_id': job_id, 'status': status}
@@ -38,13 +34,13 @@ def query_job_status(db, job_id):
 
 
 def get_job_result(db, job_id):
-    job = JOB_PREFIX + job_id
+    job = config['JOB_PREFIX'] + job_id
     result = db.hgetall(job)
     if result != {}:
         return result
     else:
-        dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
-        table = dyn.Table(TABLE_NAME)
+        dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
+        table = dyn.Table(config['JOBS_TABLE'])
         response = table.get_item(Key={'job_id': job_id})
         return response['Item']
 
@@ -57,26 +53,26 @@ def parse_hashmap(db, name, keys):
 
 
 def job_messages(db, job_id):
-    job = MESSAGE_PREFIX + job_id
+    job = config['MESSAGE_PREFIX'] + job_id
     messages = db.get(job)
     return json.loads(messages) if messages is not None else []
 
 
 def all_running_jobs(db):
     jobs = [parse_hashmap(db, job, ['job_id', 'status', 'queue']) 
-            for job in db.keys(pattern='{}*'.format(JOB_PREFIX))]
+            for job in db.keys(pattern='{}*'.format(config['JOB_PREFIX']))]
     return jobs
 
 
 def all_queues(db):
-    queues = [{'name': queue.replace(QUEUE_PREFIX, ''), 'jobs': db.scard(queue)} 
-              for queue in db.keys(pattern='{}*'.format(QUEUE_PREFIX))] 
+    queues = [{'name': queue.replace(config['QUEUE_PREFIX'], ''), 'jobs': db.scard(queue)} 
+              for queue in db.keys(pattern='{}*'.format(config['QUEUE_PREFIX']))] 
     return queues
 
 
 def all_workers(db):
     workers = [parse_hashmap(db, worker, ['id', 'status', 'queue']) 
-               for worker in db.keys(pattern='{}*'.format(WORKER_PREFIX))]
+               for worker in db.keys(pattern='{}*'.format(config['WORKER_PREFIX']))]
     return workers
 
 
@@ -98,11 +94,11 @@ def list_services(tags=None):
 
 async def get_services():
     async with ClientSession() as session:
-        url = '{}/v2/_catalog'.format(DOCKER_REGISTRY)
+        url = '{}/v2/_catalog'.format(config['DOCKER_REGISTRY'])
         services = await fetch(session, url)
         tasks = []
         for service in services['repositories']:
-            url = '{}/v2/{}/tags/list'.format(DOCKER_REGISTRY, service)
+            url = '{}/v2/{}/tags/list'.format(config['DOCKER_REGISTRY'], service)
             task = asyncio.ensure_future(fetch(session, url))
             tasks.append(task)
 
