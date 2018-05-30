@@ -133,7 +133,7 @@ class DockerWorker(APIWorker):
                 tail = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True, tail=5)]
                 if tail != messages and len(tail) > 0:
                     messages = tail
-                    self.update_job_messages(self.db, message['job_id'], messages)
+                    self.update_job_messages(message['job_id'], messages)
                 # Report container stats???
                 stats = container.stats(decode=True)
                 time.sleep(0.1)
