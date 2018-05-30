@@ -2,8 +2,8 @@ FROM docker
 
 MAINTAINER James Arnold <arnold_j@lanl.gov>
 
-COPY default_config.json message_schema.json api_worker.py docker_worker.py requirements.txt config.py utils.py /src/
-ADD test/ /src/test/
+COPY default_config.json message_schema.json api_worker.py docker_worker.py native_worker.py requirements.txt config.py utils.py /src/
+COPY test/ /src/test/
 
 WORKDIR /src
 
