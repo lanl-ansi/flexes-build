@@ -37,12 +37,13 @@ def put_file_s3(s3, local_file, uri):
     local_dir = os.path.dirname(local_file)
     prefix = os.path.basename(local_file)
     for f in os.listdir(local_dir):
-        filename, ext = os.path.splitext(f)
         if f == prefix:
             bucket.upload_file(local_file, key)
             break
-        elif filename == prefix:
-            bucket.upload_file(local_file + ext, key + ext)
+        elif f.startswith(prefix):
+            upload_file = os.path.join(local_dir, f)
+            upload_key = os.path.join(os.path.dirname(key), f)
+            bucket.upload_file(upload_file, upload_key)
 
 
 # Database
