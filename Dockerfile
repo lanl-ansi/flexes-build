@@ -3,7 +3,7 @@ FROM docker
 MAINTAINER James Arnold <arnold_j@lanl.gov>
 
 COPY message_schema.json launch.py requirements.txt settings.py utils.py worker.py /src/
-ADD test/ /src/test/
+COPY test/ /src/test/
 
 WORKDIR /src
 
