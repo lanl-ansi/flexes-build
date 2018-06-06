@@ -101,8 +101,9 @@ def persist_resource(uri):
         s3 = boto3.resource('s3', endpoint_url=S3_ENDPOINT, config=config)
         local_file_name = get_local_path(uri)
 
-        print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
-        utils.put_file_s3(s3, local_file_name, uri)
+        if not os.path.isdir(local_file_name):
+            print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
+            utils.put_file_s3(s3, local_file_name, uri)
 
 
 def localize_command(command):
