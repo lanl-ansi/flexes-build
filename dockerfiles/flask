@@ -9,10 +9,10 @@ RUN addgroup -S flask && adduser -S -g flask flask
 ENV APP_DIR /home/flask/lanlytics-api
 WORKDIR $APP_DIR/
 
-COPY app.py requirements.txt utils.py settings.py message_schema.json $APP_DIR/
-ADD static/ $APP_DIR/static/
-ADD templates/ $APP_DIR/templates/
-ADD test/ $APP_DIR/test/
+COPY app.py requirements.txt utils.py config.py default_config.json message_schema.json $APP_DIR/
+COPY static/ $APP_DIR/static/
+COPY templates/ $APP_DIR/templates/
+COPY test/ $APP_DIR/test/
 
 RUN pip install --no-cache-dir -r requirements.txt && py.test test/
 

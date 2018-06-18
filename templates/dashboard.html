@@ -1,21 +1,66 @@
 {% extends "base.html" %}
 {% block body %}
+  <h2>Jobs</h2>
   <table class="table">
-    <thead>
-      <tr>
-      {% for key in jobs[0].keys() %}
-        <th>{{ key }}</th>
+    {% if jobs|length > 0 %}
+      <thead>
+        <tr>
+        {% for key in jobs[0].keys() %}
+          <th>{{ key }}</th>
+        {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for job in jobs %}
+        <tr>
+        {% for key in job.keys()  %}
+          <td>{{ job[key] }}</td>
+        {% endfor%}
+        </tr>
       {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-    {% for job in jobs %}
-      <tr>
-      {% for key in job.keys()  %}
-        <td>{{ job[key] }}</td>
-      {% endfor%}
-      </tr>
-    {% endfor %}
-    <tbody>
+      <tbody>
+    {% endif %}
+  </table>
+  <h2>Queues</h2>
+  <table class="table">
+    {% if queues|length > 0 %}
+      <thead>
+        <tr>
+        {% for key in queues[0].keys() %}
+          <th>{{ key }}</th>
+        {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for queue in queues %}
+        <tr>
+        {% for key in queue.keys()  %}
+          <td>{{ queue[key] }}</td>
+        {% endfor%}
+        </tr>
+      {% endfor %}
+      <tbody>
+    {% endif %}
+  </table>
+  <h2>Workers</h2>
+  <table class="table">
+    {% if workers|length > 0 %}
+      <thead>
+        <tr>
+        {% for key in workers[0].keys() %}
+          <th>{{ key }}</th>
+        {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for worker in workers %}
+        <tr>
+        {% for key in worker.keys()  %}
+          <td>{{ worker[key] }}</td>
+        {% endfor%}
+        </tr>
+      {% endfor %}
+      <tbody>
+    {% endif %}
   </table>
 {% endblock %}
