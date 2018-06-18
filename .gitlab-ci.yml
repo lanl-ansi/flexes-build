@@ -15,7 +15,7 @@ unit_test:
   image: python:3.6
   script:
     - pip install -r requirements.txt
-    - py.test --cov=app.py --cov=utils.py
+    - py.test --cov=app --cov=utils
 
 build:
   stage: build
