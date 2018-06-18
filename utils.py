@@ -83,3 +83,38 @@ def isvalid(obj, schema):
         return True
     except ValidationError:
         return False
+<<<<<<< HEAD
+=======
+
+
+def image_exists(image_name, tag='latest'):
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
+    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
+    try:
+        image = client.images.get(image)
+        return True
+    except docker.errors.ImageNotFound:
+        if AUTHENTICATE is True:
+            if client_login(client) is True:
+                print('Registry login successful')
+            else:
+                print('Registry login failed')
+                return False
+        try:
+            print('Image {} not found locally'.format(image))
+            client.images.pull(image)
+            return True
+        except docker.errors.ImageNotFound:
+            return False
+
+
+def client_login(client):
+    try:
+        client.login(username=REGISTRY_USERNAME,
+                     password=REGISTRY_PASSWORD,
+                     registry=DOCKER_REGISTRY)
+        return True
+    except docker.errors.APIError as e:
+        print('Authenication failed: {}'.format(e))
+        return False
+>>>>>>> 7ecafed719ede79c336c8755723ff17e791d7c31
