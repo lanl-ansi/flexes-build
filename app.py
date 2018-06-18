@@ -56,7 +56,7 @@ def service_response(message):
         response = jsonify(**response)
         response.status_code = 202
         response.scheme = 'https'
-        response.headers['location'] = '/jobs/{}'.format(job_id)
+        response.headers['Location'] = '{}/jobs/{}'.format(config['API_ENDPOINT'], job_id)
         response.autocorrect_location_header = False
     return response
 
