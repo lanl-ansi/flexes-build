@@ -3,22 +3,25 @@
 import json
 import os
 import requests
+from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from settings import *
-from utils import query_job, submit_job, all_jobs, list_services
+from utils import query_job_status, get_job_result, submit_job, \
+        all_running_jobs, all_queues, all_workers, list_services
 
 app = Flask(__name__)
+
+config = load_config()
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
-REDIS_URL = 'redis://{}:{}/0'.format(REDIS_HOST, REDIS_PORT)
+REDIS_URL = 'redis://{}:{}/0'.format(config['REDIS_HOST'], config['REDIS_PORT'])
 app.config['REDIS_URL'] = REDIS_URL
-db = FlaskRedis(app)
+db = FlaskRedis(app, decode_responses=True)
 
 with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
     message_schema = json.load(f)
@@ -37,15 +40,24 @@ def service_response(message):
         response = {'job_id': None, 
                     'status': 'error', 
                     'message': 'no message found in request'}
+        response = jsonify(**response)
+        response.status_code = 400
     elif isvalid(message, message_schema) is False:
         response = {'job_id': None,
                     'status': 'error',
                     'message': 'not a valid input'}
+        response = jsonify(**response)
+        response.status_code = 400
     else:
         job_id = submit_job(db, message)
         response = {'job_id': job_id, 
                     'status': 'submitted', 
                     'message': 'job submitted'}
+        response = jsonify(**response)
+        response.status_code = 202
+        response.scheme = 'https'
+        response.headers['Location'] = '{}/jobs/{}'.format(config['API_ENDPOINT'], job_id)
+        response.autocorrect_location_header = False
     return response
 
 
@@ -56,7 +68,7 @@ def index():
     elif request.method == 'POST':
         message = request.get_json()
         response = service_response(message)
-        return jsonify(**response)
+        return response
 
 
 @app.route('/services', methods=['GET'])
@@ -80,8 +92,10 @@ def service_info(service_name):
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    jobs = [job for job in all_jobs() if job['status'] != 'complete']
-    return render_template('dashboard.html', jobs=jobs)
+    jobs = all_running_jobs(db)
+    queues = all_queues(db)
+    workers = all_workers(db)
+    return render_template('dashboard.html', jobs=jobs, queues=queues, workers=workers)
 
 
 @app.route('/<service_name>', methods=['GET'])
@@ -93,9 +107,19 @@ def service(service_name):
             abort(404)
 
 
+@app.route('/jobs/<job_id>/status', methods=['GET'])
+def query_job(job_id):
+    return jsonify(**get_job_status(db, job_id))
+
+
 @app.route('/jobs/<job_id>', methods=['GET'])
-def query_status(job_id):
-    return jsonify(**query_job(db, job_id))
+def job_result(job_id):
+    return jsonify(**get_job_result(db, job_id))
+
+
+@app.route('/jobs/<job_id>/messages', methods=['GET'])
+def get_job_messages(job_id):
+    return jsonify(**job_messages(db, job_id))
 
 
 @app.route('/deploy', methods=['GET'])
