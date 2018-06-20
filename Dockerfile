@@ -2,7 +2,7 @@ FROM docker
 
 MAINTAINER James Arnold <arnold_j@lanl.gov>
 
-COPY message_schema.json launch.py requirements.txt settings.py utils.py worker.py /src/
+COPY default_config.json message_schema.json api_worker.py docker_worker.py native_worker.py requirements.txt config.py utils.py /src/
 COPY test/ /src/test/
 
 WORKDIR /src
@@ -14,6 +14,8 @@ RUN apk add --no-cache python3 && \
     rm -r /root/.cache && \
     pip install -r requirements.txt && ls && py.test test/
 
-ENTRYPOINT ["python3", "worker.py"]
+VOLUME /var/run/docker.sock
+
+ENTRYPOINT ["python3", "docker_worker.py"]
 
 CMD ["-h"]

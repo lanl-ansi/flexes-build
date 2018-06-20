@@ -2,13 +2,17 @@ import boto3
 import docker
 import json
 import os
-import random
+import requests
 import time
 from botocore.exceptions import ClientError
+from config import load_config
 from jsonschema import validate, ValidationError
-from settings import *
+from pathlib import Path
+from uuid import uuid4
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'message_schema.json')) as f:
+config = load_config()
+
+with Path(__file__).with_name('message_schema.json').open('r') as f:
     message_schema = json.load(f)
     s3_uri_schema = message_schema['definitions']['s3_uri']
 
@@ -27,8 +31,7 @@ def get_s3_file(s3, uri, local_file):
         raise ValueError('File {} not found'.format(uri))
 
     for obj in files:
-        local_file = os.path.join(os.path.dirname(local_file), 
-                                  os.path.basename(obj))
+        local_file = str(Path(local_file).with_name(Path(obj).name))
         bucket.download_file(obj, local_file)
 
 
@@ -46,41 +49,19 @@ def put_file_s3(s3, local_file, uri):
             bucket.upload_file(upload_file, upload_key)
 
 
-# Database
-def receive_message(db, queue):
-    message = db.rpop(queue)
-    if message is not None:
-        message = json.loads(message.decode())
-        update_job(db, message['job_id'], STATUS_RUNNING)
-    return message
-
-
-def update_job(db, job_id, status, result=None, stdout_data=None, stderr_data=None):
-    job = db.get(job_id)
-
-    if job is None:
-        return STATUS_FAIL, 'Job retrieval failed'
-
-    val = json.loads(job.decode())
-
-    val.update({
-        'status': status, 
-        'result': result,
-        'stdout': stdout_data,
-        'stderr': stderr_data
-    })
-    db.set(job_id, json.dumps(val))
-    if status in [STATUS_COMPLETE, STATUS_FAIL]:
-        db.expire(job_id, 60)
-        dyn = boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
-        table = dyn.Table(JOBS_TABLE)
-        table.update_item(Key={'job_id': job_id},
-                          UpdateExpression='SET #stat = :val1, #r = :val2',
-                          ExpressionAttributeNames={'#stat': 'status', '#r': 'result'},
-                          ExpressionAttributeValues={':val1': status, ':val2': result})
-    elif status == STATUS_ACTIVE:
-        db.expire(job_id, 30)
-    return status, result
+def get_instance_info():
+    try:
+        metadata_url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
+        response = requests.get(metadata_url, timeout=1)
+        resp_json = response.json()
+        instance_id = resp_json['instanceId']
+        instance_type = resp_json['instanceType']
+        private_ip = resp_json['privateIp']
+    except requests.exceptions.ConnectionError:
+        instance_id = str(uuid4())
+        instance_type = 'local_machine'
+        private_ip = None
+    return instance_id, instance_type, private_ip
 
 
 # Validation
@@ -102,18 +83,3 @@ def isvalid(obj, schema):
         return True
     except ValidationError:
         return False
-
-
-def image_exists(image_name, tag='latest'):
-    client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
-    image = '{}/{}:{}'.format(DOCKER_REGISTRY, image_name, tag)
-    try:
-        image = client.images.get(image)
-        return True
-    except docker.errors.ImageNotFound:
-        try:
-            print('Image {} not found locally'.format(image))
-            client.images.pull(image)
-            return True
-        except docker.errors.ImageNotFound:
-            return False
