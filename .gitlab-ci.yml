@@ -6,29 +6,29 @@ stages:
   - production
   - deploy
 
+variables:
+  DOCKER_DRIVER: overlay2
+  REGISTRY_IMAGE: registry.mctecloud.ipjtl.net/$CI_PROJECT_NAME
+
 unit_test:
   stage: unit_test
   image: python:3.6
   script:
     - pip install -r requirements.txt
-    - py.test --cov=app.py --cov=utils.py
+    - py.test --cov=app --cov=utils
 
 build:
   stage: build
   image: docker:latest
   dependencies:
     - unit_test
-  variables:
-    DOCKER_DRIVER: overlay2
-  before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
-    - docker build -t $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID -f dockerfiles/flask .
-    - docker push $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
-    - docker push $CI_REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
+    - docker build -t $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID -f dockerfiles/flask .
+    - docker push $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
+    - docker push $REGISTRY_IMAGE/ci:$CI_COMMIT_SHA
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
+    - docker push $REGISTRY_IMAGE/ci:$CI_COMMIT_REF_SLUG
     
 integration:
   stage: integration
@@ -38,14 +38,10 @@ integration:
     - build
     - unit_test
   before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
+    - docker pull $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
   script:
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:integration
-    - docker push $CI_REGISTRY_IMAGE:integration
-    - echo IntegrationTests!
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE:integration
+    - docker push $REGISTRY_IMAGE:integration
     
 acceptance:
   stage: acceptance
@@ -55,14 +51,10 @@ acceptance:
     - build
     - unit_test
   before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
+    - docker pull $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
   script:
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:acceptance
-    - docker push $CI_REGISTRY_IMAGE:acceptance
-    - echo AcceptanceTests!
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE:acceptance
+    - docker push $REGISTRY_IMAGE:acceptance
     
 production:
   stage: production
@@ -72,15 +64,12 @@ production:
     - build
     - unit_test
   before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
+    - docker pull $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
   script:
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:production
-    - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:latest
-    - docker push $CI_REGISTRY_IMAGE:production
-    - docker push $CI_REGISTRY_IMAGE:latest
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE:production
+    - docker tag $REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $REGISTRY_IMAGE:latest
+    - docker push $REGISTRY_IMAGE:production
+    - docker push $REGISTRY_IMAGE:latest
 
 deploy:
   stage: deploy
@@ -88,9 +77,5 @@ deploy:
     - master
   dependencies:
     - production
-  before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
     - echo DeployToEnv!
