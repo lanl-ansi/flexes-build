@@ -94,11 +94,11 @@ def list_services(tags=None):
 
 async def get_services():
     async with ClientSession() as session:
-        url = '{}/v2/_catalog'.format(config['DOCKER_REGISTRY'])
+        url = 'https://{}/v2/_catalog'.format(config['DOCKER_REGISTRY'])
         services = await fetch(session, url)
         tasks = []
         for service in services['repositories']:
-            url = '{}/v2/{}/tags/list'.format(config['DOCKER_REGISTRY'], service)
+            url = 'https://{}/v2/{}/tags/list'.format(config['DOCKER_REGISTRY'], service)
             task = asyncio.ensure_future(fetch(session, url))
             tasks.append(task)
 
