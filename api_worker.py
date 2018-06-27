@@ -237,7 +237,9 @@ class APIWorker(object):
         return self.update_job(msg_id, self.config['STATUS_FAIL'], str(e))
 
     def gracefully_exit(self, signo, stack_frame):
+        ## TODO: handle case where worker has an active job
         print('SIGTERM received: {} {}'.format(signo, stack_frame))
+        update_worker_status('dead')
         sys.exit(0)
 
     def launch(self, message):
@@ -255,6 +257,7 @@ class APIWorker(object):
         elif status == 'dead':
             self.db.srem(busy, self.instance_id)
             self.db.smove('{}:workers'.format(self.queue), 'workers:dead', self.instance_id)
+            self.db.expire(self.config['WORKER_PREFIX'] + self.instance_id, 600)
 
     def register_worker(self):
         instance_id, instance_type, private_ip = utils.get_instance_info()
@@ -263,7 +266,7 @@ class APIWorker(object):
         worker_info = {'queue': self.queue, 
                        'worker_type': self.__class__.__name__, 
                        'status': 'idle', 
-                       'instace_type': instance_type, 
+                       'instance_type': instance_type, 
                        'private_ip': private_ip}
 
         self.db.hmset(self.config['WORKER_PREFIX'] + self.instance_id, worker_info)

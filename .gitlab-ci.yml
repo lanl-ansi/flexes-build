@@ -6,6 +6,9 @@ stages:
   - production
   - deploy
 
+variables:
+  DOCKER_DRIVER: overlay2
+
 unit_test:
   stage: unit_test
   image: python:3.6
@@ -19,8 +22,6 @@ build:
   image: docker:latest
   dependencies:
     - unit_test
-  variables:
-    DOCKER_DRIVER: overlay2
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
@@ -41,12 +42,9 @@ integration:
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
     - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:integration
     - docker push $CI_REGISTRY_IMAGE:integration
-    - echo IntegrationTests!
     
 acceptance:
   stage: acceptance
@@ -58,12 +56,9 @@ acceptance:
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
     - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:acceptance
     - docker push $CI_REGISTRY_IMAGE:acceptance
-    - echo AcceptanceTests!
     
 production:
   stage: production
@@ -75,8 +70,6 @@ production:
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
     - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:production
     - docker tag $CI_REGISTRY_IMAGE/ci:job_$CI_PIPELINE_ID $CI_REGISTRY_IMAGE:latest
@@ -89,9 +82,5 @@ deploy:
     - master
   dependencies:
     - production
-  before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
     - echo DeployToEnv!
