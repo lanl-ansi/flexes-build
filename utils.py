@@ -52,7 +52,7 @@ def put_file_s3(s3, local_file, uri):
 def get_instance_info():
     try:
         metadata_url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
-        response = requests.get(metadata_url, timeout=1)
+        response = requests.get(metadata_url, timeout=5)
         resp_json = response.json()
         instance_id = resp_json['instanceId']
         instance_type = resp_json['instanceType']
