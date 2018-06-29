@@ -141,16 +141,16 @@ class DockerWorker(APIWorker):
             exit_code = container.wait()['StatusCode']
 
             logs = container.logs(stdout=True, stderr=True).decode()
-            stdout_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=True, stderr=False)]
-            stderr_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True)]
             if stdout_file != None:
                 with open(stdout_file, 'w') as stdout:
+                    stdout_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=True, stderr=False)]
                     stdout.writelines(stdout_lines)
             if stderr_file != None:
                 with open(stderr_file, 'w') as stderr:
+                    stderr_lines = [line.strip().decode() for line in container.logs(stream=True, stdout=False, stderr=True)]
                     stderr.writelines(stderr_lines)
-            stdout_data = '\n'.join(stdout_lines) if stdout_pipe else None
-            stderr_data = '\n'.join(stderr_lines) if stderr_pipe else None 
+            stdout_data = container.logs(stdout=True, stderr=False).decode() if stdout_pipe else None
+            stderr_data = container.logs(stdout=False, stderr=True).decode() if stderr_pipe else None 
         except docker.errors.ContainerError as e:
             print('Container error: {}'.format(e))
             logs = e.stderr.decode()

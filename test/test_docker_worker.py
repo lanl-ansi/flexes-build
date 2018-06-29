@@ -39,6 +39,7 @@ class TestDockerWorker:
         self.worker.localize_resource = mock.MagicMock(return_value='/path/to/resource.txt')
         self.worker.persist_command = mock.MagicMock()
         self.worker.client.containers.run.return_value.wait.return_value = {'Error': None, 'StatusCode': 0}
+        self.worker.client.containers.run.return_value.logs.return_value = b''
         type(self.worker.client.containers.run.return_value).status = mock.PropertyMock(side_effect=['running', 'running', 'exited'])
         message = test_commands['pipe_command']
         status, feedback, stdout_data, stderr_data = self.worker.launch(message)
