@@ -270,7 +270,7 @@ class APIWorker(object):
                        'private_ip': private_ip}
         worker_id = self.config['WORKER_PREFIX'] + self.instance_id
         if self.db.exists(worker_id):
-            keys = db.keys(pattern='{}*'.format(worker_id))
+            keys = self.db.keys(pattern='{}*'.format(worker_id))
             worker_id = '{}_{}'.format(worker_id, len(keys))
 
         self.db.hmset(worker_id, worker_info)
