@@ -268,8 +268,12 @@ class APIWorker(object):
                        'status': 'idle', 
                        'instance_type': instance_type, 
                        'private_ip': private_ip}
+        worker_id = self.config['WORKER_PREFIX'] + self.instance_id
+        if self.db.exists(worker_id):
+            keys = db.keys(pattern='{}*'.format(worker_id))
+            worker_id = '{}_{}'.format(worker_id, len(keys))
 
-        self.db.hmset(self.config['WORKER_PREFIX'] + self.instance_id, worker_info)
+        self.db.hmset(worker_id, worker_info)
         self.db.sadd('{}:workers'.format(self.queue), self.instance_id)
         return instance_id
 
