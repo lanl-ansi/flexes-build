@@ -71,8 +71,10 @@ def all_queues(db):
 
 
 def all_workers(db):
-    workers = [parse_hashmap(db, worker, ['id', 'status', 'queue']) 
-               for worker in db.keys(pattern='{}*'.format(config['WORKER_PREFIX']))]
+    workers = []
+    for worker in db.keys(pattern='{}*'.format(config['WORKER_PREFIX'])):
+        worker_id = worker.replace(config['WORKER_PREFIX'], '')
+        workers.append({**{'id': worker_id}, **parse_hashmap(db, worker, ['status', 'queue'])})
     return workers
 
 
