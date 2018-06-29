@@ -163,7 +163,7 @@ class TestUtils:
         assert(len(queues) == 3)
 
     def test_all_workers(self):
-        return_keys = ['id', 'status', 'queue']
+        return_keys = ['status', 'queue']
         self.db.hmget.return_value = {key: 'test' for key in return_keys}
         self.db.keys.return_value = ['foo', 'bar', 'baz']
         workers = utils.all_workers(self.db)
