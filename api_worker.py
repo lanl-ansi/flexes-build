@@ -20,12 +20,12 @@ from uuid import uuid4
 
 
 class APIWorker(object):
-    '''Base class for API worker. Implements basic functionality for communicating with the API.
+    """Base class for API worker. Implements basic functionality for communicating 
+        with the API. 
 
     Attributes:
         config (dict): Worker configuration
         local_files_path (str): Worker's root directory
-        log_line_limit (int): Limit for printing logs
         queue (str): Queue worker listens to, default `docker`
         poll_frequency (int): Worker queue poll frequency in seconds, default `1`
         db (redis.StrictRedis): Redis connection, connection parameters are specified 
@@ -36,11 +36,10 @@ class APIWorker(object):
     Args:
         queue (str): Queue worker listens to, default `docker`
         poll_frequency (int): Worker queue poll frequency in seconds, default `1`
-    '''
+    """
     def __init__(self, *args, **kwargs):
         self.config = load_config()
         self.local_files_path = str(Path.home().joinpath('lanlytics_worker_local', str(uuid4().hex)))
-        self.log_line_limit = 10
         self.queue = kwargs.get('queue', 'docker')
         self.poll_frequency = kwargs.get('poll_frequency', 1)
         self.db = StrictRedis(self.config['REDIS_HOST'], self.config['REDIS_PORT'], decode_responses=True)
@@ -52,14 +51,14 @@ class APIWorker(object):
         return self.update_job(message['job_id'], self.config['STATUS_ACTIVE'], 'Service is active')
 
     def process_message(self, message):
-        '''Process message received from queue
+        """Execute a job based on a message received from the queue
 
         Args:
             message (dict): Message received from queue
 
         Returns:
             tuple: (job_status, job_result) 
-        '''
+        """
         print('Received message: {}'.format(message['job_id']))
         try:
             validate(message, utils.message_schema)
@@ -79,11 +78,11 @@ class APIWorker(object):
         return self.update_job(message['job_id'], status, result, stdout_data, stderr_data)
 
     def receive_message(self):
-        '''Receive message from queue
+        """Receive message from queue
 
         Returns:
             dict: Job message
-        '''
+        """
         message = self.db.rpop(self.queue)
         if message is not None:
             message = json.loads(message)
@@ -91,7 +90,7 @@ class APIWorker(object):
         return message
 
     def update_job(self, job_id, status, result=None, stdout_data=None, stderr_data=None):
-        '''Update job status in database
+        """Update job status in database
 
         Args:
             job_id (str): Unique ID for job
@@ -102,7 +101,7 @@ class APIWorker(object):
 
         Returns:
             tuple: (job_status, job_result) 
-        '''
+        """
         job = self.config['JOB_PREFIX'] + job_id
         queue = self.db.hget(job, 'queue')
         self.db.hmset(job, 
@@ -128,48 +127,48 @@ class APIWorker(object):
         return status, result
 
     def update_job_messages(self, job_id, messages):
-        '''Update intermediate job execution messages in database
+        """Update intermediate job execution messages in database
 
         Args:
             job_id (str): Unique ID for job
             messages (list): List of messages from running job
-        '''
+        """
         job = self.config['JOB_PREFIX'] + job_id
         self.db.hmset(job, {'messages': messages})
 
     def get_local_path(self, uri):
-        '''Get local path from S3 URI
+        """Get local path from S3 URI
 
         Args:
             uri (str): S3 URI to resolve
 
         Returns:
             str: Local file path
-        '''
+        """
         if utils.is_s3_uri(uri):
             local_filename = Path(self.local_files_path).joinpath(Path(uri).relative_to('s3://'))
             return str(local_filename)
         return uri
 
     def make_local_dirs(self, local_file):
-        '''Create intermediate directories for file path
+        """Create intermediate directories for file path
 
         Args:
             local_file (str): Local file path
-        '''
+        """
         directory = Path(local_file).parent
         if not directory.exists():
             os.makedirs(directory)
 
     def localize_resource(self, uri):
-        '''Take an S3 URI and download it to the worker's local file system
+        """Take an S3 URI and download it to the worker's local file system
 
         Args:
             uri (str): S3 URI
 
         Returns:
             str: Local path to downloaded file
-        '''
+        """
         if utils.is_s3_uri(uri):
             local_file_name = self.get_local_path(uri)
             self.make_local_dirs(local_file_name)
@@ -180,14 +179,14 @@ class APIWorker(object):
             return uri
 
     def localize_output(self, uri):
-        '''Get local path for output file
+        """Get local path for output file
 
         Args:
             uri (str): S3 URI for output
 
         Returns:
             str: Local path for output file
-        '''
+        """
         if utils.is_s3_uri(uri):
             local_path = self.get_local_path(uri)
             self.make_local_dirs(local_path)
@@ -196,25 +195,25 @@ class APIWorker(object):
             return uri
 
     def persist_resource(self, uri):
-        '''Upload local file to S3
+        """Upload local file to S3
 
         Args:
             uri (str): S3 URI for file destination        
-        '''
+        """
         if utils.is_s3_uri(uri):
             local_file_name = self.get_local_path(uri)
             print('Uploading to s3:\n  {}\n  {}'.format(local_file_name, uri))
             utils.put_file_s3(self.s3, local_file_name, uri)
 
     def localize_command(self, command):
-        '''Localize input and output arguments in command
+        """Localize input and output arguments in command
 
         Args:
             command (dict): Command for worker to execute
 
         Returns:
             dict: Command rewritten with local input and output arguments
-        '''
+        """
         local_command = copy.deepcopy(command)
         if 'stdin' in local_command and local_command['stdin']['type'] == 'uri':
             local_command['stdin']['value'] = self.localize_resource(local_command['stdin']['value'])
@@ -238,11 +237,11 @@ class APIWorker(object):
         return local_command
 
     def persist_command(self, command):
-        '''Upload outputs specified in command
+        """Upload outputs specified in command
 
         Args:
             command (dict): Command for worker to execute
-        '''
+        """
         print(command)
         if 'stdout' in command and command['stdout']['type'] == 'uri':
             self.persist_resource(command['stdout']['value'])
@@ -276,7 +275,7 @@ class APIWorker(object):
         return bash_command
 
     def build_command_parts(self, local_command):
-        '''Convert command dictionary to a list of command arguments
+        """Convert command dictionary to a list of command arguments
 
         Args:
             local_command (dict): Command for worker to execute with input and output 
@@ -291,7 +290,7 @@ class APIWorker(object):
                 bool: Whether to pipe STDOUT to user
                 str: URI for storing output from STDERR
                 bool: Whether to pipe STDERR to user
-        '''
+        """
         stdin = stdout = stderr = None
         stdin_pipe = stdout_pipe = stderr_pipe = False 
         command = [arg['name'] + arg['value'] if 'name' in arg else arg['value']
@@ -316,14 +315,14 @@ class APIWorker(object):
 
 
     def build_localized_command(self, command, cmd_prefix=[]):
-        '''Build command with localized input and output arguments
+        """Build command with localized input and output arguments
         
         Args:
             command (dict): Command for worker to execute
 
         Returns:
             dict: Command with input and output arguments localized
-        '''
+        """
         abstract_cmd = self.build_bash_command(command)
         print('\nAbstract unix command:')
         print('{} {}\n'.format(cmd_prefix, abstract_cmd))
@@ -331,7 +330,7 @@ class APIWorker(object):
         return local_command
 
     def worker_cleanup(self, command, exit_code, worker_log, stdout_data, stderr_data):
-        '''Clean up files and upload output after worker execution
+        """Clean up files and upload output after worker execution
         
         Args:
             command (dict): Command worker used to execute job
@@ -346,7 +345,7 @@ class APIWorker(object):
                 str: Description of job execution
                 str: Return from STDOUT during execution
                 str: Return from STDERR during execution
-        '''
+        """
         print('Exit code: {}'.format(exit_code))
         feedback = 'Job finished with exit code {}'.format(exit_code)
         
@@ -368,7 +367,7 @@ class APIWorker(object):
         return status, feedback, stdout_data, stderr_data
 
     def handle_exception(self, msg_id, e):
-        '''Handle exception during job execution
+        """Handle exception during job execution
         
         Args:
             msg_id (str): Unique ID for job execution
@@ -376,39 +375,34 @@ class APIWorker(object):
 
         Returns:
             tuple: (job_status, job_result) 
-        '''
+        """
         traceback.print_exc()
         return self.update_job(msg_id, self.config['STATUS_FAIL'], str(e))
 
     def gracefully_exit(self, signo, stack_frame):
-        '''Handle SIGTERM message
+        """Handle SIGTERM message
 
         Args:
             signo (int): Signal code
             stack_frame (str): Current stack frame
-        '''
+        """
         ## TODO: handle case where worker has an active job
         print('SIGTERM received: {} {}'.format(signo, stack_frame))
         update_worker_status('dead')
         sys.exit(0)
 
     def launch(self, message):
-        '''Method for executing job on worker
+        """Method for executing job on worker
 
         Args:
             message (dict): Message for worker to use for execution
 
         Raises:
             NotImplementedError: If method is not overridden by child class
-        '''
+        """
         raise NotImplementedError('launch method is not implemented')
 
     def update_worker_status(self, status):
-        '''Update worker's status in database
-
-        Args:
-            status (str): Worker's current status
-        '''
         name = self.config['WORKER_PREFIX'] + self.instance_id
         self.db.hset(name, 'status', status)
         
@@ -423,11 +417,11 @@ class APIWorker(object):
             self.db.expire(self.config['WORKER_PREFIX'] + self.instance_id, 600)
 
     def register_worker(self):
-        '''Create entry for worker in database
+        """Create entry for worker in database
         
         Returns:
             str: Unique ID for worker
-        '''
+        """
         instance_id, instance_type, private_ip = utils.get_instance_info()
         self.instance_id = instance_id
 
@@ -446,7 +440,7 @@ class APIWorker(object):
         return instance_id
 
     def run(self):
-        '''Start worker'''
+        """Start worker"""
         signal.signal(signal.SIGTERM, self.gracefully_exit)
         print('Starting worker on process {}'.format(os.getpid()))
         self.register_worker()

@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 class DockerWorker(APIWorker):
+    """API worker capable of executing Docker containers"""
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.client = docker.DockerClient(base_url='unix://var/run/docker.sock', version='auto')
@@ -19,6 +20,8 @@ class DockerWorker(APIWorker):
             self.registry_login()
 
     def test_service(self, message):
+        """Test if the specified service exists and can be pulled 
+            from the Docker registry"""
         message['tag'] = message.get('tag', 'latest')
         if self.image_exists(message['service'], message['tag']):
             print('Confirmed active status for {}'.format(message['service']))
@@ -56,6 +59,7 @@ class DockerWorker(APIWorker):
                 return False
 
     def get_docker_path(self, uri):
+        """Translate host path to container path"""
         path = self.get_local_path(uri)
         if path.startswith(self.local_files_path):
             return Path(path).anchor + str(Path(path).relative_to(Path.home()))
@@ -63,6 +67,16 @@ class DockerWorker(APIWorker):
             return path
 
     def dockerize_command(self, local_command):
+        """Rewrite input and output commands using paths inside the Docker container
+        
+        Args:
+            local_command (dict): Command rewritten with host paths for 
+                input and output arguments
+
+        Returns:
+            dict: Command rewritten with input and output arguments as paths inside 
+                the Docker container
+        """
         docker_command = copy.deepcopy(local_command)
         if 'stdin' in docker_command and docker_command['stdin']['type'] == 'uri':
             docker_command['stdin']['value'] = self.get_docker_path(docker_command['stdin']['value'])

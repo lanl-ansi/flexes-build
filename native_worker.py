@@ -6,8 +6,10 @@ from api_worker import APIWorker
 from argparse import ArgumentParser
 
 class NativeWorker(APIWorker):
+    """API worker that executes jobs directly on the host"""
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
+        self.log_line_limit = 10
         self.cmd_prefix = kwargs['cmd_prefix']
 
     @staticmethod
