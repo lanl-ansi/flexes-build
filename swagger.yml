@@ -1,0 +1,193 @@
+swagger: '2.0'
+info:
+  description: Description of lanlytics API endpoints
+  version: '0.1'
+  title: lanlytics API
+  contact:
+    email: arnold_j@lanl.gov
+host: api.lanlytics.com
+basePath: /
+tags:
+  - name: jobs
+    description: Information about specific jobs
+  - name: services
+    description: Information about specific services
+schemes:
+  - https
+paths:
+  /:
+    post:
+      summary: Submit a new job
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Job request to be executed
+          required: true
+          schema:
+            $ref: '#/definitions/message'
+      responses:
+        '202':
+          description: Job successfully submitted
+        '400':
+          description: Invalid input
+  '/jobs/{job_id}':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve information about a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+  '/jobs/{job_id}/status':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve the status of a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+  '/jobs/{job_id}/messages':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve the messages of a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+  /services:
+    get:
+      tags:
+        - services
+      summary: List all available services
+      produces:
+        - application/json
+      parameters:
+        - name: tags
+          in: query
+          description: Tags to filter on
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+  '/services/{service_name}':
+    get:
+      tags:
+        - services
+      summary: Retrieve documentation on a specific service
+      produces:
+        - application/json
+      parameters:
+        - name: service_name
+          in: path
+          description: Name of service to retrieve documentation
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+definitions:
+  message:
+    type: object
+    description: >-
+      Message used to submit a job. Note: this schema definition does not
+      contain the full JSON schema definition due to the limitation of the
+      swagger specification. For a full definition refer to message_schema.json
+    properties:
+      command:
+        $ref: '#/definitions/command'
+      queue:
+        type: string
+      service:
+        type: string
+      tag:
+        type: string
+  argument:
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - value
+    properties:
+      type:
+        enum:
+          - input
+          - output
+          - parameter
+      name:
+        description: >-
+          The flag for the argument (e.g., -i). Currently a trailing space is
+          required after the flag (e.g., "-i ").
+        type: string
+      value:
+        type: string
+  command:
+    type: object
+    required:
+      - arguments
+    properties:
+      arguments:
+        type: array
+        items:
+          $ref: '#/definitions/argument'
+      input:
+        type: array
+        items:
+          $ref: '#/definitions/s3_uri'
+      output:
+        type: array
+        items:
+          $ref: '#/definitions/s3_uri'
+      stdin:
+        $ref: '#/definitions/uri_or_pipe'
+      stdout:
+        $ref: '#/definitions/uri_or_pipe'
+      stderr:
+        $ref: '#/definitions/uri_or_pipe'
+  uri_or_pipe:
+    type: object
+    required:
+      - type
+      - value
+    properties:
+      type:
+        enum:
+          - uri
+          - pipe
+      value:
+        enum:
+          - $ref: '#/definitions/s3_uri'
+          - 'null'
+    additionalProperties: false
+  s3_uri:
+    type: string
+    description: 'Path to an S3 object using the pattern s3://{bucket}/{key}'
+    pattern: '^s3\:\/\/[a-zA-Z0-9\-\.]+[a-zA-Z]\/\S*?$'
