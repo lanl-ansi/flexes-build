@@ -28,12 +28,16 @@ paths:
           description: Job request to be executed
           required: true
           schema:
-            $ref: '#/definitions/message'
+            $ref: 'https://s3-us-gov-west-1.amazonaws.com/lanlytics-public/schemas/lanlytics-api-message-schema.json'
       responses:
         '202':
           description: Job successfully submitted
+          schema:
+            $ref: '#/definitions/job'
         '400':
           description: Invalid input
+          schema:
+            $ref: '#/definitions/job'
   '/jobs/{job_id}':
     get:
       tags:
@@ -50,6 +54,8 @@ paths:
       responses:
         '200':
           description: Successful operation
+          schema:
+            $ref: '#/definitions/job'
   '/jobs/{job_id}/status':
     get:
       tags:
@@ -66,6 +72,8 @@ paths:
       responses:
         '200':
           description: Successful operation
+          schema:
+            $ref: '#/definitions/job'
   '/jobs/{job_id}/messages':
     get:
       tags:
@@ -98,6 +106,8 @@ paths:
       responses:
         '200':
           description: Successful operation
+          schema:
+            $ref: '#/definitions/services'
   '/services/{service_name}':
     get:
       tags:
@@ -114,80 +124,41 @@ paths:
       responses:
         '200':
           description: Successful operation
+          schema:
+            $ref: 'https://s3-us-gov-west-1.amazonaws.com/lanlytics-public/schemas/lanlytics-api-service-input-schema.json'
 definitions:
-  message:
+  services:
     type: object
-    description: >-
-      Message used to submit a job. Note: this schema definition does not
-      contain the full JSON schema definition due to the limitation of the
-      swagger specification. For a full definition refer to message_schema.json
     properties:
-      command:
-        $ref: '#/definitions/command'
-      queue:
-        type: string
-      service:
-        type: string
-      tag:
-        type: string
-  argument:
+      services:
+        type: array
+        items:
+          $ref: '#/definitions/service'
+  service:
     type: object
-    additionalProperties: false
-    required:
-      - type
-      - value
     properties:
-      type:
-        enum:
-          - input
-          - output
-          - parameter
       name:
-        description: >-
-          The flag for the argument (e.g., -i). Currently a trailing space is
-          required after the flag (e.g., "-i ").
         type: string
-      value:
-        type: string
-  command:
+      tags:
+        type: array
+        items:
+          type: string
+  job:
     type: object
-    required:
-      - arguments
     properties:
-      arguments:
-        type: array
-        items:
-          $ref: '#/definitions/argument'
-      input:
-        type: array
-        items:
-          $ref: '#/definitions/s3_uri'
-      output:
-        type: array
-        items:
-          $ref: '#/definitions/s3_uri'
-      stdin:
-        $ref: '#/definitions/uri_or_pipe'
+      job_id:
+        type: string
+      status:
+        type: string
+        enum:
+        - active
+        - complete
+        - failed
+        - running
+        - submitted
+      result:
+        type: string
       stdout:
-        $ref: '#/definitions/uri_or_pipe'
+        type: string
       stderr:
-        $ref: '#/definitions/uri_or_pipe'
-  uri_or_pipe:
-    type: object
-    required:
-      - type
-      - value
-    properties:
-      type:
-        enum:
-          - uri
-          - pipe
-      value:
-        enum:
-          - $ref: '#/definitions/s3_uri'
-          - 'null'
-    additionalProperties: false
-  s3_uri:
-    type: string
-    description: 'Path to an S3 object using the pattern s3://{bucket}/{key}'
-    pattern: '^s3\:\/\/[a-zA-Z0-9\-\.]+[a-zA-Z]\/\S*?$'
+        type: string
