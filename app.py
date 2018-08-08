@@ -6,6 +6,7 @@ import requests
 from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
+from flask_swagger_ui import get_swaggerui_blueprint
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
@@ -22,6 +23,11 @@ APP_STATIC = os.path.join(APP_ROOT, 'static')
 REDIS_URL = 'redis://{}:{}/0'.format(config['REDIS_HOST'], config['REDIS_PORT'])
 app.config['REDIS_URL'] = REDIS_URL
 db = FlaskRedis(app, decode_responses=True)
+
+SWAGGER_URL = '/docs'
+SWAGGER_PATH = '../static/docs/swagger.yml'
+swagger_blueprint = get_swaggerui_blueprint(SWAGGER_URL, SWAGGER_PATH)
+app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
 
 with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
     message_schema = json.load(f)
