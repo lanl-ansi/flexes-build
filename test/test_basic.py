@@ -141,6 +141,14 @@ class TestUtils:
         query_result = utils.query_job_status(self.db, 'job_id')
         assert(query_result == expected)
 
+    @mock.patch('boto3.resource')
+    def test_query_job_no_exist(self, mock_resource):
+        self.db.hget.return_value = None
+        self.db.hgetall.return_value = {}
+        mock_resource.return_value.Table.return_value.get_item.return_value = {}
+        query_result = utils.query_job_status(self.db, 'job_id')
+        assert(query_result['status'] == 'failed')
+
     def test_job_messages(self):
         self.db.get.return_value = '[1,2,3,4]'
         messages = utils.job_messages(self.db, 'test')
