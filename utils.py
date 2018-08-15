@@ -71,7 +71,7 @@ def get_job_result(db, job_id):
         dyn = boto3.resource('dynamodb', endpoint_url=config['DYNAMODB_ENDPOINT'])
         table = dyn.Table(config['JOBS_TABLE'])
         response = table.get_item(Key={'job_id': job_id})
-        return response['Item']
+        return response['Item'] if 'Item' in response else {'job_id': job_id, 'status': config['STATUS_FAIL'], 'message': 'Job ID {} does not exist'.format(job_id)}
 
 
 def parse_hashmap(db, name, keys):
