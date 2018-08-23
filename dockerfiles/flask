@@ -14,6 +14,9 @@ COPY static/ $APP_DIR/static/
 COPY templates/ $APP_DIR/templates/
 COPY test/ $APP_DIR/test/
 
-RUN pip install --no-cache-dir -r requirements.txt && py.test test/
+RUN apk add --no-cache alpine-sdk && \
+    pip install -U --no-cache-dir pip && \
+    pip install --no-cache-dir -r requirements.txt && py.test test/ && \
+    apk del alpine-sdk
 
 USER flask
