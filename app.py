@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import boto3
 import json
 import os
 import requests
+from botocore.exceptions import ClientError
 from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
@@ -11,7 +13,8 @@ from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
 from utils import query_job_status, get_job_result, submit_job, \
-        all_running_jobs, all_queues, all_workers, list_services
+        all_running_jobs, all_queues, all_workers, list_services, \
+        stream_from_s3
 
 app = Flask(__name__)
 
@@ -87,12 +90,13 @@ def services():
 
 @app.route('/services/<service_name>', methods=['GET'])
 def service_info(service_name):
-    doc_path = os.path.join(APP_STATIC, 'docs', '{}.json'.format(service_name))
-    if os.path.isfile(doc_path):
-        with open(doc_path) as f:
-            content = json.load(f)
+    tag = request.args.get('tag', config['DEFAULT_TAG'])
+    doc_path = 's3://{}/lanlytics-api/docs/{}/{}/service_docs.json'.format(config['DOCS_BUCKET'], service_name, tag)
+    try:
+        s3 = boto3.resource('s3')
+        content = stream_from_s3(doc_path, s3=s3, json=True)
         return jsonify(**content)
-    else:
+    except ClientError:
         abort(404)
 
 

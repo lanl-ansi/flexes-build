@@ -10,6 +10,9 @@ import mock
 from asynctest import CoroutineMock
 from flask import url_for, jsonify
 
+def mock_download_fileobj(key, data):
+    data.write(b'{"foo": "bar"}')
+
 @pytest.mark.usefixtures('client_class')
 class TestEndpoints:
     def test_index(self):
@@ -92,11 +95,15 @@ class TestEndpoints:
         resp = self.client.post(service_url, data=data, content_type='application/json')
         assert(resp.json == expected)
 
-    def test_service_info(self):
+    @mock.patch('boto3.resource')
+    @mock.patch('app.stream_from_s3', return_value={})
+    def test_service_info(self, mock_stream, mock_resource):
         service_url = url_for('service_info', service_name='popecon')
         assert(self.client.get(service_url).status_code == 200)
 
-    def test_bad_service_info(self):
+    @mock.patch('boto3.resource')
+    @mock.patch('app.stream_from_s3', side_effect=botocore.exceptions.ClientError({'Error': {'Code': 404}}, 'test'))
+    def test_bad_service_info(self, mock_stream, mock_resource):
         service_url = url_for('service_info', service_name='foo')
         assert(self.client.get(service_url).status_code == 404)
 
@@ -112,8 +119,6 @@ class TestEndpoints:
         mock_list_services.return_value = {'services': ['a', 'b', 'c']}
         service_url = url_for('services')
         assert(self.client.get(service_url).status_code == 200)
-
-
 
 
 class TestUtils:
@@ -197,6 +202,18 @@ class TestUtils:
         mock_get_services.return_value = mock_responses['raw']
         services = utils.list_services(tags=['lanl'])
         assert(services == mock_responses['lanl'])
+
+    @mock.patch('boto3.resource')
+    def test_stream_from_s3(self, mock_resource):
+        mock_resource.Bucket.return_value.download_fileobj.side_effect = mock_download_fileobj
+        result = utils.stream_from_s3('s3://bucket/test/file.txt', s3=mock_resource)
+        assert(result == '{"foo": "bar"}')
+
+    @mock.patch('boto3.resource')
+    def test_stream_from_s3_json(self, mock_resource):
+        mock_resource.Bucket.return_value.download_fileobj.side_effect = mock_download_fileobj
+        result = utils.stream_from_s3('s3://bucket/test/file.txt', s3=mock_resource, json=True)
+        assert(result == {'foo': 'bar'})
 
 
 class TestSchema:
