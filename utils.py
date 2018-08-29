@@ -1,10 +1,11 @@
 import asyncio
 import boto3
 import botocore
-import json
+import ujson
 import sys
-from config import load_config
 from aiohttp import ClientSession
+from config import load_config
+from io import BytesIO
 from uuid import uuid4
 
 config = load_config()
@@ -29,7 +30,7 @@ def submit_job(db, message):
     # Create job db entry
     db.hmset(job, message)
     # Push to queue
-    db.lpush(queue, json.dumps(message))
+    db.lpush(queue, ujson.dumps(message))
     db.sadd('{}:jobs'.format(queue), job_id)
     return job_id
 
@@ -103,7 +104,7 @@ def job_messages(db, job_id):
     '''
     job = config['MESSAGE_PREFIX'] + job_id
     messages = db.get(job)
-    return json.loads(messages) if messages is not None else []
+    return ujson.loads(messages) if messages is not None else []
 
 
 def all_running_jobs(db):
@@ -225,3 +226,35 @@ async def fetch(session, url):
     '''
     async with session.get(url) as response:
         return await response.json()
+
+# AWS Utils
+def split_s3_uri(uri):
+    '''Split S3 URI into bucket and key parts'''
+    return uri.split('/', 3)[2:]
+
+
+def parse_s3_uri(uri, s3=None):
+    '''Split S3 URI and return Bucket object and key'''
+    if s3 is None:
+        s3 = boto3.resource('s3')
+    bucket_name, key = split_s3_uri(uri)
+    return s3.Bucket(bucket_name), key
+
+
+def stream_from_s3(uri, s3=None, json=False):
+    '''Stream object directly from S3'''
+    if s3 is None:
+        s3 = boto3.resource('s3')
+    bucket, key = parse_s3_uri(uri, s3)
+    data = BytesIO()
+    try:
+        bucket.download_fileobj(key, data)
+        if json is True:
+            result = ujson.loads(data.getvalue())
+        else:
+            result = data.getvalue().decode()
+        return result
+    except Exception as e:
+        raise e
+    finally:
+        data.close()

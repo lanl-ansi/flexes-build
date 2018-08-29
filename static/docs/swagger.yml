@@ -116,10 +116,15 @@ paths:
       produces:
         - application/json
       parameters:
-        - name: service_name
-          in: path
+        - in: path
+          name: service_name
           description: Name of service to retrieve documentation
           required: true
+          type: string
+        - in: query
+          name: tag
+          description: Retrieve documentation for a specific tag
+          required: false
           type: string
       responses:
         '200':
