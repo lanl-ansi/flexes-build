@@ -32,7 +32,8 @@
       "properties": {
         "type": {"enum": ["input", "output", "parameter"]},
         "name": {"type": "string"},
-        "value": {"type": ["string", "number"]}
+        "value": {"type": ["string", "number"]},
+        "delimiter": {"type": "string"}
       }
     },
     "command": {
