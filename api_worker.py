@@ -293,8 +293,13 @@ class APIWorker(object):
         """
         stdin = stdout = stderr = None
         stdin_pipe = stdout_pipe = stderr_pipe = False 
-        command = [arg['name'] + arg['value'] if 'name' in arg else arg['value']
-                    for arg in local_command['arguments']]
+        command = []
+        for arg in local_command['arguments']:
+            if 'name' in arg:
+                delimiter = arg.get('delimiter', ' ')
+                command.append(arg['name'] + delimiter + arg['value'])
+            else:
+                command.append(arg['value'])
 
         if 'stdin' in local_command:
             stdin = local_command['stdin']['value']
