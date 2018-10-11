@@ -118,7 +118,8 @@ class DockerWorker(APIWorker):
         print('\nSetting up docker container')
         
         environment = {'API_ENDPOINT': self.config['API_ENDPOINT'], 
-                       'WORKER_BUCKET': self.config['WORKER_BUCKET']}
+                       'WORKER_BUCKET': self.config['WORKER_BUCKET'],
+                       'QUEUE': self.queue}
 
         docker_volume = self.local_files_dir
         volumes = {self.local_files_path: {'bind': docker_volume, 'mode': 'rw'}}
