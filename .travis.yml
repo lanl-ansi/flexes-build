@@ -1,13 +1,8 @@
-dist: trusty
 language: python
 python:
-  - "3.7-dev"
+  - "3.7"
   - "3.6"
   - "3.5"
 cache: pip
-
 install: pip install -r requirements.txt
-
-script: py.test --cov=app --cov=utils
-
-after_success: bash <(curl -s https://cov.lanlytics.com/bash) -t "zvYVxfDUQ2Swtbv11JFS" -r nisac/lanlytics-api
+script: py.test --cov=flexes_server --cov=flexes_worker

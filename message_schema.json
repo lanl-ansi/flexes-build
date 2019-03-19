@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "lanlytics API input schema",
+  "type": "object",
+  "oneOf": [
+    {
+      "required":["test", "service"],
+      "not":{"required":["command"]},
+      "properties": {
+        "queue": {"type": "string"},
+        "service": {"type": "string"},
+        "tag": {"type": "string"},
+        "test": {"type": "boolean"}
+      }
+    },
+    {
+      "required":["command", "service"],
+      "not":{"required":["test"]},
+      "properties": {
+        "command": {"$ref": "#/definitions/command"},
+        "queue": {"type": "string"},
+        "service": {"type": "string"},
+        "tag": {"type": "string"}
+      }
+    }
+  ],
+  "definitions": {
+    "argument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required":["type", "value"],
+      "properties": {
+        "type": {"enum": ["input", "output", "parameter"]},
+        "name": {"type": "string"},
+        "value": {"type": ["string", "number"]},
+        "delimiter": {"type": "string"}
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["arguments"],
+      "properties": {
+        "arguments": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/argument"}
+        },
+        "input": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/s3_uri"}
+        },
+        "output": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/s3_uri"}
+        },
+        "stdin":  {"$ref": "#/definitions/uri_or_pipe"},
+        "stdout": {"$ref": "#/definitions/uri_or_pipe"},
+        "stderr": {"$ref": "#/definitions/uri_or_pipe"}
+      }
+    },
+    "uri_or_pipe": {
+      "type": "object",
+      "required":["type", "value"],
+      "oneOf": [
+        {
+          "properties":{
+            "type": {"enum": ["uri"]},
+            "value": {"$ref": "#/definitions/s3_uri"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "properties":{
+            "type": {"enum": ["pipe"]},
+            "value": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "s3_uri":{
+      "type": "string",
+      "pattern": "^s3\\:\\/\\/[a-zA-Z0-9\\-\\.]+[a-zA-Z]\\/\\S*?$"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "basic_command": {
+    "service": "test",
+    "command": {
+      "arguments": [
+        {
+          "type": "input",
+          "value": "s3://bucket/path/to/input.txt"
+        },
+        {
+          "type": "parameter",
+          "name": "--arg1",
+          "value": "arg_val"
+        },
+        {
+          "type": "output",
+          "name": "--output",
+          "value": "s3://bucket/path/to/output.txt"
+        }
+      ]
+    }
+  },
+  "bad_command": {"foo": []},
+  "output_command": {
+    "service": "test",
+    "command": {
+      "arguments": [
+        {
+          "type": "input",
+          "value": "s3://bucket/path/to/input.txt"
+        },
+        {
+          "type": "parameter",
+          "name": "--arg1",
+          "value": "arg_val"
+        },
+        {
+          "type": "output",
+          "name": "--output",
+          "value": "s3://bucket/path/to/output.txt"
+        }
+      ],
+      "output": ["s3://bucket/path/to/other/output"]
+    }
+  },
+  "input_command": {
+    "service": "test",
+    "command": {
+      "arguments": [
+        {
+          "type": "input",
+          "value": "s3://bucket/path/to/input.txt"
+        },
+        {
+          "type": "parameter",
+          "name": "--arg1",
+          "value": "arg_val"
+        },
+        {
+          "type": "output",
+          "name": "--output",
+          "value": "s3://bucket/path/to/output.txt"
+        }
+      ],
+      "input": ["s3://bucket/path/to/other/input"]
+    }
+  },
+  "std_command": {
+    "service": "test",
+    "command": {
+      "stdout": {"type":"uri", "value":"s3://bucket/path/to/stdout.txt"},
+      "stderr": {"type":"uri", "value":"s3://bucket/path/to/stderr.txt"},
+      "arguments": [
+        {
+          "type": "input",
+          "value": "s3://bucket/path/to/input.txt"
+        },
+        {
+          "type": "parameter",
+          "name": "--arg1",
+          "value": "arg_val"
+        },
+        {
+          "type": "output",
+          "name": "--output",
+          "value": "s3://bucket/path/to/output.txt"
+        }
+      ]
+    }
+  },
+  "pipe_command": {
+    "service": "test",
+    "command": {
+      "stdin": {"type":"pipe", "value":"some raw data"},
+      "stdout": {"type":"pipe", "value":null},
+      "stderr": {"type":"uri", "value":"s3://bucket/path/to/stderr.txt"},
+      "arguments": []
+    }
+  },
+  "full_command": {
+    "service": "test",
+    "command": {
+      "stdout": {"type":"uri", "value":"s3://bucket/path/to/stdout.txt"},
+      "stderr": {"type":"uri", "value":"s3://bucket/path/to/stderr.txt"},
+      "arguments": [
+        {
+          "type": "input",
+          "value": "s3://bucket/path/to/input.txt"
+        },
+        {
+          "type": "parameter",
+          "name": "--arg1",
+          "value": "arg_val"
+        },
+        {
+          "type": "output",
+          "name": "--output",
+          "value": "s3://bucket/path/to/output.txt"
+        }
+      ],
+      "input": ["s3://bucket/path/to/other/input",
+                "s3://bucket/path/to/some/other/input"],
+      "output": ["s3://bucket/path/to/some/output"]
+    }
+  },
+  "test_command": {
+    "test": true,
+    "service": "test"
+  }
+}
