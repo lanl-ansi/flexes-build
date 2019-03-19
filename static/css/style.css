@@ -1,0 +1,7 @@
+#QueryDiv {
+  display: none;
+}
+
+.query-result {
+  word-wrap: break-word;
+}

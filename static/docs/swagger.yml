@@ -1,0 +1,169 @@
+swagger: '2.0'
+info:
+  description: Description of lanlytics API endpoints
+  version: '0.1'
+  title: lanlytics API
+  contact:
+    email: arnold_j@lanl.gov
+host: api.lanlytics.com
+basePath: /
+tags:
+  - name: jobs
+    description: Information about specific jobs
+  - name: services
+    description: Information about specific services
+schemes:
+  - https
+paths:
+  /:
+    post:
+      summary: Submit a new job
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Job request to be executed
+          required: true
+          schema:
+            $ref: 'https://s3-us-gov-west-1.amazonaws.com/lanlytics-public/schemas/lanlytics-api-message-schema.json'
+      responses:
+        '202':
+          description: Job successfully submitted
+          schema:
+            $ref: '#/definitions/job'
+        '400':
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/job'
+  '/jobs/{job_id}':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve information about a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/job'
+  '/jobs/{job_id}/status':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve the status of a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/job'
+  '/jobs/{job_id}/messages':
+    get:
+      tags:
+        - jobs
+      summary: Retrieve the messages of a specific job
+      produces:
+        - application/json
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to return
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+  /services:
+    get:
+      tags:
+        - services
+      summary: List all available services
+      produces:
+        - application/json
+      parameters:
+        - name: tags
+          in: query
+          description: Tags to filter on
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/services'
+  '/services/{service_name}':
+    get:
+      tags:
+        - services
+      summary: Retrieve documentation on a specific service
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: service_name
+          description: Name of service to retrieve documentation
+          required: true
+          type: string
+        - in: query
+          name: tag
+          description: Retrieve documentation for a specific tag
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: 'https://s3-us-gov-west-1.amazonaws.com/lanlytics-public/schemas/lanlytics-api-service-input-schema.json'
+definitions:
+  services:
+    type: object
+    properties:
+      services:
+        type: array
+        items:
+          $ref: '#/definitions/service'
+  service:
+    type: object
+    properties:
+      name:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+  job:
+    type: object
+    properties:
+      job_id:
+        type: string
+      status:
+        type: string
+        enum:
+        - active
+        - complete
+        - failed
+        - running
+        - submitted
+      result:
+        type: string
+      stdout:
+        type: string
+      stderr:
+        type: string

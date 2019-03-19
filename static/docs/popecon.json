@@ -1,0 +1,88 @@
+{
+  "service": "popecon",
+  "description": "Spatial aggregation of population and economic data",
+  "arguments": [
+    {
+      "name": "aoi",
+      "description": "Area of interest",
+      "type": "input",
+      "dataType": "geojson",
+      "required": true
+    },
+    {
+        "name": "output",
+        "description": "Output JSON table",
+        "type": "output",
+        "dataType": "json",
+        "required": true
+    },
+    {
+      "name": "fields",
+      "description": "Calculation fields formatted as a semicolon delimited string",
+      "flag": "-f",
+      "type": "parameter",
+      "dataType": "string",
+      "values": [
+        "Total Population",
+        "Total Jobs",
+        "Total Daily GDP",
+        "Population by Age",
+        "Male Pop by Age",
+        "Female Pop by Age",
+        "Median Age",
+        "Population by Race",
+        "Population Over 16",
+        "Population Over 18",
+        "Population Over 21",
+        "Population Over 62",
+        "Population Over 65",
+        "Race Diversity",
+        "Hispanic Population",
+        "Hispanic/Mix Population",
+        "Non_Hispanic/Mix Population",
+        "Population by Relationship",
+        "Households by Type",
+        "Average Household Size",
+        "Average Family Size",
+        "Housing Units",
+        "Vacancy Rates",
+        "Occupied Housing Units",
+        "Population in Occ. Units",
+        "Household Size in Occ. Units",
+        "Jobs by Sector",
+        "Daily GDP by Sector",
+        "Income",
+        "Workers by Age",
+        "Workers by Race",
+        "Workers by Education",
+        "Workers by Gender",
+        "EP Customers",
+        "LandScan Day",
+        "LandScan Night"
+      ],
+      "required": true,
+      "default": "'Total Population'"
+    },
+    {
+      "name": "bin",
+      "description": "Field in AOI used to bin results",
+      "flag": "-b",
+      "type": "parameter",
+      "dataType": "string",
+      "required": false
+    },
+    {
+      "name": "disaggregation",
+      "description": "Option to disaggregate by administrative boundaries",
+      "flag": "-d",
+      "type": "parameter",
+      "values": [
+        "county",
+        "state",
+        "fema"
+      ],
+      "dataType": "string",
+      "required": false
+    }
+  ]
+}

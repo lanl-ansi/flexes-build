@@ -1,0 +1,27 @@
+{
+  "service": "electric-power-damage",
+  "description": "Simple model for translating wind speed to electric power distribution damage",
+  "arguments": [
+    {
+      "name": "input",
+      "description": "Input wind speed raster in knots",
+      "type": "input",
+      "dataType": "raster",
+      "required": true
+    },
+    {
+      "name": "output",
+      "description": "Output damage raster",
+      "type": "output",
+      "dataType": "GeoTiff",
+      "required": true
+    },
+    {
+      "name": "output shapefile",
+      "description": "Output damage shapefile representing binned damage contours",
+      "flag": "--out_shp",
+      "type": "output",
+      "dataType": "Shapefile"
+    }
+  ]
+}
