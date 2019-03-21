@@ -1,6 +1,6 @@
 FROM python:3-alpine
 
-MAINTAINER James Arnold <arnold_j@lanl.gov>
+LABEL maintainer="James Arnold <arnold_j@lanl.gov>"
 
 # Create non-root user
 RUN addgroup -S flask && adduser -S -g flask flask
