@@ -1,3 +1,0 @@
-#!/bin/bash
-
-python3 -m pytest test/ --cov api_worker --cov docker_worker --cov utils --cov native_worker $@

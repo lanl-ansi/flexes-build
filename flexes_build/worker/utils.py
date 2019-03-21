@@ -4,19 +4,15 @@ import json
 import os
 import requests
 import time
+from .. import config as configure
 from botocore.exceptions import ClientError
-from config import load_config
 from jsonschema import validate, ValidationError
 from pathlib import Path
 from uuid import uuid4
 
-config = load_config()
-
-# Load API message schema for message validation
-with Path(__file__).with_name('message_schema.json').open('r') as f:
-    message_schema = json.load(f)
-    s3_uri_schema = message_schema['definitions']['s3_uri']
-
+config = configure.load_config()
+message_schema = configure.load_message_schema()
+s3_uri_schema = message_schema['definitions']['s3_uri']
 
 def s3_get_uri(s3, uri):
     """Split S3 URI into a bucket object and key

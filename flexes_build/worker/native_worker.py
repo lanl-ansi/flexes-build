@@ -2,7 +2,7 @@
 
 import os
 import subprocess
-from api_worker import APIWorker
+from .api_worker import APIWorker
 from argparse import ArgumentParser
 
 class NativeWorker(APIWorker):

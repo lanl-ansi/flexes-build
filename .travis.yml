@@ -1,8 +1,11 @@
 language: python
+dist: xenial
 python:
   - "3.7"
   - "3.6"
   - "3.5"
 cache: pip
-install: pip install -r requirements.txt
-script: py.test --cov=flexes_server --cov=flexes_worker
+install: pip install -e .[dev]
+script: py.test --cov flexes_build
+after_success:
+  - codecov

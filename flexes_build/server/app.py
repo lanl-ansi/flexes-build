@@ -4,24 +4,22 @@ import boto3
 import json
 import os
 import requests
+from .. import config as configure
 from botocore.exceptions import ClientError
-from config import load_config
 from flask import Flask, Markup, abort, \
                   jsonify, render_template, request
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_redis import FlaskRedis
 from jinja2.exceptions import TemplateNotFound
 from jsonschema import validate, ValidationError
-from utils import query_job_status, get_job_result, submit_job, \
+from .utils import query_job_status, get_job_result, submit_job, \
         all_running_jobs, all_queues, all_workers, list_services, \
         stream_from_s3
 
 app = Flask(__name__)
 
-config = load_config()
-
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-APP_STATIC = os.path.join(APP_ROOT, 'static')
+config = configure.load_config()
+message_schema = configure.load_message_schema()
 
 REDIS_URL = 'redis://{}:{}/0'.format(config['REDIS_HOST'], config['REDIS_PORT'])
 app.config['REDIS_URL'] = REDIS_URL
@@ -31,10 +29,6 @@ SWAGGER_URL = '/docs'
 SWAGGER_PATH = '../static/docs/swagger.yml'
 swagger_blueprint = get_swaggerui_blueprint(SWAGGER_URL, SWAGGER_PATH)
 app.register_blueprint(swagger_blueprint, url_prefix=SWAGGER_URL)
-
-with open(os.path.join(APP_ROOT, 'message_schema.json')) as f:
-    message_schema = json.load(f)
-
 
 def isvalid(obj, schema):
     try:
@@ -106,15 +100,6 @@ def dashboard():
     queues = all_queues(db)
     workers = all_workers(db)
     return render_template('dashboard.html', jobs=jobs, queues=queues, workers=workers)
-
-
-@app.route('/<service_name>', methods=['GET'])
-def service(service_name):
-    if request.method == 'GET':
-        try:
-            return render_template('{}.html'.format(service_name))
-        except TemplateNotFound:
-            abort(404)
 
 
 @app.route('/jobs/<job_id>/status', methods=['GET'])

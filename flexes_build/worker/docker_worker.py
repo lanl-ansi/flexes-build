@@ -5,8 +5,7 @@ import docker
 import os
 import sys
 import time
-import utils
-from api_worker import APIWorker
+from .api_worker import APIWorker
 from argparse import ArgumentParser
 from pathlib import Path
 

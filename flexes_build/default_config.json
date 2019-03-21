@@ -4,7 +4,7 @@
   "STATUS_RUNNING": "running",
   "STATUS_FAIL": "failed",
   "JOB_PREFIX": "job:",
-  "MESSAGE_PREFIX": "messages:",
+  "MESSAGE_PREFIX": "message:",
   "QUEUE_PREFIX": "queue:",
   "WORKER_PREFIX": "worker:",
   "DOCKER_REGISTRY": "hub.lanlytics.com",
@@ -16,5 +16,6 @@
   "API_ENDPOINT": "https://api.lanlytics.com",
   "WORKER_BUCKET": "lanlytics",
   "DOCS_BUCKET": "lanlytics",
-  "DEFAULT_TAG": "latest"
+  "DEFAULT_TAG": "latest",
+  "AUTHENTICATE": null
 }

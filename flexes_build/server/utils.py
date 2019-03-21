@@ -3,12 +3,12 @@ import boto3
 import botocore
 import ujson
 import sys
+from .. import config as configure
 from aiohttp import ClientSession
-from config import load_config
 from io import BytesIO
 from uuid import uuid4
 
-config = load_config()
+config = configure.load_config()
 
 def submit_job(db, message):
     '''Submit a job to the Redis queue.

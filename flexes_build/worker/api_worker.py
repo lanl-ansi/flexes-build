@@ -10,8 +10,8 @@ import signal
 import sys
 import time
 import traceback
-import utils
-from config import load_config
+from . import utils
+from .. import config
 from itertools import cycle
 from jsonschema import validate, ValidationError
 from pathlib import Path
@@ -38,7 +38,8 @@ class APIWorker(object):
         poll_frequency (int): Worker queue poll frequency in seconds, default `1`
     """
     def __init__(self, *args, **kwargs):
-        self.config = load_config()
+        self.config = config.load_config()
+        self.message_schema = config.load_message_schema()
         self.local_files_path = str(Path.home().joinpath('lanlytics_worker_local', str(uuid4().hex)))
         self.queue = kwargs.get('queue', 'docker')
         self.poll_frequency = kwargs.get('poll_frequency', 1)
@@ -61,7 +62,7 @@ class APIWorker(object):
         """
         print('Received message: {}'.format(message['job_id']))
         try:
-            validate(message, utils.message_schema)
+            validate(message, self.message_schema)
             if 'test' in message and message['test']:
                 self.update_job(message['job_id'], self.config['STATUS_RUNNING'], None)
                 return self.test_service(message)
