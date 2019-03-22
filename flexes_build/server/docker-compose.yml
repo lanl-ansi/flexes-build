@@ -3,7 +3,7 @@ services:
   nginx:
     restart: always
     image: nginx:stable-alpine
-    container_name: lanlytics-api-nginx
+    container_name: flexes-server-nginx
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
@@ -12,12 +12,15 @@ services:
       - flask:flask
   flask:
     environment:
-      - AWS_DEFAULT_REGION=us-gov-west-1
+      - AWS_DEFAULT_REGION=<aws-region-name>
     restart: always
+    image: arnoldj/flexes-server
     build:
-      context: .
-      dockerfile: ./dockerfiles/flask
-    container_name: lanlytics-api-server
+      context: ../../
+      dockerfile: ./Dockerfile
+    container_name: flexes-server
+    volumes:
+      - ./config.json:/home/flask/flexes_build/config.json:ro
     ports:
       - 127.0.0.1:8000:8000
-    command: gunicorn app:app -b :8000 -u flask --name lanlytics-api
+    command: gunicorn flexes_build.server.app:app -b :8000 -u flask --name flexes-server

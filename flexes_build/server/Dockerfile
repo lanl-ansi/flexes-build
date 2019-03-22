@@ -1,22 +1,30 @@
-FROM python:3-alpine
+FROM python:3-alpine as build
 
 LABEL maintainer="James Arnold <arnold_j@lanl.gov>"
 
-# Create non-root user
-RUN addgroup -S flask && adduser -S -g flask flask
-
-# Copy files
-ENV APP_DIR /home/flask/lanlytics-api
-WORKDIR $APP_DIR/
-
-COPY app.py requirements.txt utils.py config.py default_config.json message_schema.json $APP_DIR/
-COPY static/ $APP_DIR/static/
-COPY templates/ $APP_DIR/templates/
-COPY test/ $APP_DIR/test/
+COPY . /
 
 RUN apk add --no-cache alpine-sdk && \
-    pip install -U --no-cache-dir pip && \
-    pip install --no-cache-dir -r requirements.txt && py.test test/ && \
+    pip install -e .[dev] && \
+    py.test test/test_server.py
+
+
+FROM python:3-alpine
+
+# Create non-root user and install dependencies
+RUN addgroup -S flask && adduser -S -g flask flask
+
+ENV APP_DIR /home/flask/flexes_build
+WORKDIR $APP_DIR/
+
+COPY --from=build /README.rst /setup.py ../$APP_DIR/
+COPY --from=build /flexes_build/server/ $APP_DIR/server/
+COPY --from=build /flexes_build/config.py /flexes_build/default_config.json \
+                  /flexes_build/message_schema.json /flexes_build/__init__.py \
+                  $APP_DIR/
+
+RUN apk add --no-cache alpine-sdk && \
+    pip install --no-cache-dir ../$APP_DIR && \
     apk del alpine-sdk
 
 USER flask

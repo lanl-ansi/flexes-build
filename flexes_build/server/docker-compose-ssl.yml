@@ -14,16 +14,15 @@ services:
       - flask:flask
   flask:
     environment:
-      - AWS_CA_BUNDLE=</path/to/ca/bundle>
       - AWS_DEFAULT_REGION=<aws-region-name>
     restart: always
+    image: arnoldj/flexes-server
     build:
       context: .
       dockerfile: ./dockerfiles/flask
-    container_name: lanlytics-api-server
+    container_name: flexes-server
     volumes:
-      - </path/to/ca/bundle>:</path/to/ca/bundle>:ro
-      - ./config.json:/home/flask/lanlytics-api/config.json:ro
+      - ./config.json:/home/flask/flexes_build/config.json:ro
     ports:
       - 127.0.0.1:8000:8000
-    command: gunicorn app:app -b :8000 -u flask --name lanlytics-api
+    command: gunicorn flexes_build.server.app:app -b :8000 -u flask --name flexes-server
