@@ -1,11 +1,11 @@
 #!/bin/bash
 
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-docker build -t arnoldj/flexes-server:latest -f flexes_build/server/Dockerfile .
-docker build -t arnoldj/flexes-worker:latest -f flexes_build/worker/Dockerfile .
-docker tag arnoldj/flexes-server:latest arnoldj/flexes-server:$TRAVIS_TAG
-docker tag arnoldj/flexes-worker:latest arnoldj/flexes-worker:$TRAVIS_TAG
-docker push arnoldj/flexes-server:latest
-docker push arnoldj/flexes-worker:latest
-docker push arnoldj/flexes-server:$TRAVIS_TAG
-docker push arnoldj/flexes-worker:$TRAVIS_TAG
+docker build -t "$DOCKER_USERNAME"/flexes-server:latest -f flexes_build/server/Dockerfile .
+docker build -t "$DOCKER_USERNAME"/flexes-worker:latest -f flexes_build/worker/Dockerfile .
+docker tag "$DOCKER_USERNAME"/flexes-server:latest "$DOCKER_USERNAME"/flexes-server:"$TRAVIS_TAG"
+docker tag "$DOCKER_USERNAME"/flexes-worker:latest "$DOCKER_USERNAME"/flexes-worker:"$TRAVIS_TAG"
+docker push "$DOCKER_USERNAME"/flexes-server:latest
+docker push "$DOCKER_USERNAME"/flexes-worker:latest
+docker push "$DOCKER_USERNAME"/flexes-server:$TRAVIS_TAG
+docker push "$DOCKER_USERNAME"/flexes-worker:$TRAVIS_TAG
