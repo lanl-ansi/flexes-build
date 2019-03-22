@@ -15,7 +15,7 @@ after_success:
 - codecov
 deploy:
   provider: script
-  script: bash deploy_docker
+  script: bash docker_deploy
   on:
     branch: master
     condition: $TRAVIS_PYTHON_VERSION = '3.7'
