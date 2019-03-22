@@ -5,7 +5,7 @@ with open('README.rst') as f:
 
 setuptools.setup(
     name='flexes_build',
-    version='0.1.0',
+    version='0.1.1',
     author='James Arnold',
     author_email='arnold_j@lanl.gov',
     description='Components for building and deploying flexes',
