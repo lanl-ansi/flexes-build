@@ -1,11 +1,23 @@
 language: python
 dist: xenial
+services: docker
 python:
-  - "3.7"
-  - "3.6"
-  - "3.5"
+- '3.7'
+- '3.6'
+- '3.5'
 cache: pip
+env:
+  matrix:
+    secure: cv450iG2h7zxPrRxJlILT9vwZ+TBrVnlzLh7hhBfF2Xa+HNivjH5ZOLtUPxPj4qXQJzrg87cnNvmvTKXsSVmVCv9AgnF+aslxzrL1pxIP3VA5tc/x6Ko23tbCq4OHN3NzZjWxKzek4x6K84Kk/ZgLBQe+TgyAcPdK8S0Yas9vvdouulcK+L3cZAehjD5f+sj3JEJvzKV3hHxCjCelUCOmPbJg4PVkz2HssXICE43iSxvksRkz6WPmFToVqU3G7KiA8l3bG8ZJY3z1afiUgV18amKSYOPO2VX8ESg3U5ZkNVNCv0F5oxEeGB1vsHWoR/dvZyt5EIrce+R9kzxLcDlt9WR19A4dLIpMP6nxnXJI2K8FVlgTOircjpvOFioZrz+riGqExsv0yFssHRm020Tw7mxtJqLyYSn/+uUe9dEz1pKxUlpgDZj0FxiNcHb2i53MZYqx3B3bt2semKAteBMjf6KIkaenqP65DyrKBDNv/HhrJdkUA6QIHnyhbGAdFhxShveSEbm7vr4rmkhmmYUOqRijqrgRO+JBEw2afy1XDRlk7OSTiZL1ruSQg7ZRB+jtbp1MbGYZ4JoyKIGkRBgiK9jvTg3NVD7slueJkbk9bpjP1cMMhnUomhG1GXOcM8SQ0Y7lwfouy4MKF2Xaoq6tVnxV7fmlNAmS2+7AQl0gLg=
 install: pip install -e .[dev]
 script: py.test --cov flexes_build
 after_success:
-  - codecov
+- codecov
+deploy:
+  provider: script
+  script: bash deploy_docker
+  on:
+    branch: master
+    condition: $TRAVIS_PYTHON_VERSION = '3.7'
+    tags: true
+
