@@ -17,14 +17,14 @@ RUN addgroup -S flask && adduser -S -g flask flask
 ENV APP_DIR /home/flask/flexes_build
 WORKDIR $APP_DIR/
 
-COPY --from=build /README.rst /setup.py ../$APP_DIR/
-COPY --from=build /flexes_build/server/ $APP_DIR/server/
+COPY --from=build /README.rst /setup.py ../
+COPY --from=build /flexes_build/server/ ./server/
 COPY --from=build /flexes_build/config.py /flexes_build/default_config.json \
                   /flexes_build/message_schema.json /flexes_build/__init__.py \
-                  $APP_DIR/
+                  ./
 
 RUN apk add --no-cache alpine-sdk && \
-    pip install --no-cache-dir ../$APP_DIR && \
+    pip install --no-cache-dir ../ && \
     apk del alpine-sdk
 
 USER flask

@@ -5,13 +5,14 @@ with open('README.rst') as f:
 
 setuptools.setup(
     name='flexes_build',
-    version='0.1.3',
+    version='0.1.4',
     author='James Arnold',
     author_email='arnold_j@lanl.gov',
     description='Components for building and deploying flexes',
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=setuptools.find_packages(),
+    package_data={'': ['*.json']},
     install_requires=[
         'aiohttp>=3.5.4',
         'boto3>=1.9.117',
