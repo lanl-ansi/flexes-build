@@ -17,7 +17,7 @@ RUN addgroup -S flask && adduser -S -g flask flask
 ENV APP_DIR /home/flask/flexes_build
 WORKDIR $APP_DIR/
 
-COPY --from=build /README.rst /setup.py ../
+COPY --from=build /MANIFEST.in /README.rst /setup.py ../
 COPY --from=build /flexes_build/server/ ./server/
 COPY --from=build /flexes_build/config.py /flexes_build/default_config.json \
                   /flexes_build/message_schema.json /flexes_build/__init__.py \

@@ -12,7 +12,7 @@ LABEL maintainer="James Arnold <arnold_j@lanl.gov>"
 
 WORKDIR /src
 
-COPY --from=build /README.rst /setup.py /src/
+COPY --from=build /MANIFEST.in /README.rst /setup.py /src/
 COPY --from=build /flexes_build/worker/ /src/flexes_build/worker/
 COPY --from=build /flexes_build/config.py /flexes_build/default_config.json \
                   /flexes_build/message_schema.json /flexes_build/__init__.py \

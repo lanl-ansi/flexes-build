@@ -1,0 +1,3 @@
+recursive-include flexes_build *.json
+recursive-include flexes_build/server/templates *
+recursive-include flexes_buildserver/static *
